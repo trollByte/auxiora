@@ -5,6 +5,7 @@
     { "path": "packages/errors" },
     { "path": "packages/logger" },
     { "path": "packages/metrics" },
+    { "path": "packages/tools" },
     { "path": "packages/config" },
     { "path": "packages/vault" },
     { "path": "packages/audit" },

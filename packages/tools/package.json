@@ -1,7 +1,7 @@
 {
-  "name": "@auxiora/runtime",
+  "name": "@auxiora/tools",
   "version": "1.0.0",
-  "description": "Runtime that connects all Auxiora components",
+  "description": "Tool system for Auxiora AI assistant",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,15 +17,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auxiora/audit": "workspace:*",
-    "@auxiora/channels": "workspace:*",
-    "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
-    "@auxiora/gateway": "workspace:*",
-    "@auxiora/providers": "workspace:*",
-    "@auxiora/sessions": "workspace:*",
-    "@auxiora/tools": "workspace:*",
-    "@auxiora/vault": "workspace:*"
+    "@auxiora/errors": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/metrics": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

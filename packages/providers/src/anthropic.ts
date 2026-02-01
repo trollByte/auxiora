@@ -168,7 +168,12 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
-    // For OAuth tokens, include Claude Code identity (no tools unless user provides them)
+    // Add tools if provided
+    if (options?.tools && options.tools.length > 0) {
+      params.tools = options.tools as Anthropic.Tool[];
+    }
+
+    // For OAuth tokens, include Claude Code identity
     if (this.requiresClaudeCodeEmulation()) {
       // Claude Code identity MUST be first in system prompt (array format with cache_control)
       const systemBlocks: Array<{ type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }> = [
@@ -186,7 +191,6 @@ export class AnthropicProvider implements Provider {
         });
       }
       params.system = systemBlocks as Anthropic.TextBlockParam[];
-      // Note: Don't include tools unless user provides them - pi-ai doesn't either
     } else {
       params.system = systemPrompt;
     }
@@ -226,7 +230,12 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
-    // For OAuth tokens, include Claude Code identity (no tools unless user provides them)
+    // Add tools if provided
+    if (options?.tools && options.tools.length > 0) {
+      params.tools = options.tools as Anthropic.Tool[];
+    }
+
+    // For OAuth tokens, include Claude Code identity
     if (this.requiresClaudeCodeEmulation()) {
       // Claude Code identity MUST be first in system prompt (array format with cache_control)
       const systemBlocks: Array<{ type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }> = [
@@ -244,20 +253,52 @@ export class AnthropicProvider implements Provider {
         });
       }
       params.system = systemBlocks as Anthropic.TextBlockParam[];
-      // Note: Don't include tools unless user provides them - pi-ai doesn't either
     } else {
       params.system = systemPrompt;
     }
 
     try {
       const stream = this.client.messages.stream(params);
+      let currentToolUse: { id: string; name: string; input: string } | null = null;
 
       for await (const event of stream) {
-        if (event.type === 'content_block_delta') {
+        if (event.type === 'content_block_start') {
+          const block = event.content_block;
+          if (block.type === 'tool_use') {
+            // Start collecting tool use
+            currentToolUse = {
+              id: block.id,
+              name: block.name,
+              input: '',
+            };
+          }
+        } else if (event.type === 'content_block_delta') {
           const delta = event.delta;
           if ('text' in delta) {
             yield { type: 'text', content: delta.text };
+          } else if ('partial_json' in delta && currentToolUse) {
+            // Accumulate tool input
+            currentToolUse.input += delta.partial_json;
           }
+        } else if (event.type === 'content_block_stop' && currentToolUse) {
+          // Tool use complete - parse and yield
+          try {
+            const input = JSON.parse(currentToolUse.input);
+            yield {
+              type: 'tool_use',
+              toolUse: {
+                id: currentToolUse.id,
+                name: currentToolUse.name,
+                input,
+              },
+            };
+          } catch (error) {
+            yield {
+              type: 'error',
+              error: `Failed to parse tool input: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            };
+          }
+          currentToolUse = null;
         } else if (event.type === 'message_stop') {
           const finalMessage = await stream.finalMessage();
           yield {

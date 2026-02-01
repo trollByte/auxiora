@@ -16,4 +16,7 @@ export type {
   CompletionResult,
   StreamChunk,
   MessageRole,
+  ToolDefinition,
+  ToolUse,
+  ToolResultMessage,
 } from './types.js';

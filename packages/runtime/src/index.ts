@@ -12,6 +12,12 @@ import {
   getIdentityPath,
   getUserPath,
 } from '@auxiora/core';
+import {
+  toolRegistry,
+  toolExecutor,
+  initializeToolExecutor,
+  type ExecutionContext,
+} from '@auxiora/tools';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -43,6 +49,14 @@ export class Auxiora {
         console.warn('Failed to unlock vault:', error instanceof Error ? error.message : error);
       }
     }
+
+    // Initialize tool system with approval callback
+    initializeToolExecutor(async (toolName: string, params: any, context: ExecutionContext) => {
+      // For now, auto-approve all tools in non-interactive mode
+      // In future, could send approval request to client via WebSocket
+      console.log(`[Tools] Auto-approving ${toolName} with params:`, params);
+      return true;
+    });
 
     // Initialize sessions
     this.sessions = new SessionManager({
@@ -319,13 +333,18 @@ export class Auxiora {
     }));
 
     try {
-      // Stream response
+      // Get tool definitions from registry
+      const tools = toolRegistry.toProviderFormat();
+
+      // Stream response with tools
       const provider = this.providers.getPrimaryProvider();
       let fullResponse = '';
       let usage = { inputTokens: 0, outputTokens: 0 };
+      const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
       for await (const chunk of provider.stream(chatMessages, {
         systemPrompt: this.systemPrompt,
+        tools: tools.length > 0 ? tools : undefined,
       })) {
         if (chunk.type === 'text' && chunk.content) {
           fullResponse += chunk.content;
@@ -333,6 +352,14 @@ export class Auxiora {
             type: 'chunk',
             id: requestId,
             payload: { content: chunk.content },
+          });
+        } else if (chunk.type === 'tool_use' && chunk.toolUse) {
+          // Collect tool uses for execution
+          toolUses.push(chunk.toolUse);
+          this.sendToClient(client, {
+            type: 'tool_use',
+            id: requestId,
+            payload: { tool: chunk.toolUse.name, params: chunk.toolUse.input },
           });
         } else if (chunk.type === 'done') {
           usage = chunk.usage || usage;
@@ -347,12 +374,17 @@ export class Auxiora {
         output: usage.outputTokens,
       });
 
-      // Send done signal
-      this.sendToClient(client, {
-        type: 'done',
-        id: requestId,
-        payload: { usage },
-      });
+      // Execute tools if any were called
+      if (toolUses.length > 0) {
+        await this.handleToolExecution(client, session.id, toolUses, requestId);
+      } else {
+        // No tools used - send done signal
+        this.sendToClient(client, {
+          type: 'done',
+          id: requestId,
+          payload: { usage },
+        });
+      }
 
       audit('message.sent', {
         sessionId: session.id,
@@ -436,6 +468,81 @@ export class Auxiora {
     }
   }
 
+  private async handleToolExecution(
+    client: ClientConnection,
+    sessionId: string,
+    toolUses: Array<{ id: string; name: string; input: any }>,
+    requestId?: string
+  ): Promise<void> {
+    // Create execution context
+    const context: ExecutionContext = {
+      sessionId,
+      workingDirectory: getWorkspacePath(),
+      timeout: 30000,
+    };
+
+    // Execute each tool
+    const toolResults = [];
+    for (const toolUse of toolUses) {
+      try {
+        const result = await toolExecutor.execute(toolUse.name, toolUse.input, context);
+
+        // Send tool result to client
+        this.sendToClient(client, {
+          type: 'tool_result',
+          id: requestId,
+          payload: {
+            tool: toolUse.name,
+            success: result.success,
+            output: result.output,
+            error: result.error,
+          },
+        });
+
+        // Store result for sending back to AI
+        toolResults.push({
+          tool_use_id: toolUse.id,
+          content: result.success
+            ? (result.output || 'Tool executed successfully')
+            : `Error: ${result.error || 'Unknown error'}`,
+          is_error: !result.success,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.sendToClient(client, {
+          type: 'tool_result',
+          id: requestId,
+          payload: {
+            tool: toolUse.name,
+            success: false,
+            error: errorMessage,
+          },
+        });
+
+        toolResults.push({
+          tool_use_id: toolUse.id,
+          content: `Error: ${errorMessage}`,
+          is_error: true,
+        });
+      }
+    }
+
+    // Add tool results to session as a system message (for context)
+    const toolResultsSummary = toolResults.map(r =>
+      `Tool ${r.tool_use_id}: ${r.is_error ? 'ERROR' : 'SUCCESS'}\n${r.content}`
+    ).join('\n\n');
+    await this.sessions.addMessage(sessionId, 'user', `[Tool Results]\n${toolResultsSummary}`);
+
+    // Continue conversation with tool results
+    // In a full implementation, we would send tool results back to the AI
+    // and let it process them. For now, we just send a done signal.
+    this.sendToClient(client, {
+      type: 'done',
+      id: requestId,
+      payload: { toolResults },
+    });
+  }
+
   private sendToClient(client: ClientConnection, message: object): void {
     if (client.ws.readyState === 1) {
       // WebSocket.OPEN
@@ -487,10 +594,14 @@ export class Auxiora {
     }));
 
     try {
+      // Get tool definitions from registry
+      const tools = toolRegistry.toProviderFormat();
+
       // Get completion (non-streaming for channels)
       const provider = this.providers.getPrimaryProvider();
       const result = await provider.complete(chatMessages, {
         systemPrompt: this.systemPrompt,
+        tools: tools.length > 0 ? tools : undefined,
       });
 
       // Save assistant message

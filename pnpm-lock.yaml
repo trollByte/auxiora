@@ -203,6 +203,9 @@ importers:
       '@auxiora/sessions':
         specifier: workspace:*
         version: link:../sessions
+      '@auxiora/tools':
+        specifier: workspace:*
+        version: link:../tools
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
@@ -215,6 +218,21 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/tools:
+    dependencies:
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/metrics':
+        specifier: workspace:*
+        version: link:../metrics
 
   packages/vault:
     dependencies:
