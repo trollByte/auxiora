@@ -1,7 +1,7 @@
 {
-  "name": "@auxiora/runtime",
+  "name": "@auxiora/channels",
   "version": "1.0.0",
-  "description": "Runtime that connects all Auxiora components",
+  "description": "Channel adapters for Discord, Telegram, Slack, and Twilio",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,13 +18,12 @@
   },
   "dependencies": {
     "@auxiora/audit": "workspace:*",
-    "@auxiora/channels": "workspace:*",
-    "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
-    "@auxiora/gateway": "workspace:*",
-    "@auxiora/providers": "workspace:*",
-    "@auxiora/sessions": "workspace:*",
-    "@auxiora/vault": "workspace:*"
+    "@grammyjs/types": "^3.16.0",
+    "@slack/bolt": "^4.3.0",
+    "discord.js": "^14.18.0",
+    "grammy": "^1.35.0",
+    "twilio": "^5.6.0"
   },
   "engines": {
     "node": ">=22.0.0"

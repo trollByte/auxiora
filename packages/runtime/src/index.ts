@@ -1,6 +1,7 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
 import { ProviderFactory, type StreamChunk } from '@auxiora/providers';
+import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, type Config } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
@@ -24,6 +25,7 @@ export class Auxiora {
   private gateway!: Gateway;
   private sessions!: SessionManager;
   private providers!: ProviderFactory;
+  private channels?: ChannelManager;
   private vault!: Vault;
   private systemPrompt: string = '';
   private running = false;
@@ -53,6 +55,9 @@ export class Auxiora {
 
     // Initialize providers (if vault is unlocked and has keys)
     await this.initializeProviders();
+
+    // Initialize channels (if configured and vault is unlocked)
+    await this.initializeChannels();
 
     // Load personality files
     await this.loadPersonality();
@@ -100,6 +105,77 @@ export class Auxiora {
             }
           : undefined,
       },
+    });
+  }
+
+  private async initializeChannels(): Promise<void> {
+    // Get channel tokens from vault
+    let discordToken: string | undefined;
+    let telegramToken: string | undefined;
+    let slackBotToken: string | undefined;
+    let slackAppToken: string | undefined;
+    let twilioAccountSid: string | undefined;
+    let twilioAuthToken: string | undefined;
+    let twilioPhoneNumber: string | undefined;
+
+    try {
+      discordToken = this.vault.get('DISCORD_BOT_TOKEN');
+      telegramToken = this.vault.get('TELEGRAM_BOT_TOKEN');
+      slackBotToken = this.vault.get('SLACK_BOT_TOKEN');
+      slackAppToken = this.vault.get('SLACK_APP_TOKEN');
+      twilioAccountSid = this.vault.get('TWILIO_ACCOUNT_SID');
+      twilioAuthToken = this.vault.get('TWILIO_AUTH_TOKEN');
+      twilioPhoneNumber = this.vault.get('TWILIO_PHONE_NUMBER');
+    } catch {
+      // Vault is locked
+      return;
+    }
+
+    const hasAnyChannel =
+      (this.config.channels.discord.enabled && discordToken) ||
+      (this.config.channels.telegram.enabled && telegramToken) ||
+      (this.config.channels.slack.enabled && slackBotToken && slackAppToken) ||
+      (this.config.channels.twilio.enabled && twilioAccountSid && twilioAuthToken);
+
+    if (!hasAnyChannel) {
+      return;
+    }
+
+    this.channels = new ChannelManager({
+      discord:
+        this.config.channels.discord.enabled && discordToken
+          ? {
+              token: discordToken,
+              mentionOnly: this.config.channels.discord.mentionOnly,
+            }
+          : undefined,
+      telegram:
+        this.config.channels.telegram.enabled && telegramToken
+          ? {
+              token: telegramToken,
+            }
+          : undefined,
+      slack:
+        this.config.channels.slack.enabled && slackBotToken && slackAppToken
+          ? {
+              botToken: slackBotToken,
+              appToken: slackAppToken,
+            }
+          : undefined,
+      twilio:
+        this.config.channels.twilio.enabled && twilioAccountSid && twilioAuthToken && twilioPhoneNumber
+          ? {
+              accountSid: twilioAccountSid,
+              authToken: twilioAuthToken,
+              phoneNumber: twilioPhoneNumber,
+            }
+          : undefined,
+    });
+
+    // Set up channel message handler
+    this.channels.onMessage(this.handleChannelMessage.bind(this));
+    this.channels.onError((error, channelType) => {
+      console.error(`Channel error (${channelType}):`, error.message);
     });
   }
 
@@ -321,10 +397,133 @@ export class Auxiora {
     }
   }
 
+  private async handleChannelMessage(inbound: InboundMessage): Promise<void> {
+    // Get or create session for this sender
+    const session = await this.sessions.getOrCreate(
+      `${inbound.channelType}:${inbound.senderId}`,
+      {
+        channelType: inbound.channelType,
+        senderId: inbound.senderId,
+      }
+    );
+
+    // Handle commands
+    if (inbound.content.startsWith('/')) {
+      const response = await this.handleChannelCommand(inbound.content, session.id);
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: response,
+          replyToId: inbound.id,
+        });
+      }
+      return;
+    }
+
+    // Add user message
+    await this.sessions.addMessage(session.id, 'user', inbound.content);
+
+    // Check if providers are available
+    if (!this.providers) {
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: 'I need API keys to respond. Please configure them in the vault.',
+          replyToId: inbound.id,
+        });
+      }
+      return;
+    }
+
+    // Get context messages
+    const contextMessages = this.sessions.getContextMessages(session.id);
+    const chatMessages = contextMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    try {
+      // Get completion (non-streaming for channels)
+      const provider = this.providers.getPrimaryProvider();
+      const result = await provider.complete(chatMessages, {
+        systemPrompt: this.systemPrompt,
+      });
+
+      // Save assistant message
+      await this.sessions.addMessage(session.id, 'assistant', result.content, {
+        input: result.usage.inputTokens,
+        output: result.usage.outputTokens,
+      });
+
+      // Send response
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: result.content,
+          replyToId: inbound.id,
+        });
+      }
+
+      audit('message.sent', {
+        channelType: inbound.channelType,
+        sessionId: session.id,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      audit('channel.error', { sessionId: session.id, error: errorMessage });
+
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: `Error: ${errorMessage}`,
+          replyToId: inbound.id,
+        });
+      }
+    }
+  }
+
+  private async handleChannelCommand(command: string, sessionId: string): Promise<string> {
+    const [cmd] = command.slice(1).split(' ');
+
+    switch (cmd.toLowerCase()) {
+      case 'status': {
+        const activeSessions = this.sessions.getActiveSessions();
+        const providers = this.providers?.listAvailable() || [];
+        const channels = this.channels?.getConnectedChannels() || [];
+        return `**Status**\n- Sessions: ${activeSessions.length} active\n- Providers: ${providers.join(', ') || 'none'}\n- Channels: ${channels.join(', ') || 'webchat only'}`;
+      }
+
+      case 'new':
+      case 'reset': {
+        await this.sessions.clear(sessionId);
+        return 'Session cleared. Starting fresh!';
+      }
+
+      case 'help': {
+        return `**Commands**\n- /status - Show system status\n- /new - Start a new session\n- /reset - Clear current session\n- /help - Show this help`;
+      }
+
+      default:
+        return `Unknown command: ${cmd}. Try /help`;
+    }
+  }
+
   async start(): Promise<void> {
     if (this.running) return;
 
     await this.gateway.start();
+
+    // Connect channels if configured
+    if (this.channels) {
+      try {
+        await this.channels.connectAll();
+        const connected = this.channels.getConnectedChannels();
+        if (connected.length > 0) {
+          console.log(`Connected channels: ${connected.join(', ')}`);
+        }
+      } catch (error) {
+        console.warn('Some channels failed to connect:', error);
+      }
+    }
+
     this.running = true;
 
     console.log(`\nAuxiora is ready!`);
@@ -334,6 +533,9 @@ export class Auxiora {
   async stop(): Promise<void> {
     if (!this.running) return;
 
+    if (this.channels) {
+      await this.channels.disconnectAll();
+    }
     await this.gateway.stop();
     this.sessions.destroy();
     this.vault.lock();

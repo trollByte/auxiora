@@ -68,6 +68,11 @@ const ChannelConfigSchema = z.object({
     enabled: z.boolean().default(false),
     socketMode: z.boolean().default(true),
   }).default({}),
+  twilio: z.object({
+    enabled: z.boolean().default(false),
+    smsEnabled: z.boolean().default(true),
+    whatsappEnabled: z.boolean().default(false),
+  }).default({}),
   webchat: z.object({
     enabled: z.boolean().default(true),
   }).default({}),

@@ -5,7 +5,11 @@
     { "path": "packages/config" },
     { "path": "packages/vault" },
     { "path": "packages/audit" },
+    { "path": "packages/sessions" },
+    { "path": "packages/providers" },
     { "path": "packages/gateway" },
+    { "path": "packages/channels" },
+    { "path": "packages/runtime" },
     { "path": "packages/cli" }
   ]
 }

@@ -19,14 +19,23 @@ export class VaultError extends Error {
   }
 }
 
+export interface VaultOptions {
+  path?: string;
+}
+
 export class Vault {
   private key: Buffer | null = null;
   private salt: Buffer | null = null;
   private credentials: Record<string, string> = {};
   private isUnlocked = false;
+  private vaultPath?: string;
+
+  constructor(options?: VaultOptions) {
+    this.vaultPath = options?.path;
+  }
 
   async unlock(password: string): Promise<void> {
-    const vaultFile = await readVaultFile();
+    const vaultFile = await readVaultFile(this.vaultPath);
 
     if (vaultFile === null) {
       // New vault - create with this password
@@ -90,7 +99,7 @@ export class Vault {
       tag: encrypted.tag.toString('base64'),
     };
 
-    await writeVaultFile(vaultFile);
+    await writeVaultFile(vaultFile, this.vaultPath);
   }
 
   async add(name: string, value: string): Promise<void> {

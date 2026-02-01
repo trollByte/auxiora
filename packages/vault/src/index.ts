@@ -1,4 +1,4 @@
-export { Vault, VaultError } from './vault.js';
+export { Vault, VaultError, type VaultOptions } from './vault.js';
 export {
   deriveKey,
   encrypt,
@@ -7,4 +7,4 @@ export {
   generateIv,
   zeroBuffer,
 } from './crypto.js';
-export { readVaultFile, writeVaultFile, deleteVaultFile } from './storage.js';
+export { readVaultFile, writeVaultFile, deleteVaultFile, getVaultPath } from './storage.js';

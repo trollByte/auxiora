@@ -10,8 +10,10 @@ export interface VaultFile {
   tag: string;
 }
 
-export async function readVaultFile(): Promise<VaultFile | null> {
-  const vaultPath = getVaultPath();
+export { getVaultPath };
+
+export async function readVaultFile(customPath?: string): Promise<VaultFile | null> {
+  const vaultPath = customPath || getVaultPath();
 
   try {
     const content = await fs.readFile(vaultPath, 'utf-8');
@@ -24,8 +26,8 @@ export async function readVaultFile(): Promise<VaultFile | null> {
   }
 }
 
-export async function writeVaultFile(vaultFile: VaultFile): Promise<void> {
-  const vaultPath = getVaultPath();
+export async function writeVaultFile(vaultFile: VaultFile, customPath?: string): Promise<void> {
+  const vaultPath = customPath || getVaultPath();
   const vaultDir = path.dirname(vaultPath);
 
   // Create parent directories if needed
@@ -40,8 +42,8 @@ export async function writeVaultFile(vaultFile: VaultFile): Promise<void> {
   }
 }
 
-export async function deleteVaultFile(): Promise<void> {
-  const vaultPath = getVaultPath();
+export async function deleteVaultFile(customPath?: string): Promise<void> {
+  const vaultPath = customPath || getVaultPath();
 
   try {
     await fs.unlink(vaultPath);
