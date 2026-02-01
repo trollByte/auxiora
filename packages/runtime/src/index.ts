@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, readClaudeCliCredentials } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, type Config } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
@@ -77,6 +77,13 @@ export class Auxiora {
       anthropicKey = this.vault.get('ANTHROPIC_API_KEY');
       anthropicOAuthToken = this.vault.get('ANTHROPIC_OAUTH_TOKEN');
       openaiKey = this.vault.get('OPENAI_API_KEY');
+
+      // Check if ANTHROPIC_API_KEY is actually an OAuth token (sk-ant-oat01-*)
+      // This handles users who stored their OAuth token in the wrong vault key
+      if (anthropicKey && isSetupToken(anthropicKey)) {
+        anthropicOAuthToken = anthropicKey;
+        anthropicKey = undefined;
+      }
     } catch {
       vaultLocked = true;
     }
@@ -108,7 +115,8 @@ export class Auxiora {
     } | undefined;
 
     if (anthropicOAuthToken) {
-      console.log('Using Anthropic OAuth token from vault');
+      const tokenPrefix = anthropicOAuthToken.substring(0, 15);
+      console.log(`Using Anthropic OAuth token from vault (${tokenPrefix}...)`);
       anthropicConfig = {
         oauthToken: anthropicOAuthToken,
         model: this.config.provider.anthropic.model,
