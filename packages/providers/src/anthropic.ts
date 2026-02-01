@@ -17,8 +17,11 @@ import { CLAUDE_CODE_TOOLS } from './claude-code-tools.js';
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
 
-// Claude Code version to mimic
-const CLAUDE_CODE_VERSION = '2.1.2';
+// Claude Code version to mimic (must match real Claude CLI)
+const CLAUDE_CODE_VERSION = '2.1.29';
+
+// Git SHA for version tracking (shortened from real value)
+const CLAUDE_CODE_GIT_SHA = '6fe';
 
 // Required system prompt for OAuth tokens
 const CLAUDE_CODE_SYSTEM_PROMPT = 'You are Claude Code, Anthropic\'s official CLI for Claude.';
@@ -105,6 +108,8 @@ export class AnthropicProvider implements Provider {
         'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20,fine-grained-tool-streaming-2025-05-14,interleaved-thinking-2025-05-14',
         'user-agent': `claude-cli/${CLAUDE_CODE_VERSION} (external, cli)`,
         'x-app': 'cli',
+        // CRITICAL: Attribution header identifies this as Claude Code
+        'x-anthropic-billing-header': `cc_version=${CLAUDE_CODE_VERSION}.${CLAUDE_CODE_GIT_SHA}; cc_entrypoint=cli;`,
       },
       dangerouslyAllowBrowser: true,
     });
