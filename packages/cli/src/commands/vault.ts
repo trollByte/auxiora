@@ -3,6 +3,23 @@ import { password as passwordPrompt } from '@inquirer/prompts';
 import { Vault, VaultError } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 
+// Known secret names used by Auxiora
+const KNOWN_SECRETS = {
+  // AI Providers
+  ANTHROPIC_API_KEY: 'Anthropic Claude API key',
+  OPENAI_API_KEY: 'OpenAI API key',
+  // Channel adapters
+  DISCORD_BOT_TOKEN: 'Discord bot token',
+  TELEGRAM_BOT_TOKEN: 'Telegram bot token',
+  SLACK_BOT_TOKEN: 'Slack bot OAuth token',
+  SLACK_APP_TOKEN: 'Slack app-level token (for Socket Mode)',
+  TWILIO_ACCOUNT_SID: 'Twilio account SID',
+  TWILIO_AUTH_TOKEN: 'Twilio auth token',
+  TWILIO_PHONE_NUMBER: 'Twilio phone number',
+} as const;
+
+type KnownSecret = keyof typeof KNOWN_SECRETS;
+
 async function unlockVault(vault: Vault): Promise<boolean> {
   const password = await passwordPrompt({
     message: 'Enter vault password:',
@@ -127,6 +144,97 @@ export function createVaultCommand(): Command {
         await audit('vault.lock', {});
         vault.lock();
       }
+    });
+
+  vaultCmd
+    .command('status')
+    .description('Show vault status and configured secrets')
+    .action(async () => {
+      const vault = new Vault();
+
+      if (!(await unlockVault(vault))) {
+        process.exit(1);
+      }
+
+      try {
+        const storedNames = new Set(vault.list());
+        const customSecrets = vault.list().filter((name) => !(name in KNOWN_SECRETS));
+
+        console.log('\n🔐 Vault Status\n');
+
+        // AI Providers section
+        console.log('AI Providers:');
+        const providerSecrets: KnownSecret[] = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
+        for (const name of providerSecrets) {
+          const status = storedNames.has(name) ? '✅' : '❌';
+          console.log(`  ${status} ${name} - ${KNOWN_SECRETS[name]}`);
+        }
+
+        // Channels section
+        console.log('\nChannel Adapters:');
+        const channelSecrets: KnownSecret[] = [
+          'DISCORD_BOT_TOKEN',
+          'TELEGRAM_BOT_TOKEN',
+          'SLACK_BOT_TOKEN',
+          'SLACK_APP_TOKEN',
+          'TWILIO_ACCOUNT_SID',
+          'TWILIO_AUTH_TOKEN',
+          'TWILIO_PHONE_NUMBER',
+        ];
+        for (const name of channelSecrets) {
+          const status = storedNames.has(name) ? '✅' : '⬚ ';
+          console.log(`  ${status} ${name} - ${KNOWN_SECRETS[name]}`);
+        }
+
+        // Custom secrets
+        if (customSecrets.length > 0) {
+          console.log('\nCustom Secrets:');
+          for (const name of customSecrets) {
+            console.log(`  ✅ ${name}`);
+          }
+        }
+
+        // Summary
+        const configured = storedNames.size;
+        const hasProvider = storedNames.has('ANTHROPIC_API_KEY') || storedNames.has('OPENAI_API_KEY');
+
+        console.log('\n---');
+        console.log(`Total secrets: ${configured}`);
+
+        if (!hasProvider) {
+          console.log('\n⚠️  No AI provider configured. Add one with:');
+          console.log('   auxiora vault add ANTHROPIC_API_KEY');
+        }
+
+        console.log('');
+      } finally {
+        await audit('vault.lock', {});
+        vault.lock();
+      }
+    });
+
+  vaultCmd
+    .command('secrets')
+    .description('List all known secret names and their purpose')
+    .action(() => {
+      console.log('\n📋 Known Secrets\n');
+      console.log('AI Providers (at least one required):');
+      console.log('  ANTHROPIC_API_KEY   - Anthropic Claude API key');
+      console.log('  OPENAI_API_KEY      - OpenAI API key');
+      console.log('\nDiscord:');
+      console.log('  DISCORD_BOT_TOKEN   - Discord bot token from Developer Portal');
+      console.log('\nTelegram:');
+      console.log('  TELEGRAM_BOT_TOKEN  - Telegram bot token from @BotFather');
+      console.log('\nSlack (both required):');
+      console.log('  SLACK_BOT_TOKEN     - Bot User OAuth Token (xoxb-...)');
+      console.log('  SLACK_APP_TOKEN     - App-Level Token for Socket Mode (xapp-...)');
+      console.log('\nTwilio (all required):');
+      console.log('  TWILIO_ACCOUNT_SID  - Account SID from Console');
+      console.log('  TWILIO_AUTH_TOKEN   - Auth Token from Console');
+      console.log('  TWILIO_PHONE_NUMBER - Your Twilio phone number (+1...)');
+      console.log('\nUsage:');
+      console.log('  auxiora vault add DISCORD_BOT_TOKEN');
+      console.log('  auxiora vault status\n');
     });
 
   return vaultCmd;

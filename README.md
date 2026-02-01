@@ -46,6 +46,10 @@ All credentials are stored in an encrypted vault using:
 - **Secure memory zeroing** — Keys cleared from RAM after use
 
 ```bash
+# See what secrets are needed and what's configured
+auxiora vault secrets  # Show all known secret names
+auxiora vault status   # Check what's configured vs missing
+
 # Add a credential
 auxiora vault add DISCORD_BOT_TOKEN
 
@@ -58,6 +62,16 @@ auxiora vault remove DISCORD_BOT_TOKEN
 # Get a credential (prints to stdout for scripting)
 auxiora vault get ANTHROPIC_API_KEY
 ```
+
+### Required Secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key (or OPENAI_API_KEY) |
+| `DISCORD_BOT_TOKEN` | Discord bot token (if using Discord) |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (if using Telegram) |
+| `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN` | Slack tokens (if using Slack) |
+| `TWILIO_*` | Twilio credentials (if using SMS/WhatsApp) |
 
 Vault location:
 - **macOS**: `~/Library/Application Support/auxiora/vault.enc`
@@ -142,16 +156,18 @@ node dist/cli/index.js vault list
 ## Roadmap
 
 - [x] Encrypted credential vault
-- [ ] Tamper-evident audit logging
-- [ ] Gateway with WebSocket + HTTP
-- [ ] Session manager with persistence
-- [ ] AI provider abstraction (Claude, GPT)
-- [ ] Discord adapter
-- [ ] Telegram adapter
-- [ ] Slack adapter
-- [ ] Personality system (SOUL.md)
+- [x] Tamper-evident audit logging
+- [x] Gateway with WebSocket + HTTP
+- [x] Session manager with persistence
+- [x] AI provider abstraction (Claude, GPT)
+- [x] Discord adapter
+- [x] Telegram adapter
+- [x] Slack adapter
+- [x] Twilio adapter (SMS)
+- [x] Personality system (SOUL.md)
 - [ ] Proactive behaviors (cron, webhooks)
 - [ ] Cross-platform daemon (launchd, systemd, Task Scheduler)
+- [ ] Tool system with sandboxing
 
 ---
 
