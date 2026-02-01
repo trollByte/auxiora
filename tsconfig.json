@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/config" },
+    { "path": "packages/vault" },
+    { "path": "packages/audit" },
+    { "path": "packages/gateway" },
+    { "path": "packages/cli" }
+  ]
+}

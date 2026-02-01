@@ -1,0 +1,26 @@
+{
+  "name": "@auxiora/config",
+  "version": "1.0.0",
+  "description": "Zod-validated configuration system for Auxiora",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/core": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

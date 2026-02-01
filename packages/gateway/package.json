@@ -1,0 +1,36 @@
+{
+  "name": "@auxiora/gateway",
+  "version": "1.0.0",
+  "description": "WebSocket and HTTP gateway for Auxiora",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/audit": "workspace:*",
+    "@auxiora/config": "workspace:*",
+    "@auxiora/core": "workspace:*",
+    "@auxiora/vault": "workspace:*",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@auxiora/vault",
+  "version": "1.0.0",
+  "description": "Encrypted credential vault with AES-256-GCM and Argon2id",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/core": "workspace:*",
+    "argon2": "^0.44.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
