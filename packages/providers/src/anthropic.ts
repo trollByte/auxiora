@@ -6,6 +6,12 @@ import type {
   CompletionResult,
   StreamChunk,
 } from './types.js';
+import {
+  resolveAnthropicApiKey,
+  isSetupToken,
+  readClaudeCliCredentials,
+  getValidAccessToken,
+} from './claude-oauth.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -15,6 +21,8 @@ export interface AnthropicProviderOptions {
   oauthToken?: string;
   model?: string;
   maxTokens?: number;
+  /** Whether to read credentials from Claude CLI (~/.claude/.credentials.json) */
+  useCliCredentials?: boolean;
 }
 
 export class AnthropicProvider implements Provider {
@@ -22,31 +30,113 @@ export class AnthropicProvider implements Provider {
   private client: Anthropic;
   private defaultModel: string;
   private defaultMaxTokens: number;
+  private authMode: 'api-key' | 'setup-token' | 'oauth';
+  private oauthToken?: string;
+  private useCliCredentials: boolean;
 
+  /**
+   * Create an Anthropic provider.
+   *
+   * Authentication modes:
+   * 1. Setup token (sk-ant-oat01-*) - OAuth token, uses authToken parameter
+   * 2. OAuth access token - Uses authToken parameter
+   * 3. Claude CLI credentials - Read from ~/.claude/.credentials.json
+   * 4. Regular API key (sk-ant-api03-*) - Standard API key
+   */
   constructor(options: AnthropicProviderOptions) {
+    this.defaultModel = options.model || DEFAULT_MODEL;
+    this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+    this.oauthToken = options.oauthToken;
+    this.useCliCredentials = options.useCliCredentials ?? true;
+
+    // Determine auth mode and initialize client
     if (options.oauthToken) {
-      // OAuth token mode (from claude setup-token)
-      // Use Bearer token authentication instead of x-api-key
-      this.client = new Anthropic({
-        apiKey: '', // Empty, we use Authorization header instead
-        defaultHeaders: {
-          'Authorization': `Bearer ${options.oauthToken}`,
-        },
-      });
+      if (isSetupToken(options.oauthToken)) {
+        // Setup tokens (sk-ant-oat01-*) use authToken, not apiKey
+        this.authMode = 'setup-token';
+        this.client = this.createOAuthClient(options.oauthToken);
+      } else {
+        // Other OAuth tokens (access tokens)
+        this.authMode = 'oauth';
+        this.client = this.createOAuthClient(options.oauthToken);
+      }
     } else if (options.apiKey) {
-      // Standard API key mode
+      this.authMode = 'api-key';
       this.client = new Anthropic({ apiKey: options.apiKey });
+    } else if (options.useCliCredentials !== false) {
+      // Try Claude CLI credentials
+      const cliCreds = readClaudeCliCredentials();
+      if (cliCreds) {
+        this.authMode = cliCreds.type === 'oauth' ? 'oauth' : 'setup-token';
+        this.client = this.createOAuthClient(cliCreds.accessToken);
+      } else {
+        throw new Error(
+          'No credentials found. Provide apiKey, oauthToken, or authenticate with `claude setup-token`.'
+        );
+      }
     } else {
       throw new Error('Either apiKey or oauthToken must be provided');
     }
-    this.defaultModel = options.model || DEFAULT_MODEL;
-    this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+  }
+
+  /**
+   * Create an Anthropic client configured for OAuth tokens.
+   * OAuth tokens require authToken parameter and specific headers.
+   */
+  private createOAuthClient(token: string): Anthropic {
+    return new Anthropic({
+      apiKey: '', // Empty, not null (SDK typing)
+      authToken: token,
+      defaultHeaders: {
+        'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20',
+        'user-agent': 'auxiora/1.0.0 (external, cli)',
+        'x-app': 'cli',
+      },
+    });
+  }
+
+  /**
+   * Create provider asynchronously with token refresh support.
+   */
+  static async create(options: AnthropicProviderOptions): Promise<AnthropicProvider> {
+    const resolved = await resolveAnthropicApiKey({
+      apiKey: options.apiKey,
+      oauthToken: options.oauthToken,
+      useCliCredentials: options.useCliCredentials,
+    });
+
+    return new AnthropicProvider({
+      ...options,
+      apiKey: resolved.apiKey,
+      oauthToken: undefined, // Already resolved
+      useCliCredentials: false, // Already resolved
+    });
+  }
+
+  /**
+   * Refresh credentials if using OAuth and tokens are expired.
+   */
+  private async ensureValidCredentials(): Promise<void> {
+    if (this.authMode !== 'oauth') {
+      return;
+    }
+
+    // Check Claude CLI credentials for refresh
+    const cliCreds = readClaudeCliCredentials();
+    if (cliCreds && cliCreds.type === 'oauth') {
+      const token = await getValidAccessToken(cliCreds);
+      // Recreate client with new token using OAuth config
+      this.client = this.createOAuthClient(token);
+    }
   }
 
   async complete(
     messages: ChatMessage[],
     options?: CompletionOptions
   ): Promise<CompletionResult> {
+    // Refresh credentials if needed
+    await this.ensureValidCredentials();
+
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages, options);
 
     const response = await this.client.messages.create({
@@ -76,6 +166,9 @@ export class AnthropicProvider implements Provider {
     messages: ChatMessage[],
     options?: CompletionOptions
   ): AsyncGenerator<StreamChunk, void, unknown> {
+    // Refresh credentials if needed
+    await this.ensureValidCredentials();
+
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages, options);
 
     try {

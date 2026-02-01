@@ -1,5 +1,6 @@
 import { AnthropicProvider, type AnthropicProviderOptions } from './anthropic.js';
 import { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
+import { readClaudeCliCredentials } from './claude-oauth.js';
 import type { Provider, ProviderConfig } from './types.js';
 
 export type ProviderName = 'anthropic' | 'openai';
@@ -20,8 +21,14 @@ export class ProviderFactory {
     this.fallback = options.fallback;
 
     // Initialize configured providers
-    if (options.config.anthropic?.apiKey || options.config.anthropic?.oauthToken) {
-      this.providers.set('anthropic', new AnthropicProvider(options.config.anthropic));
+    const anthropicConfig = options.config.anthropic;
+    const hasAnthropicCredentials =
+      anthropicConfig?.apiKey ||
+      anthropicConfig?.oauthToken ||
+      (anthropicConfig?.useCliCredentials !== false && readClaudeCliCredentials() !== null);
+
+    if (hasAnthropicCredentials && anthropicConfig) {
+      this.providers.set('anthropic', new AnthropicProvider(anthropicConfig));
     }
 
     if (options.config.openai?.apiKey) {

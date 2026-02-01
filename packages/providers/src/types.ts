@@ -48,6 +48,8 @@ export interface ProviderConfig {
     oauthToken?: string;
     model?: string;
     maxTokens?: number;
+    /** Read credentials from Claude CLI (~/.claude/.credentials.json) */
+    useCliCredentials?: boolean;
   };
   openai?: {
     apiKey: string;

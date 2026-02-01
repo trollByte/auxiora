@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, readClaudeCliCredentials } from '@auxiora/providers';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, type Config } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
@@ -71,37 +71,60 @@ export class Auxiora {
     let anthropicKey: string | undefined;
     let anthropicOAuthToken: string | undefined;
     let openaiKey: string | undefined;
+    let vaultLocked = false;
 
     try {
       anthropicKey = this.vault.get('ANTHROPIC_API_KEY');
       anthropicOAuthToken = this.vault.get('ANTHROPIC_OAUTH_TOKEN');
       openaiKey = this.vault.get('OPENAI_API_KEY');
     } catch {
-      // Vault is locked
-      console.warn('Vault is locked. AI providers not initialized.');
-      console.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
-      return;
+      vaultLocked = true;
     }
 
-    const hasAnthropic = anthropicKey || anthropicOAuthToken;
+    // Check for Claude CLI credentials as fallback
+    const cliCreds = readClaudeCliCredentials();
+    const hasCliCredentials = cliCreds !== null;
+
+    const hasAnthropic = anthropicKey || anthropicOAuthToken || hasCliCredentials;
     if (!hasAnthropic && !openaiKey) {
-      console.warn('No API keys found in vault. Add with: auxiora vault add ANTHROPIC_API_KEY');
-      console.warn('Or for Claude Pro/Max OAuth: auxiora vault add ANTHROPIC_OAUTH_TOKEN');
+      if (vaultLocked) {
+        console.warn('Vault is locked. AI providers not initialized.');
+        console.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
+      } else {
+        console.warn('No API keys found in vault. Add with: auxiora vault add ANTHROPIC_API_KEY');
+        console.warn('Or for Claude Pro/Max OAuth: auxiora vault add ANTHROPIC_OAUTH_TOKEN');
+        console.warn('Or authenticate with: claude setup-token');
+      }
       return;
     }
 
-    // Build Anthropic config - prefer OAuth token if available
-    let anthropicConfig: { apiKey?: string; oauthToken?: string; model: string; maxTokens: number } | undefined;
+    // Build Anthropic config - prefer vault credentials, fall back to CLI
+    let anthropicConfig: {
+      apiKey?: string;
+      oauthToken?: string;
+      useCliCredentials?: boolean;
+      model: string;
+      maxTokens: number;
+    } | undefined;
+
     if (anthropicOAuthToken) {
-      console.log('Using Anthropic OAuth token (Claude Pro/Max)');
+      console.log('Using Anthropic OAuth token from vault');
       anthropicConfig = {
         oauthToken: anthropicOAuthToken,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
       };
     } else if (anthropicKey) {
+      console.log('Using Anthropic API key from vault');
       anthropicConfig = {
         apiKey: anthropicKey,
+        model: this.config.provider.anthropic.model,
+        maxTokens: this.config.provider.anthropic.maxTokens,
+      };
+    } else if (hasCliCredentials) {
+      console.log('Using Claude CLI credentials (~/.claude/.credentials.json)');
+      anthropicConfig = {
+        useCliCredentials: true,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
       };
