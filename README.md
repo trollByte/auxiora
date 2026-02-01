@@ -80,6 +80,62 @@ Vault location:
 
 ---
 
+## Personality Customization
+
+Auxiora's personality is defined by markdown files in `~/.auxiora/workspace/`:
+
+```bash
+# Copy templates
+mkdir -p ~/.auxiora/workspace
+cp templates/*.md ~/.auxiora/workspace/
+
+# Edit your personality
+$EDITOR ~/.auxiora/workspace/SOUL.md
+$EDITOR ~/.auxiora/workspace/USER.md
+```
+
+### Personality Files
+
+- **`SOUL.md`** — Core personality, principles, interaction style
+- **`AGENTS.md`** — Tool capabilities and permissions (optional)
+- **`IDENTITY.md`** — System identity and operational context (optional)
+- **`USER.md`** — Your preferences, workflows, context (recommended)
+
+See [`templates/README.md`](templates/README.md) for detailed customization guide.
+
+---
+
+## Daemon Management
+
+Run Auxiora as a background service:
+
+```bash
+# Install as system daemon
+auxiora daemon install
+
+# Start the daemon
+auxiora daemon start
+
+# Check status
+auxiora daemon status
+
+# Stop the daemon
+auxiora daemon stop
+
+# Restart
+auxiora daemon restart
+
+# Uninstall
+auxiora daemon uninstall
+```
+
+Platform support:
+- **macOS**: launchd (`~/Library/LaunchAgents`)
+- **Linux**: systemd user service (`~/.config/systemd/user`)
+- **Windows**: Task Scheduler
+
+---
+
 ## Architecture
 
 ```
@@ -164,9 +220,10 @@ node dist/cli/index.js vault list
 - [x] Telegram adapter
 - [x] Slack adapter
 - [x] Twilio adapter (SMS)
-- [x] Personality system (SOUL.md)
+- [x] Personality system (SOUL.md with templates)
+- [x] WebChat UI
+- [x] Cross-platform daemon (launchd, systemd, Task Scheduler)
 - [ ] Proactive behaviors (cron, webhooks)
-- [ ] Cross-platform daemon (launchd, systemd, Task Scheduler)
 - [ ] Tool system with sandboxing
 
 ---

@@ -62,6 +62,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/daemon':
+        specifier: workspace:*
+        version: link:../daemon
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
@@ -98,6 +101,12 @@ importers:
         version: 3.25.76
 
   packages/core: {}
+
+  packages/daemon:
+    dependencies:
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/gateway:
     dependencies:

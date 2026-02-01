@@ -5,6 +5,7 @@
     { "path": "packages/config" },
     { "path": "packages/vault" },
     { "path": "packages/audit" },
+    { "path": "packages/daemon" },
     { "path": "packages/sessions" },
     { "path": "packages/providers" },
     { "path": "packages/gateway" },

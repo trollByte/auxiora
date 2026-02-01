@@ -7,6 +7,7 @@ import { createAuditCommand } from './commands/audit.js';
 import { createPathsCommand } from './commands/paths.js';
 import { createStartCommand } from './commands/start.js';
 import { createAuthCommand } from './commands/auth.js';
+import { createDaemonCommand } from './commands/daemon.js';
 
 const program = new Command();
 
@@ -19,6 +20,7 @@ program
 program.addCommand(createStartCommand());
 program.addCommand(createVaultCommand());
 program.addCommand(createAuthCommand());
+program.addCommand(createDaemonCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createAuditCommand());
 program.addCommand(createPathsCommand());
