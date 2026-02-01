@@ -20,7 +20,7 @@ export class ProviderFactory {
     this.fallback = options.fallback;
 
     // Initialize configured providers
-    if (options.config.anthropic?.apiKey) {
+    if (options.config.anthropic?.apiKey || options.config.anthropic?.oauthToken) {
       this.providers.set('anthropic', new AnthropicProvider(options.config.anthropic));
     }
 

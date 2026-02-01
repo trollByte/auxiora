@@ -132,4 +132,20 @@ export class Vault {
     this.ensureUnlocked();
     return name in this.credentials;
   }
+
+  async changePassword(newPassword: string): Promise<void> {
+    this.ensureUnlocked();
+
+    // Zero the old key
+    if (this.key) {
+      zeroBuffer(this.key);
+    }
+
+    // Generate new salt and derive new key
+    this.salt = generateSalt();
+    this.key = await deriveKey(newPassword, this.salt);
+
+    // Re-save with new encryption
+    await this.save();
+  }
 }

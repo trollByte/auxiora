@@ -69,10 +69,12 @@ export class Auxiora {
 
   private async initializeProviders(): Promise<void> {
     let anthropicKey: string | undefined;
+    let anthropicOAuthToken: string | undefined;
     let openaiKey: string | undefined;
 
     try {
       anthropicKey = this.vault.get('ANTHROPIC_API_KEY');
+      anthropicOAuthToken = this.vault.get('ANTHROPIC_OAUTH_TOKEN');
       openaiKey = this.vault.get('OPENAI_API_KEY');
     } catch {
       // Vault is locked
@@ -81,22 +83,35 @@ export class Auxiora {
       return;
     }
 
-    if (!anthropicKey && !openaiKey) {
+    const hasAnthropic = anthropicKey || anthropicOAuthToken;
+    if (!hasAnthropic && !openaiKey) {
       console.warn('No API keys found in vault. Add with: auxiora vault add ANTHROPIC_API_KEY');
+      console.warn('Or for Claude Pro/Max OAuth: auxiora vault add ANTHROPIC_OAUTH_TOKEN');
       return;
+    }
+
+    // Build Anthropic config - prefer OAuth token if available
+    let anthropicConfig: { apiKey?: string; oauthToken?: string; model: string; maxTokens: number } | undefined;
+    if (anthropicOAuthToken) {
+      console.log('Using Anthropic OAuth token (Claude Pro/Max)');
+      anthropicConfig = {
+        oauthToken: anthropicOAuthToken,
+        model: this.config.provider.anthropic.model,
+        maxTokens: this.config.provider.anthropic.maxTokens,
+      };
+    } else if (anthropicKey) {
+      anthropicConfig = {
+        apiKey: anthropicKey,
+        model: this.config.provider.anthropic.model,
+        maxTokens: this.config.provider.anthropic.maxTokens,
+      };
     }
 
     this.providers = new ProviderFactory({
       primary: this.config.provider.primary,
       fallback: this.config.provider.fallback,
       config: {
-        anthropic: anthropicKey
-          ? {
-              apiKey: anthropicKey,
-              model: this.config.provider.anthropic.model,
-              maxTokens: this.config.provider.anthropic.maxTokens,
-            }
-          : undefined,
+        anthropic: anthropicConfig,
         openai: openaiKey
           ? {
               apiKey: openaiKey,

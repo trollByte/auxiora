@@ -1,12 +1,13 @@
 import { Command } from 'commander';
-import { password as passwordPrompt } from '@inquirer/prompts';
-import { Vault, VaultError } from '@auxiora/vault';
+import { password as passwordPrompt, confirm } from '@inquirer/prompts';
+import { Vault, VaultError, vaultExists } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 
 // Known secret names used by Auxiora
 const KNOWN_SECRETS = {
   // AI Providers
   ANTHROPIC_API_KEY: 'Anthropic Claude API key',
+  ANTHROPIC_OAUTH_TOKEN: 'Anthropic OAuth token (from claude setup-token)',
   OPENAI_API_KEY: 'OpenAI API key',
   // Channel adapters
   DISCORD_BOT_TOKEN: 'Discord bot token',
@@ -164,7 +165,7 @@ export function createVaultCommand(): Command {
 
         // AI Providers section
         console.log('AI Providers:');
-        const providerSecrets: KnownSecret[] = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
+        const providerSecrets: KnownSecret[] = ['ANTHROPIC_API_KEY', 'ANTHROPIC_OAUTH_TOKEN', 'OPENAI_API_KEY'];
         for (const name of providerSecrets) {
           const status = storedNames.has(name) ? '✅' : '❌';
           console.log(`  ${status} ${name} - ${KNOWN_SECRETS[name]}`);
@@ -196,7 +197,7 @@ export function createVaultCommand(): Command {
 
         // Summary
         const configured = storedNames.size;
-        const hasProvider = storedNames.has('ANTHROPIC_API_KEY') || storedNames.has('OPENAI_API_KEY');
+        const hasProvider = storedNames.has('ANTHROPIC_API_KEY') || storedNames.has('ANTHROPIC_OAUTH_TOKEN') || storedNames.has('OPENAI_API_KEY');
 
         console.log('\n---');
         console.log(`Total secrets: ${configured}`);
@@ -235,6 +236,103 @@ export function createVaultCommand(): Command {
       console.log('\nUsage:');
       console.log('  auxiora vault add DISCORD_BOT_TOKEN');
       console.log('  auxiora vault status\n');
+    });
+
+  vaultCmd
+    .command('init')
+    .description('Initialize a new vault with a password')
+    .action(async () => {
+      // Check if vault already exists
+      if (await vaultExists()) {
+        console.error('Vault already exists. Use "vault change-password" to change the password.');
+        console.error('Or delete the vault file and run init again.');
+        process.exit(1);
+      }
+
+      console.log('Initializing new vault...\n');
+
+      const password = await passwordPrompt({
+        message: 'Enter new vault password:',
+      });
+
+      const confirmPassword = await passwordPrompt({
+        message: 'Confirm vault password:',
+      });
+
+      if (password !== confirmPassword) {
+        console.error('Passwords do not match');
+        process.exit(1);
+      }
+
+      if (password.length < 8) {
+        console.error('Password must be at least 8 characters');
+        process.exit(1);
+      }
+
+      const vault = new Vault();
+      await vault.unlock(password);
+      vault.lock();
+
+      await audit('vault.init', {});
+      console.log('✅ Vault initialized successfully');
+      console.log('\nNext steps:');
+      console.log('  auxiora vault add ANTHROPIC_API_KEY');
+      console.log('  auxiora vault status');
+    });
+
+  vaultCmd
+    .command('change-password')
+    .description('Change the vault password')
+    .action(async () => {
+      // Check if vault exists
+      if (!(await vaultExists())) {
+        console.error('No vault found. Use "vault init" to create one.');
+        process.exit(1);
+      }
+
+      const vault = new Vault();
+
+      // Unlock with current password
+      console.log('Enter your current vault password to continue.\n');
+      if (!(await unlockVault(vault))) {
+        process.exit(1);
+      }
+
+      try {
+        const newPassword = await passwordPrompt({
+          message: 'Enter new vault password:',
+        });
+
+        const confirmPassword = await passwordPrompt({
+          message: 'Confirm new vault password:',
+        });
+
+        if (newPassword !== confirmPassword) {
+          console.error('Passwords do not match');
+          process.exit(1);
+        }
+
+        if (newPassword.length < 8) {
+          console.error('Password must be at least 8 characters');
+          process.exit(1);
+        }
+
+        const confirmed = await confirm({
+          message: 'Are you sure you want to change the vault password?',
+          default: false,
+        });
+
+        if (!confirmed) {
+          console.log('Cancelled');
+          process.exit(0);
+        }
+
+        await vault.changePassword(newPassword);
+        await audit('vault.password_changed', {});
+        console.log('✅ Vault password changed successfully');
+      } finally {
+        vault.lock();
+      }
     });
 
   return vaultCmd;

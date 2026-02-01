@@ -11,7 +11,8 @@ const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
 
 export interface AnthropicProviderOptions {
-  apiKey: string;
+  apiKey?: string;
+  oauthToken?: string;
   model?: string;
   maxTokens?: number;
 }
@@ -23,7 +24,21 @@ export class AnthropicProvider implements Provider {
   private defaultMaxTokens: number;
 
   constructor(options: AnthropicProviderOptions) {
-    this.client = new Anthropic({ apiKey: options.apiKey });
+    if (options.oauthToken) {
+      // OAuth token mode (from claude setup-token)
+      // Use Bearer token authentication instead of x-api-key
+      this.client = new Anthropic({
+        apiKey: '', // Empty, we use Authorization header instead
+        defaultHeaders: {
+          'Authorization': `Bearer ${options.oauthToken}`,
+        },
+      });
+    } else if (options.apiKey) {
+      // Standard API key mode
+      this.client = new Anthropic({ apiKey: options.apiKey });
+    } else {
+      throw new Error('Either apiKey or oauthToken must be provided');
+    }
     this.defaultModel = options.model || DEFAULT_MODEL;
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
   }

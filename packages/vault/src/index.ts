@@ -7,4 +7,4 @@ export {
   generateIv,
   zeroBuffer,
 } from './crypto.js';
-export { readVaultFile, writeVaultFile, deleteVaultFile, getVaultPath } from './storage.js';
+export { readVaultFile, writeVaultFile, deleteVaultFile, getVaultPath, vaultExists } from './storage.js';

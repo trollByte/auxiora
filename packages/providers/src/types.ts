@@ -44,7 +44,8 @@ export interface Provider {
 
 export interface ProviderConfig {
   anthropic?: {
-    apiKey: string;
+    apiKey?: string;
+    oauthToken?: string;
     model?: string;
     maxTokens?: number;
   };

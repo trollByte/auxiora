@@ -53,3 +53,14 @@ export async function deleteVaultFile(customPath?: string): Promise<void> {
     }
   }
 }
+
+export async function vaultExists(customPath?: string): Promise<boolean> {
+  const vaultPath = customPath || getVaultPath();
+
+  try {
+    await fs.access(vaultPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
