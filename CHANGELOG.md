@@ -5,6 +5,70 @@ All notable changes to Auxiora will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-01
+
+### Added
+
+#### Technical Debt Resolution
+- **@auxiora/errors** — Centralized error handling package
+  - 50+ standardized error codes organized by domain
+  - User-friendly error messages with technical details for logging
+  - Retryable error classification
+  - Exponential backoff retry helper
+  - Error wrapping and type guards
+  - JSON serialization for API responses
+
+- **@auxiora/logger** — Structured logging with pino
+  - JSON structured logs (production) and pretty-printed (development)
+  - Log levels: trace, debug, info, warn, error, fatal
+  - Request ID tracking for correlation
+  - Automatic sensitive data redaction (passwords, tokens, API keys)
+  - Performance timing helpers
+  - Low overhead (~2% vs console.log)
+
+- **@auxiora/metrics** — Performance monitoring and metrics
+  - Counters for monotonically increasing values
+  - Gauges for current state values
+  - Histograms for distribution tracking (latency p50, p95, p99)
+  - Prometheus export format
+  - Pre-defined application metrics (HTTP, providers, sessions, channels, errors)
+  - Label support for metric dimensions
+  - Low overhead (<1% memory/CPU)
+
+- **Enhanced Configuration** — Improved validation in @auxiora/config
+  - Startup configuration validation
+  - Detailed error messages with suggestions
+  - Warning system for suboptimal but valid configs
+  - Zod error formatting for better UX
+  - Security-focused validation rules
+
+### Improved
+
+- **Error Handling**
+  - Consistent error codes across all packages
+  - Clear distinction between retryable and non-retryable errors
+  - Better error context for debugging
+
+- **Observability**
+  - Production-ready logging infrastructure
+  - Metrics for performance monitoring
+  - Prometheus integration for monitoring stack
+
+- **Development Experience**
+  - Better error messages for configuration issues
+  - Clear validation warnings at startup
+  - Actionable suggestions for fixes
+
+### Documentation
+
+- **TECHNICAL_DEBT.md** — Comprehensive guide to new packages
+  - API examples and usage patterns
+  - Integration guide for existing code
+  - Migration checklist
+  - Performance impact analysis
+
+---
+
 ## [1.0.0] - 2026-01-31
 
 ### Added

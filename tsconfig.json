@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/errors" },
+    { "path": "packages/logger" },
+    { "path": "packages/metrics" },
     { "path": "packages/config" },
     { "path": "packages/vault" },
     { "path": "packages/audit" },

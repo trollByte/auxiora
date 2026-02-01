@@ -1,0 +1,30 @@
+{
+  "name": "@auxiora/logger",
+  "version": "1.0.0",
+  "description": "Structured logging for Auxiora",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/core": "workspace:*",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -43,7 +43,7 @@ function getDataDir(): string {
   }
 }
 
-function getLogDir(): string {
+export function getLogDir(): string {
   const platform = process.platform;
   const homeDir = os.homedir();
 
