@@ -10,7 +10,10 @@ const GatewayConfigSchema = z.object({
 });
 
 const AuthConfigSchema = z.object({
-  mode: z.enum(['none', 'password', 'jwt']).default('password'),
+  mode: z.enum(['none', 'password', 'jwt']).default('none'),
+  /** Argon2id hash of the gateway password */
+  passwordHash: z.string().optional(),
+  /** Secret for signing JWT tokens (min 32 chars recommended) */
   jwtSecret: z.string().optional(),
   jwtExpiresIn: z.string().default('7d'),
   refreshExpiresIn: z.string().default('30d'),

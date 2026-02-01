@@ -22,9 +22,14 @@
     "@auxiora/runtime": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "@inquirer/prompts": "^8.2.0",
-    "commander": "^14.0.3"
+    "argon2": "^0.44.0",
+    "commander": "^14.0.3",
+    "jsonwebtoken": "^9.0.2"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9"
   }
 }

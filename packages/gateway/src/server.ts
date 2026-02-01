@@ -2,11 +2,19 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server as HttpServer } from 'node:http';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import * as crypto from 'node:crypto';
+import * as argon2 from 'argon2';
+import jwt from 'jsonwebtoken';
 import { type Config } from '@auxiora/config';
 import { audit } from '@auxiora/audit';
 import { RateLimiter } from './rate-limiter.js';
 import { PairingManager } from './pairing.js';
 import type { ClientConnection, WsMessage } from './types.js';
+
+interface JwtPayload {
+  sub: string;
+  iat: number;
+  exp: number;
+}
 
 export type { ClientConnection, WsMessage };
 
@@ -285,36 +293,89 @@ export class Gateway {
     }
 
     if (this.config.auth.mode === 'password') {
-      // Simple password auth (for development/single user)
-      // In production, use JWT or OAuth
-      if (payload.password) {
-        // TODO: Check against stored password hash
-        client.authenticated = true;
-        audit('auth.login', { clientId: client.id });
-        this.send(client, { type: 'auth_success', id: requestId });
-      } else {
+      if (!payload.password) {
         audit('auth.failed', { clientId: client.id, reason: 'missing_password' });
         this.send(client, {
           type: 'auth_failure',
           id: requestId,
           payload: { message: 'Password required' },
         });
+        return;
+      }
+
+      // Verify password against stored hash
+      const passwordHash = this.config.auth.passwordHash;
+      if (!passwordHash) {
+        audit('auth.failed', { clientId: client.id, reason: 'no_password_configured' });
+        this.send(client, {
+          type: 'auth_failure',
+          id: requestId,
+          payload: { message: 'Password auth not configured. Run: auxiora auth set-password' },
+        });
+        return;
+      }
+
+      try {
+        const valid = await argon2.verify(passwordHash, payload.password);
+        if (valid) {
+          client.authenticated = true;
+          audit('auth.login', { clientId: client.id, method: 'password' });
+          this.send(client, { type: 'auth_success', id: requestId });
+        } else {
+          audit('auth.failed', { clientId: client.id, reason: 'invalid_password' });
+          this.send(client, {
+            type: 'auth_failure',
+            id: requestId,
+            payload: { message: 'Invalid password' },
+          });
+        }
+      } catch (error) {
+        audit('auth.failed', { clientId: client.id, reason: 'password_verify_error' });
+        this.send(client, {
+          type: 'auth_failure',
+          id: requestId,
+          payload: { message: 'Authentication error' },
+        });
       }
       return;
     }
 
     // JWT auth
-    if (payload.token) {
-      // TODO: Verify JWT token
-      client.authenticated = true;
-      audit('auth.login', { clientId: client.id, method: 'jwt' });
-      this.send(client, { type: 'auth_success', id: requestId });
-    } else {
+    if (!payload.token) {
       audit('auth.failed', { clientId: client.id, reason: 'missing_token' });
       this.send(client, {
         type: 'auth_failure',
         id: requestId,
         payload: { message: 'Token required' },
+      });
+      return;
+    }
+
+    const jwtSecret = this.config.auth.jwtSecret;
+    if (!jwtSecret) {
+      audit('auth.failed', { clientId: client.id, reason: 'no_jwt_secret_configured' });
+      this.send(client, {
+        type: 'auth_failure',
+        id: requestId,
+        payload: { message: 'JWT auth not configured. Set auth.jwtSecret in config' },
+      });
+      return;
+    }
+
+    try {
+      const decoded = jwt.verify(payload.token, jwtSecret) as JwtPayload;
+      client.authenticated = true;
+      client.senderId = decoded.sub;
+      audit('auth.login', { clientId: client.id, method: 'jwt', subject: decoded.sub });
+      this.send(client, { type: 'auth_success', id: requestId });
+    } catch (error) {
+      const reason = error instanceof jwt.TokenExpiredError ? 'token_expired' :
+                     error instanceof jwt.JsonWebTokenError ? 'invalid_token' : 'jwt_error';
+      audit('auth.failed', { clientId: client.id, reason });
+      this.send(client, {
+        type: 'auth_failure',
+        id: requestId,
+        payload: { message: reason === 'token_expired' ? 'Token expired' : 'Invalid token' },
       });
     }
   }

@@ -13,7 +13,7 @@ describe('Config', () => {
       // Note: host might be overridden by existing config, just check it's valid
       expect(config.gateway.host).toBeDefined();
       expect(config.gateway.port).toBe(18800);
-      expect(config.auth.mode).toBe('password');
+      expect(config.auth.mode).toBe('none'); // Default to open for initial setup
       expect(config.rateLimit.enabled).toBe(true);
       expect(config.pairing.enabled).toBe(true);
       expect(config.pairing.codeLength).toBe(6);

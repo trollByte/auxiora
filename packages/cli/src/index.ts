@@ -6,6 +6,7 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createAuditCommand } from './commands/audit.js';
 import { createPathsCommand } from './commands/paths.js';
 import { createStartCommand } from './commands/start.js';
+import { createAuthCommand } from './commands/auth.js';
 
 const program = new Command();
 
@@ -17,6 +18,7 @@ program
 // Core commands
 program.addCommand(createStartCommand());
 program.addCommand(createVaultCommand());
+program.addCommand(createAuthCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createAuditCommand());
 program.addCommand(createPathsCommand());

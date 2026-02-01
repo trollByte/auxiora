@@ -21,6 +21,7 @@
     "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
     "@auxiora/vault": "workspace:*",
+    "argon2": "^0.44.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.0"
