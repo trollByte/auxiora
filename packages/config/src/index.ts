@@ -91,6 +91,13 @@ const VoiceConfigSchema = z.object({
   sampleRate: z.number().int().positive().default(16000),
 });
 
+const WebhookConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  basePath: z.string().default('/api/v1/webhooks'),
+  signatureHeader: z.string().default('x-webhook-signature'),
+  maxPayloadSize: z.number().int().positive().default(65536),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -101,6 +108,7 @@ export const ConfigSchema = z.object({
   logging: LoggingConfigSchema.default({}),
   channels: ChannelConfigSchema.default({}),
   voice: VoiceConfigSchema.default({}),
+  webhooks: WebhookConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

@@ -50,6 +50,12 @@ export type AuditEventType =
   | 'browser.screenshot'
   | 'voice.transcribed'
   | 'voice.synthesized'
+  | 'webhook.received'
+  | 'webhook.signature_failed'
+  | 'webhook.triggered'
+  | 'webhook.error'
+  | 'webhook.created'
+  | 'webhook.deleted'
   | 'system.error';
 
 export interface AuditEntry {

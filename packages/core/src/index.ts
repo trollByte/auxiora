@@ -119,6 +119,10 @@ export function getBehaviorsPath(): string {
   return path.join(getDataDir(), 'behaviors.json');
 }
 
+export function getWebhooksPath(): string {
+  return path.join(getDataDir(), 'webhooks.json');
+}
+
 export function getScreenshotsDir(): string {
   return path.join(getWorkspaceDir(), 'screenshots');
 }
@@ -138,6 +142,7 @@ export const paths = {
   user: getUserPath,
   memory: getMemoryDir,
   behaviors: getBehaviorsPath,
+  webhooks: getWebhooksPath,
   screenshots: getScreenshotsDir,
 };
 

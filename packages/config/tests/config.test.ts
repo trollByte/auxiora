@@ -119,4 +119,22 @@ describe('Config', () => {
       expect(config.voice.language).toBe('fr');
     });
   });
+
+  describe('webhook config', () => {
+    it('should default webhooks to disabled', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.webhooks.enabled).toBe(false);
+      expect(config.webhooks.basePath).toBe('/api/v1/webhooks');
+      expect(config.webhooks.signatureHeader).toBe('x-webhook-signature');
+      expect(config.webhooks.maxPayloadSize).toBe(65536);
+    });
+
+    it('should accept custom webhook config', () => {
+      const config = ConfigSchema.parse({
+        webhooks: { enabled: true, maxPayloadSize: 131072 },
+      });
+      expect(config.webhooks.enabled).toBe(true);
+      expect(config.webhooks.maxPayloadSize).toBe(131072);
+    });
+  });
 });
