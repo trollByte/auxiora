@@ -25,6 +25,9 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BehaviorManager } from '@auxiora/behaviors';
 import { BrowserManager } from '@auxiora/browser';
+import { VoiceManager } from '@auxiora/voice';
+import { WhisperSTT } from '@auxiora/stt';
+import { OpenAITTS } from '@auxiora/tts';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -42,6 +45,7 @@ export class Auxiora {
   private running = false;
   private behaviors?: BehaviorManager;
   private browserManager?: BrowserManager;
+  private voiceManager?: VoiceManager;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -120,6 +124,37 @@ export class Auxiora {
       },
     });
     setBrowserManager(this.browserManager);
+
+    // Initialize voice system (if enabled and OpenAI key available)
+    if (this.config.voice?.enabled) {
+      let openaiKeyForVoice: string | undefined;
+      try {
+        openaiKeyForVoice = this.vault.get('OPENAI_API_KEY');
+      } catch {
+        // Vault locked
+      }
+
+      if (openaiKeyForVoice) {
+        this.voiceManager = new VoiceManager({
+          sttProvider: new WhisperSTT({ apiKey: openaiKeyForVoice }),
+          ttsProvider: new OpenAITTS({
+            apiKey: openaiKeyForVoice,
+            defaultVoice: this.config.voice.defaultVoice,
+          }),
+          config: {
+            enabled: true,
+            defaultVoice: this.config.voice.defaultVoice,
+            language: this.config.voice.language,
+            maxAudioDuration: this.config.voice.maxAudioDuration,
+            sampleRate: this.config.voice.sampleRate,
+          },
+        });
+        this.gateway.onVoiceMessage(this.handleVoiceMessage.bind(this));
+        console.log('Voice mode enabled');
+      } else {
+        console.warn('Voice mode enabled in config but no OPENAI_API_KEY found in vault');
+      }
+    }
   }
 
   private async initializeProviders(): Promise<void> {
@@ -584,6 +619,117 @@ export class Auxiora {
     });
   }
 
+  private async handleVoiceMessage(
+    client: ClientConnection,
+    type: string,
+    payload: unknown,
+    audioBuffer?: Buffer
+  ): Promise<void> {
+    if (!this.voiceManager) {
+      this.sendToClient(client, {
+        type: 'voice_error',
+        payload: { message: 'Voice mode not available' },
+      });
+      return;
+    }
+
+    try {
+      if (type === 'voice_start') {
+        const opts = payload as { voice?: string; language?: string } | undefined;
+        this.voiceManager.startSession(client.id, {
+          voice: opts?.voice,
+          language: opts?.language,
+        });
+        this.sendToClient(client, { type: 'voice_ready' });
+        return;
+      }
+
+      if (type === 'voice_cancel') {
+        this.voiceManager.endSession(client.id);
+        return;
+      }
+
+      if (type === 'voice_end' && audioBuffer) {
+        // Feed audio into voice manager buffer then transcribe
+        this.voiceManager.addAudioFrame(client.id, audioBuffer);
+        const transcription = await this.voiceManager.transcribe(client.id);
+
+        this.sendToClient(client, {
+          type: 'voice_transcript',
+          payload: { text: transcription.text, final: true },
+        });
+
+        audit('voice.transcribed', {
+          clientId: client.id,
+          duration: transcription.duration,
+          language: transcription.language,
+          textLength: transcription.text.length,
+        });
+
+        // Feed transcribed text into AI pipeline
+        if (!this.providers) {
+          this.sendToClient(client, {
+            type: 'voice_error',
+            payload: { message: 'AI providers not configured' },
+          });
+          this.voiceManager.endSession(client.id);
+          return;
+        }
+
+        const session = await this.sessions.getOrCreate(client.id, {
+          channelType: client.channelType,
+          clientId: client.id,
+          senderId: client.senderId,
+        });
+
+        await this.sessions.addMessage(session.id, 'user', transcription.text);
+
+        const contextMessages = this.sessions.getContextMessages(session.id);
+        const chatMessages = contextMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        const provider = this.providers.getPrimaryProvider();
+        const result = await provider.complete(chatMessages, {
+          systemPrompt: this.systemPrompt,
+        });
+
+        await this.sessions.addMessage(session.id, 'assistant', result.content, {
+          input: result.usage.inputTokens,
+          output: result.usage.outputTokens,
+        });
+
+        // Send text response
+        this.sendToClient(client, {
+          type: 'voice_text',
+          payload: { content: result.content },
+        });
+
+        // Stream TTS audio
+        for await (const chunk of this.voiceManager.synthesize(client.id, result.content)) {
+          this.gateway.sendBinary(client, chunk);
+        }
+
+        audit('voice.synthesized', {
+          clientId: client.id,
+          textLength: result.content.length,
+          voice: this.config.voice?.defaultVoice ?? 'alloy',
+        });
+
+        this.sendToClient(client, { type: 'voice_end' });
+        this.voiceManager.endSession(client.id);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.sendToClient(client, {
+        type: 'voice_error',
+        payload: { message: errorMessage },
+      });
+      this.voiceManager.endSession(client.id);
+    }
+  }
+
   private sendToClient(client: ClientConnection, message: object): void {
     if (client.ws.readyState === 1) {
       // WebSocket.OPEN
@@ -740,6 +886,9 @@ export class Auxiora {
     }
     if (this.browserManager) {
       await this.browserManager.shutdown();
+    }
+    if (this.voiceManager) {
+      await this.voiceManager.shutdown();
     }
     this.sessions.destroy();
     this.vault.lock();
