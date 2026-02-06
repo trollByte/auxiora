@@ -37,6 +37,12 @@ export type AuditEventType =
   | 'security.suspicious_input'
   | 'system.startup'
   | 'system.shutdown'
+  | 'behavior.created'
+  | 'behavior.updated'
+  | 'behavior.deleted'
+  | 'behavior.executed'
+  | 'behavior.paused'
+  | 'behavior.failed'
   | 'system.error';
 
 export interface AuditEntry {
