@@ -301,6 +301,18 @@ importers:
         specifier: ^0.44.0
         version: 0.44.0
 
+  packages/voice:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/stt':
+        specifier: workspace:*
+        version: link:../stt
+      '@auxiora/tts':
+        specifier: workspace:*
+        version: link:../tts
+
 packages:
 
   '@anthropic-ai/sdk@0.71.2':
