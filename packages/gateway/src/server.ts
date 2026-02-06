@@ -426,6 +426,10 @@ export class Gateway {
     }
   }
 
+  public mountRouter(path: string, router: import('express').Router): void {
+    this.app.use(path, router);
+  }
+
   private handleAudioFrame(client: ClientConnection, frame: Buffer): void {
     if (!client.authenticated || !client.voiceActive) return;
 
