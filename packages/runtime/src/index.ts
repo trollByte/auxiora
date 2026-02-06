@@ -31,8 +31,12 @@ import { VoiceManager } from '@auxiora/voice';
 import { WhisperSTT } from '@auxiora/stt';
 import { OpenAITTS } from '@auxiora/tts';
 import { WebhookManager } from '@auxiora/webhooks';
+import { createDashboardRouter } from '@auxiora/dashboard';
+import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
+import express from 'express';
 import type { Request, Response } from 'express';
+import { fileURLToPath } from 'node:url';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -187,6 +191,41 @@ export class Auxiora {
       const webhookRouter = this.createWebhookRouter();
       this.gateway.mountRouter(this.config.webhooks.basePath, webhookRouter);
       console.log('Webhook listeners enabled');
+    }
+
+    // Initialize dashboard (if enabled)
+    if (this.config.dashboard?.enabled) {
+      const { router } = createDashboardRouter({
+        deps: {
+          vault: this.vault,
+          behaviors: this.behaviors,
+          webhooks: this.webhookManager,
+          getConnections: () => this.gateway.getConnections(),
+          getAuditEntries: async (limit?: number) => {
+            const auditLogger = getAuditLogger();
+            return auditLogger.getEntries(limit);
+          },
+        },
+        config: {
+          enabled: true,
+          sessionTtlMs: this.config.dashboard.sessionTtlMs,
+        },
+        verifyPassword: (input: string) => {
+          const stored = this.vault.get('DASHBOARD_PASSWORD');
+          return !!stored && stored === input;
+        },
+      });
+
+      this.gateway.mountRouter('/api/v1/dashboard', router);
+
+      // Serve static SPA files
+      const dashboardUiPath = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '../../dashboard/dist-ui'
+      );
+      this.gateway.mountRouter('/dashboard', express.static(dashboardUiPath) as any);
+
+      console.log('Dashboard enabled at /dashboard');
     }
   }
 

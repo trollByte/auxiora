@@ -32,6 +32,7 @@
     "@auxiora/tools": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "@auxiora/webhooks": "workspace:*",
+    "@auxiora/dashboard": "workspace:*",
     "express": "^5.1.0"
   },
   "devDependencies": {
