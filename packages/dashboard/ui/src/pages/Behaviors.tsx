@@ -20,14 +20,23 @@ export function Behaviors() {
   ];
 
   const handleToggle = async (b: any) => {
-    const newStatus = b.status === 'active' ? 'paused' : 'active';
-    await api.patchBehavior(b.id, { status: newStatus });
-    refresh();
+    try {
+      const newStatus = b.status === 'active' ? 'paused' : 'active';
+      await api.patchBehavior(b.id, { status: newStatus });
+      refresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update behavior');
+    }
   };
 
   const handleDelete = async (b: any) => {
-    await api.deleteBehavior(b.id);
-    refresh();
+    if (!confirm(`Delete behavior "${b.action?.slice(0, 40)}"?`)) return;
+    try {
+      await api.deleteBehavior(b.id);
+      refresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete behavior');
+    }
   };
 
   return (

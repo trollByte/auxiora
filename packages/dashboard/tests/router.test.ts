@@ -25,6 +25,7 @@ function createMockDeps(): DashboardDeps {
       list: vi.fn().mockResolvedValue([
         { id: 'wh-1', name: 'hook-1', type: 'generic', enabled: true, secret: 'real-secret' },
       ]),
+      update: vi.fn().mockResolvedValue({ id: 'wh-1', name: 'hook-1', enabled: false, secret: 'real-secret' }),
       delete: vi.fn().mockResolvedValue(true),
     },
     getConnections: vi.fn().mockReturnValue([
@@ -164,6 +165,16 @@ describe('Dashboard Router', () => {
         .set('Cookie', cookie);
       expect(res.status).toBe(200);
       expect(res.body.data[0].secret).toBe('***');
+    });
+
+    it('should patch webhook enabled status', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .patch('/api/v1/dashboard/webhooks/wh-1')
+        .set('Cookie', cookie)
+        .send({ enabled: false });
+      expect(res.status).toBe(200);
+      expect(res.body.data.secret).toBe('***');
     });
 
     it('should delete a webhook', async () => {

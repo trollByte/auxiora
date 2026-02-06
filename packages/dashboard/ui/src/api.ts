@@ -37,6 +37,11 @@ export const api = {
   deleteBehavior: (id: string) =>
     fetchApi<{ data: any }>(`/behaviors/${id}`, { method: 'DELETE' }),
   getWebhooks: () => fetchApi<{ data: any[] }>('/webhooks'),
+  patchWebhook: (id: string, updates: Record<string, unknown>) =>
+    fetchApi<{ data: any }>(`/webhooks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
   deleteWebhook: (id: string) =>
     fetchApi<{ data: any }>(`/webhooks/${id}`, { method: 'DELETE' }),
   getSessions: () => fetchApi<{ data: any[] }>('/sessions'),

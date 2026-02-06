@@ -284,6 +284,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/dashboard':
+        specifier: workspace:*
+        version: link:../dashboard
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway

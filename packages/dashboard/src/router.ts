@@ -42,6 +42,13 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
     next();
   }
 
+  function buildCookieHeader(value: string, req: Request, maxAge?: number): string {
+    let cookie = `${COOKIE_NAME}=${value}; HttpOnly; SameSite=Strict; Path=/`;
+    if (maxAge !== undefined) cookie += `; Max-Age=${maxAge}`;
+    if (req.secure) cookie += '; Secure';
+    return cookie;
+  }
+
   // --- Auth routes (no auth required) ---
   router.post('/auth/login', (req: Request, res: Response) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
@@ -57,9 +64,8 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       return;
     }
 
-    auth.recordAttempt(ip);
-
     if (!verifyPassword(password)) {
+      auth.recordAttempt(ip);
       void audit('dashboard.login_failed', { ip });
       res.status(401).json({ error: 'Invalid password' });
       return;
@@ -68,7 +74,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
     const sessionId = auth.createSession(ip);
     void audit('dashboard.login', { ip });
 
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${sessionId}; HttpOnly; SameSite=Strict; Path=/`);
+    res.setHeader('Set-Cookie', buildCookieHeader(sessionId, req));
     res.json({ success: true });
   });
 
@@ -81,7 +87,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       void audit('dashboard.logout', {});
     }
 
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+    res.setHeader('Set-Cookie', buildCookieHeader('', req, 0));
     res.json({ success: true });
   });
 
@@ -143,6 +149,19 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
     // Redact secrets
     const redacted = webhooks.map((w: any) => ({ ...w, secret: '***' }));
     res.json({ data: redacted });
+  });
+
+  router.patch('/webhooks/:id', async (req: Request, res: Response) => {
+    if (!deps.webhooks?.update) {
+      res.status(503).json({ error: 'Webhooks not available' });
+      return;
+    }
+    const result = await deps.webhooks.update(req.params.id, req.body);
+    if (!result) {
+      res.status(404).json({ error: 'Webhook not found' });
+      return;
+    }
+    res.json({ data: { ...result, secret: '***' } });
   });
 
   router.delete('/webhooks/:id', async (req: Request, res: Response) => {

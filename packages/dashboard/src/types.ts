@@ -23,6 +23,7 @@ export interface DashboardDeps {
   };
   webhooks?: {
     list(): Promise<any[]>;
+    update?(id: string, updates: Record<string, unknown>): Promise<any>;
     delete(id: string): Promise<boolean>;
   };
   getConnections: () => Array<{

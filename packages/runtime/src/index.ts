@@ -23,6 +23,7 @@ import {
   setWebhookManager,
   type ExecutionContext,
 } from '@auxiora/tools';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BehaviorManager } from '@auxiora/behaviors';
@@ -212,7 +213,11 @@ export class Auxiora {
         },
         verifyPassword: (input: string) => {
           const stored = this.vault.get('DASHBOARD_PASSWORD');
-          return !!stored && stored === input;
+          if (!stored) return false;
+          const a = Buffer.from(stored, 'utf-8');
+          const b = Buffer.from(input, 'utf-8');
+          if (a.length !== b.length) return false;
+          return crypto.timingSafeEqual(a, b);
         },
       });
 
@@ -224,6 +229,14 @@ export class Auxiora {
         '../../dashboard/dist-ui'
       );
       this.gateway.mountRouter('/dashboard', express.static(dashboardUiPath) as any);
+
+      // SPA catch-all: serve index.html for client-side routing
+      const dashboardIndexPath = path.join(dashboardUiPath, 'index.html');
+      const spaRouter = Router();
+      spaRouter.get('*', (_req: Request, res: Response) => {
+        res.sendFile(dashboardIndexPath);
+      });
+      this.gateway.mountRouter('/dashboard', spaRouter as any);
 
       console.log('Dashboard enabled at /dashboard');
     }

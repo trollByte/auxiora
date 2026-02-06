@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/dashboard/',
   build: {
     outDir: '../dist-ui',
-    emptyDir: true,
+    emptyOutDir: true,
   },
   server: {
     proxy: {

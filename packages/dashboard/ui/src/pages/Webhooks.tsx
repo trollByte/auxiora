@@ -18,9 +18,23 @@ export function Webhooks() {
     { key: 'createdAt', label: 'Created', render: (w: any) => new Date(w.createdAt).toLocaleDateString() },
   ];
 
+  const handleToggle = async (w: any) => {
+    try {
+      await api.patchWebhook(w.id, { enabled: !w.enabled });
+      refresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update webhook');
+    }
+  };
+
   const handleDelete = async (w: any) => {
-    await api.deleteWebhook(w.id);
-    refresh();
+    if (!confirm(`Delete webhook "${w.name}"?`)) return;
+    try {
+      await api.deleteWebhook(w.id);
+      refresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete webhook');
+    }
   };
 
   return (
@@ -31,7 +45,12 @@ export function Webhooks() {
         rows={webhooks}
         keyField="id"
         actions={(w: any) => (
-          <button className="btn-sm btn-danger" onClick={() => handleDelete(w)}>Delete</button>
+          <>
+            <button className="btn-sm" onClick={() => handleToggle(w)}>
+              {w.enabled ? 'Disable' : 'Enable'}
+            </button>
+            <button className="btn-sm btn-danger" onClick={() => handleDelete(w)}>Delete</button>
+          </>
         )}
       />
     </div>
