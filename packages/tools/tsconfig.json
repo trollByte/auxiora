@@ -9,6 +9,7 @@
     { "path": "../core" },
     { "path": "../errors" },
     { "path": "../logger" },
-    { "path": "../metrics" }
+    { "path": "../metrics" },
+    { "path": "../browser" }
   ]
 }

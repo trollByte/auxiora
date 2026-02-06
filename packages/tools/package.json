@@ -20,6 +20,7 @@
     "@auxiora/core": "workspace:*",
     "@auxiora/errors": "workspace:*",
     "@auxiora/logger": "workspace:*",
+    "@auxiora/browser": "workspace:*",
     "@auxiora/metrics": "workspace:*"
   },
   "engines": {

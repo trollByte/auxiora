@@ -312,3 +312,37 @@ toolRegistry.register(DeleteBehaviorsTool);
 // Export behavior tools
 export { CreateBehaviorTool, ListBehaviorsTool, UpdateBehaviorTool, DeleteBehaviorsTool } from './behaviors.js';
 export { setBehaviorManager } from './behaviors.js';
+
+// Import and register browser tools
+import {
+  BrowserNavigateTool,
+  BrowserClickTool,
+  BrowserTypeTool,
+  BrowserScreenshotTool,
+  BrowserExtractTool,
+  BrowserWaitTool,
+  BrowserEvaluateTool,
+  BrowseTool,
+} from './browser.js';
+
+toolRegistry.register(BrowserNavigateTool);
+toolRegistry.register(BrowserClickTool);
+toolRegistry.register(BrowserTypeTool);
+toolRegistry.register(BrowserScreenshotTool);
+toolRegistry.register(BrowserExtractTool);
+toolRegistry.register(BrowserWaitTool);
+toolRegistry.register(BrowserEvaluateTool);
+toolRegistry.register(BrowseTool);
+
+// Export browser tools
+export {
+  BrowserNavigateTool,
+  BrowserClickTool,
+  BrowserTypeTool,
+  BrowserScreenshotTool,
+  BrowserExtractTool,
+  BrowserWaitTool,
+  BrowserEvaluateTool,
+  BrowseTool,
+} from './browser.js';
+export { setBrowserManager } from './browser.js';
