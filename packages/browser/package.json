@@ -1,0 +1,28 @@
+{
+  "name": "@auxiora/browser",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@auxiora/core": "workspace:*",
+    "@auxiora/errors": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "playwright": "^1.50.0",
+    "nanoid": "^5.1.2"
+  }
+}
