@@ -300,3 +300,15 @@ logger.info('Built-in tools registered', {
 export { BashTool } from './bash.js';
 export { WebBrowserTool } from './web.js';
 export { FileReadTool, FileWriteTool, FileListTool } from './files.js';
+
+// Import and register behavior tools
+import { CreateBehaviorTool, ListBehaviorsTool, UpdateBehaviorTool, DeleteBehaviorsTool } from './behaviors.js';
+
+toolRegistry.register(CreateBehaviorTool);
+toolRegistry.register(ListBehaviorsTool);
+toolRegistry.register(UpdateBehaviorTool);
+toolRegistry.register(DeleteBehaviorsTool);
+
+// Export behavior tools
+export { CreateBehaviorTool, ListBehaviorsTool, UpdateBehaviorTool, DeleteBehaviorsTool } from './behaviors.js';
+export { setBehaviorManager } from './behaviors.js';
