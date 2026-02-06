@@ -259,6 +259,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/stt:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/tools:
     dependencies:
       '@auxiora/audit':
@@ -279,6 +285,12 @@ importers:
       '@auxiora/metrics':
         specifier: workspace:*
         version: link:../metrics
+
+  packages/tts:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/vault:
     dependencies:
