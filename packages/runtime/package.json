@@ -19,6 +19,7 @@
   "dependencies": {
     "@auxiora/audit": "workspace:*",
     "@auxiora/behaviors": "workspace:*",
+    "@auxiora/browser": "workspace:*",
     "@auxiora/channels": "workspace:*",
     "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",

@@ -12,16 +12,19 @@ import {
   getIdentityPath,
   getUserPath,
   getBehaviorsPath,
+  getScreenshotsDir,
 } from '@auxiora/core';
 import {
   toolRegistry,
   toolExecutor,
   initializeToolExecutor,
+  setBrowserManager,
   type ExecutionContext,
 } from '@auxiora/tools';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BehaviorManager } from '@auxiora/behaviors';
+import { BrowserManager } from '@auxiora/browser';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -38,6 +41,7 @@ export class Auxiora {
   private systemPrompt: string = '';
   private running = false;
   private behaviors?: BehaviorManager;
+  private browserManager?: BrowserManager;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -103,6 +107,19 @@ export class Auxiora {
       });
       await this.behaviors.start();
     }
+
+    // Initialize browser system
+    this.browserManager = new BrowserManager({
+      config: {
+        headless: true,
+        viewport: { width: 1280, height: 720 },
+        navigationTimeout: 30_000,
+        actionTimeout: 10_000,
+        maxConcurrentPages: 10,
+        screenshotDir: getScreenshotsDir(),
+      },
+    });
+    setBrowserManager(this.browserManager);
   }
 
   private async initializeProviders(): Promise<void> {
@@ -720,6 +737,9 @@ export class Auxiora {
     await this.gateway.stop();
     if (this.behaviors) {
       await this.behaviors.stop();
+    }
+    if (this.browserManager) {
+      await this.browserManager.shutdown();
     }
     this.sessions.destroy();
     this.vault.lock();

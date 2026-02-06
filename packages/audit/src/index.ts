@@ -43,6 +43,11 @@ export type AuditEventType =
   | 'behavior.executed'
   | 'behavior.paused'
   | 'behavior.failed'
+  | 'browser.navigate'
+  | 'browser.click'
+  | 'browser.type'
+  | 'browser.script'
+  | 'browser.screenshot'
   | 'system.error';
 
 export interface AuditEntry {
