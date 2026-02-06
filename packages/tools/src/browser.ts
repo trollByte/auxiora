@@ -1,6 +1,7 @@
 import type { Tool, ToolParameter, ExecutionContext, ToolResult } from './index.js';
 import { ToolPermission } from './index.js';
 import { getLogger } from '@auxiora/logger';
+import { audit } from '@auxiora/audit';
 
 const logger = getLogger('tools:browser');
 
@@ -65,6 +66,7 @@ export const BrowserNavigateTool: Tool = {
       const manager = requireManager();
       const sessionId = getSessionId(context, params);
       const info = await manager.navigate(sessionId, params.url);
+      audit('browser.navigate', { sessionId, url: params.url, title: info.title });
       return {
         success: true,
         output: JSON.stringify(info),
@@ -114,6 +116,7 @@ export const BrowserClickTool: Tool = {
       const manager = requireManager();
       const sessionId = getSessionId(context, params);
       await manager.click(sessionId, params.selector);
+      audit('browser.click', { sessionId, selector: params.selector });
       return {
         success: true,
         output: `Clicked: ${params.selector}`,
@@ -179,6 +182,7 @@ export const BrowserTypeTool: Tool = {
       const manager = requireManager();
       const sessionId = getSessionId(context, params);
       await manager.type(sessionId, params.selector, params.text, params.pressEnter ?? false);
+      audit('browser.type', { sessionId, selector: params.selector });
       return {
         success: true,
         output: `Typed into ${params.selector}: "${params.text}"${params.pressEnter ? ' [Enter]' : ''}`,
@@ -231,6 +235,7 @@ export const BrowserScreenshotTool: Tool = {
         fullPage: params.fullPage ?? true,
         selector: params.selector,
       });
+      audit('browser.screenshot', { sessionId, path: result.path });
       return {
         success: true,
         output: result.base64,
@@ -390,6 +395,7 @@ export const BrowserEvaluateTool: Tool = {
       const manager = requireManager();
       const sessionId = getSessionId(context, params);
       const result = await manager.runScript(sessionId, params.script);
+      audit('browser.script', { sessionId, scriptLength: params.script.length });
       return {
         success: true,
         output: result,

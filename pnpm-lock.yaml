@@ -54,18 +54,9 @@ importers:
 
   packages/browser:
     dependencies:
-      '@auxiora/core':
-        specifier: workspace:*
-        version: link:../core
-      '@auxiora/errors':
-        specifier: workspace:*
-        version: link:../errors
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
-      nanoid:
-        specifier: ^5.1.2
-        version: 5.1.6
       playwright:
         specifier: ^1.50.0
         version: 1.58.1
@@ -270,6 +261,12 @@ importers:
 
   packages/tools:
     dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/browser':
+        specifier: workspace:*
+        version: link:../browser
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core

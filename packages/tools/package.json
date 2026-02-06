@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auxiora/audit": "workspace:*",
     "@auxiora/core": "workspace:*",
     "@auxiora/errors": "workspace:*",
     "@auxiora/logger": "workspace:*",
