@@ -243,12 +243,21 @@ importers:
       '@auxiora/sessions':
         specifier: workspace:*
         version: link:../sessions
+      '@auxiora/stt':
+        specifier: workspace:*
+        version: link:../stt
       '@auxiora/tools':
         specifier: workspace:*
         version: link:../tools
+      '@auxiora/tts':
+        specifier: workspace:*
+        version: link:../tts
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
+      '@auxiora/voice':
+        specifier: workspace:*
+        version: link:../voice
 
   packages/sessions:
     dependencies:

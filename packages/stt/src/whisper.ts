@@ -33,7 +33,9 @@ export class WhisperSTT implements STTProvider {
     const wav = pcmToWav(audio, sampleRate);
 
     const formData = new FormData();
-    formData.append('file', new Blob([wav], { type: 'audio/wav' }), 'audio.wav');
+    const wavArray = new ArrayBuffer(wav.byteLength);
+    new Uint8Array(wavArray).set(new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength));
+    formData.append('file', new Blob([wavArray], { type: 'audio/wav' }), 'audio.wav');
     formData.append('model', this.model);
     formData.append('response_format', 'verbose_json');
 
