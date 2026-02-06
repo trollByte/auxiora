@@ -137,4 +137,20 @@ describe('Config', () => {
       expect(config.webhooks.maxPayloadSize).toBe(131072);
     });
   });
+
+  describe('dashboard config', () => {
+    it('should default dashboard to disabled', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.dashboard.enabled).toBe(false);
+      expect(config.dashboard.sessionTtlMs).toBe(86_400_000);
+    });
+
+    it('should accept custom dashboard config', () => {
+      const config = ConfigSchema.parse({
+        dashboard: { enabled: true, sessionTtlMs: 3_600_000 },
+      });
+      expect(config.dashboard.enabled).toBe(true);
+      expect(config.dashboard.sessionTtlMs).toBe(3_600_000);
+    });
+  });
 });

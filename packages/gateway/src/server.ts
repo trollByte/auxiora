@@ -481,6 +481,10 @@ export class Gateway {
     return this.clients.get(id);
   }
 
+  public getConnections(): ClientConnection[] {
+    return Array.from(this.clients.values());
+  }
+
   public getPairingManager(): PairingManager {
     return this.pairingManager;
   }

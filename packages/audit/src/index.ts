@@ -56,6 +56,9 @@ export type AuditEventType =
   | 'webhook.error'
   | 'webhook.created'
   | 'webhook.deleted'
+  | 'dashboard.login'
+  | 'dashboard.logout'
+  | 'dashboard.login_failed'
   | 'system.error';
 
 export interface AuditEntry {

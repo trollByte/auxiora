@@ -98,6 +98,11 @@ const WebhookConfigSchema = z.object({
   maxPayloadSize: z.number().int().positive().default(65536),
 });
 
+const DashboardConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  sessionTtlMs: z.number().int().positive().default(86_400_000),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -109,6 +114,7 @@ export const ConfigSchema = z.object({
   channels: ChannelConfigSchema.default({}),
   voice: VoiceConfigSchema.default({}),
   webhooks: WebhookConfigSchema.default({}),
+  dashboard: DashboardConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
