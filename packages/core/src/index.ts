@@ -115,6 +115,10 @@ export function getMemoryDir(): string {
   return path.join(getWorkspaceDir(), 'memory');
 }
 
+export function getBehaviorsPath(): string {
+  return path.join(getDataDir(), 'behaviors.json');
+}
+
 export const paths = {
   base: getBaseDir,
   data: getDataDir,
@@ -129,6 +133,7 @@ export const paths = {
   identity: getIdentityPath,
   user: getUserPath,
   memory: getMemoryDir,
+  behaviors: getBehaviorsPath,
 };
 
 /**

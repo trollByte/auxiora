@@ -11,6 +11,7 @@ import {
   getAgentsPath,
   getIdentityPath,
   getUserPath,
+  getBehaviorsPath,
 } from '@auxiora/core';
 import {
   toolRegistry,
@@ -20,6 +21,7 @@ import {
 } from '@auxiora/tools';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { BehaviorManager } from '@auxiora/behaviors';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -35,6 +37,7 @@ export class Auxiora {
   private vault!: Vault;
   private systemPrompt: string = '';
   private running = false;
+  private behaviors?: BehaviorManager;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -79,6 +82,27 @@ export class Auxiora {
     // Initialize gateway
     this.gateway = new Gateway({ config: this.config });
     this.gateway.onMessage(this.handleMessage.bind(this));
+
+    // Initialize behavior system
+    if (this.providers) {
+      this.behaviors = new BehaviorManager({
+        storePath: getBehaviorsPath(),
+        executorDeps: {
+          getProvider: () => this.providers.getPrimaryProvider() as any,
+          sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
+            if (this.channels) {
+              return this.channels.send(channelType as any, channelId, message);
+            }
+            return { success: false, error: 'Channel not available for proactive delivery' };
+          },
+          getSystemPrompt: () => this.systemPrompt,
+        },
+        auditFn: (event: string, details: Record<string, unknown>) => {
+          audit(event as any, details);
+        },
+      });
+      await this.behaviors.start();
+    }
   }
 
   private async initializeProviders(): Promise<void> {
@@ -694,6 +718,9 @@ export class Auxiora {
       await this.channels.disconnectAll();
     }
     await this.gateway.stop();
+    if (this.behaviors) {
+      await this.behaviors.stop();
+    }
     this.sessions.destroy();
     this.vault.lock();
     this.running = false;

@@ -59,7 +59,7 @@ export class BehaviorExecutor {
         logger.warn('Failed to deliver behavior result', {
           id: behavior.id,
           channelType: behavior.channel.type,
-          error: sendResult.error,
+          error: sendResult.error ? new Error(sendResult.error) : undefined,
         });
 
         return {
@@ -82,7 +82,7 @@ export class BehaviorExecutor {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('Behavior execution failed', { id: behavior.id, error: errorMessage });
+      logger.error('Behavior execution failed', { id: behavior.id, error: new Error(errorMessage) });
 
       return {
         behaviorId: behavior.id,

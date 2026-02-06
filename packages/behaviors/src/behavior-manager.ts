@@ -239,7 +239,7 @@ export class BehaviorManager {
     this.executionQueue = this.executionQueue.then(async () => {
       await this.executeWithRetry(behaviorId);
     }).catch((error) => {
-      logger.error('Execution queue error', { behaviorId, error: String(error) });
+      logger.error('Execution queue error', { behaviorId, error: error instanceof Error ? error : new Error(String(error)) });
     });
   }
 

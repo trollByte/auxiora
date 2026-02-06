@@ -210,6 +210,9 @@ importers:
       '@auxiora/audit':
         specifier: workspace:*
         version: link:../audit
+      '@auxiora/behaviors':
+        specifier: workspace:*
+        version: link:../behaviors
       '@auxiora/channels':
         specifier: workspace:*
         version: link:../channels
