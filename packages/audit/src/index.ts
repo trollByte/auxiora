@@ -48,6 +48,8 @@ export type AuditEventType =
   | 'browser.type'
   | 'browser.script'
   | 'browser.screenshot'
+  | 'voice.transcribed'
+  | 'voice.synthesized'
   | 'system.error';
 
 export interface AuditEntry {

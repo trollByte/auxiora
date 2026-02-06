@@ -97,4 +97,26 @@ describe('Config', () => {
       expect(config.channels.webchat.enabled).toBe(true);
     });
   });
+
+  describe('voice config', () => {
+    it('should default voice to disabled', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.voice.enabled).toBe(false);
+      expect(config.voice.sttProvider).toBe('openai-whisper');
+      expect(config.voice.ttsProvider).toBe('openai-tts');
+      expect(config.voice.defaultVoice).toBe('alloy');
+      expect(config.voice.language).toBe('en');
+      expect(config.voice.maxAudioDuration).toBe(30);
+      expect(config.voice.sampleRate).toBe(16000);
+    });
+
+    it('should accept custom voice config', () => {
+      const config = ConfigSchema.parse({
+        voice: { enabled: true, defaultVoice: 'nova', language: 'fr' },
+      });
+      expect(config.voice.enabled).toBe(true);
+      expect(config.voice.defaultVoice).toBe('nova');
+      expect(config.voice.language).toBe('fr');
+    });
+  });
 });

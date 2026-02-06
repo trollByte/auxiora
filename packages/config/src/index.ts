@@ -81,6 +81,16 @@ const ChannelConfigSchema = z.object({
   }).default({}),
 });
 
+const VoiceConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  sttProvider: z.enum(['openai-whisper']).default('openai-whisper'),
+  ttsProvider: z.enum(['openai-tts']).default('openai-tts'),
+  defaultVoice: z.string().default('alloy'),
+  language: z.string().default('en'),
+  maxAudioDuration: z.number().int().positive().default(30),
+  sampleRate: z.number().int().positive().default(16000),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -90,6 +100,7 @@ export const ConfigSchema = z.object({
   session: SessionConfigSchema.default({}),
   logging: LoggingConfigSchema.default({}),
   channels: ChannelConfigSchema.default({}),
+  voice: VoiceConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
