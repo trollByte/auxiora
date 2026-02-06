@@ -11,3 +11,4 @@ export {
   PRIVATE_IP_RANGES,
 } from './types.js';
 export { validateUrl } from './url-validator.js';
+export { BrowserManager, type BrowserManagerOptions } from './browser-manager.js';
