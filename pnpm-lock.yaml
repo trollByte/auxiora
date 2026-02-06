@@ -322,6 +322,15 @@ importers:
         specifier: workspace:*
         version: link:../tts
 
+  packages/webhooks:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
 packages:
 
   '@anthropic-ai/sdk@0.71.2':
