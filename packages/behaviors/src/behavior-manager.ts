@@ -138,6 +138,15 @@ export class BehaviorManager {
     return updated;
   }
 
+  async executeNow(id: string): Promise<{ success: boolean; error?: string }> {
+    const behavior = await this.store.get(id);
+    if (!behavior) {
+      throw new Error(`Behavior ${id} not found`);
+    }
+    const result = await this.executor.execute(behavior);
+    return { success: result.success, error: result.error };
+  }
+
   async remove(id: string): Promise<boolean> {
     this.deactivate(id);
     const removed = await this.store.remove(id);

@@ -178,12 +178,8 @@ export class Auxiora {
 
       // Wire behavior trigger
       if (this.behaviors) {
-        this.webhookManager.setBehaviorTrigger(async (behaviorId: string, _payload: string) => {
-          const behavior = await this.behaviors!.get(behaviorId);
-          if (!behavior) {
-            throw new Error(`Behavior ${behaviorId} not found`);
-          }
-          return { success: true };
+        this.webhookManager.setBehaviorTrigger(async (behaviorId: string, payload: string) => {
+          return this.behaviors!.executeNow(behaviorId);
         });
       }
 

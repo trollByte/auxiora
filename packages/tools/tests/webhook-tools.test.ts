@@ -20,22 +20,25 @@ import {
 
 function createMockManager() {
   const store = new Map<string, any>();
+  let nextId = 1;
 
   return {
     list: vi.fn(async () => Array.from(store.values())),
     create: vi.fn(async (input: any) => {
+      const id = `wh-${nextId++}`;
       const webhook = {
+        id,
         name: input.name,
         url: `/webhooks/${input.name}`,
         secret: input.secret,
         behaviorId: input.behaviorId,
       };
-      store.set(input.name, webhook);
+      store.set(id, webhook);
       return webhook;
     }),
-    delete: vi.fn(async (name: string) => {
-      if (!store.has(name)) return false;
-      store.delete(name);
+    delete: vi.fn(async (id: string) => {
+      if (!store.has(id)) return false;
+      store.delete(id);
       return true;
     }),
   };
@@ -80,6 +83,7 @@ describe('Webhook Tools', () => {
     expect(output.message).toContain('my-hook');
     expect(mockManager.create).toHaveBeenCalledWith({
       name: 'my-hook',
+      type: 'generic',
       secret: 'supersecret',
       behaviorId: 'bh_abc',
     });
@@ -97,7 +101,7 @@ describe('Webhook Tools', () => {
     const output = JSON.parse(result.output!);
     expect(output.name).toBe('to-delete');
     expect(output.message).toContain('to-delete');
-    expect(mockManager.delete).toHaveBeenCalledWith('to-delete');
+    expect(mockManager.delete).toHaveBeenCalledWith('wh-1');
   });
 
   // ─── 4. Error when deleting non-existent webhook ──────────────────────

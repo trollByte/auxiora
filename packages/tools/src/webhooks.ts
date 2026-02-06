@@ -101,6 +101,7 @@ export const WebhookCreateTool: Tool = {
       const manager = requireManager();
       const webhook = await manager.create({
         name: params.name,
+        type: 'generic' as const,
         secret: params.secret,
         behaviorId: params.behaviorId,
       });
@@ -150,14 +151,17 @@ export const WebhookDeleteTool: Tool = {
   async execute(params: any, _context: ExecutionContext): Promise<ToolResult> {
     try {
       const manager = requireManager();
-      const deleted = await manager.delete(params.name);
+      const webhooks = await manager.list();
+      const webhook = webhooks.find((w: any) => w.name === params.name);
 
-      if (!deleted) {
+      if (!webhook) {
         return {
           success: false,
           error: `Webhook not found: ${params.name}`,
         };
       }
+
+      await manager.delete(webhook.id);
 
       return {
         success: true,
