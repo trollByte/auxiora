@@ -31,6 +31,8 @@ export class Gateway {
   private pairingManager: PairingManager;
   private clients: Map<string, ClientConnection> = new Map();
   private messageHandler?: (client: ClientConnection, message: WsMessage) => Promise<void>;
+  private voiceHandler?: (client: ClientConnection, type: string, payload: unknown, audioBuffer?: Buffer) => Promise<void>;
+  private audioBuffers = new Map<string, { frames: Buffer[]; size: number }>();
 
   constructor(options: GatewayOptions) {
     this.config = options.config;
@@ -204,8 +206,13 @@ export class Gateway {
         },
       });
 
-      ws.on('message', async (data: RawData) => {
+      ws.on('message', async (data: RawData, isBinary: boolean) => {
         client.lastActive = Date.now();
+
+        if (isBinary) {
+          this.handleAudioFrame(client, data as Buffer);
+          return;
+        }
 
         try {
           const message = JSON.parse(data.toString()) as WsMessage;
@@ -219,6 +226,7 @@ export class Gateway {
       });
 
       ws.on('close', () => {
+        this.audioBuffers.delete(clientId);
         this.clients.delete(clientId);
         audit('channel.disconnected', { clientId });
       });
@@ -270,6 +278,20 @@ export class Gateway {
             },
           });
         }
+        break;
+
+      case 'voice_start':
+      case 'voice_end':
+      case 'voice_cancel':
+        if (!client.authenticated) {
+          this.send(client, {
+            type: 'error',
+            id,
+            payload: { message: 'Not authenticated' },
+          });
+          return;
+        }
+        await this.handleVoiceControl(client, type, payload, id);
         break;
 
       default:
@@ -391,6 +413,59 @@ export class Gateway {
       if (!filter || filter(client)) {
         this.send(client, message);
       }
+    }
+  }
+
+  public onVoiceMessage(handler: (client: ClientConnection, type: string, payload: unknown, audioBuffer?: Buffer) => Promise<void>): void {
+    this.voiceHandler = handler;
+  }
+
+  public sendBinary(client: ClientConnection, data: Buffer): void {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(data);
+    }
+  }
+
+  private handleAudioFrame(client: ClientConnection, frame: Buffer): void {
+    if (!client.authenticated || !client.voiceActive) return;
+
+    const maxFrame = 64 * 1024;
+    const maxBuffer = 960_000;
+
+    if (frame.length > maxFrame) return;
+
+    const buf = this.audioBuffers.get(client.id);
+    if (!buf) return;
+
+    if (buf.size + frame.length > maxBuffer) return;
+
+    buf.frames.push(frame);
+    buf.size += frame.length;
+  }
+
+  private async handleVoiceControl(client: ClientConnection, type: string, payload: unknown, requestId?: string): Promise<void> {
+    if (type === 'voice_start') {
+      client.voiceActive = true;
+      this.audioBuffers.set(client.id, { frames: [], size: 0 });
+    }
+
+    let audioBuffer: Buffer | undefined;
+    if (type === 'voice_end') {
+      const buf = this.audioBuffers.get(client.id);
+      if (buf && buf.frames.length > 0) {
+        audioBuffer = Buffer.concat(buf.frames);
+      }
+      this.audioBuffers.delete(client.id);
+      client.voiceActive = false;
+    }
+
+    if (type === 'voice_cancel') {
+      this.audioBuffers.delete(client.id);
+      client.voiceActive = false;
+    }
+
+    if (this.voiceHandler) {
+      await this.voiceHandler(client, type, payload, audioBuffer);
     }
   }
 

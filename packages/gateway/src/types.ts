@@ -11,4 +11,5 @@ export interface ClientConnection {
   senderId?: string;
   channelType: string;
   lastActive: number;
+  voiceActive?: boolean;
 }
