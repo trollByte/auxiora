@@ -22,7 +22,8 @@
     "@auxiora/errors": "workspace:*",
     "@auxiora/logger": "workspace:*",
     "@auxiora/browser": "workspace:*",
-    "@auxiora/metrics": "workspace:*"
+    "@auxiora/metrics": "workspace:*",
+    "@auxiora/webhooks": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

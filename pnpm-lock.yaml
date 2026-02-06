@@ -294,6 +294,9 @@ importers:
       '@auxiora/metrics':
         specifier: workspace:*
         version: link:../metrics
+      '@auxiora/webhooks':
+        specifier: workspace:*
+        version: link:../webhooks
 
   packages/tts:
     dependencies:

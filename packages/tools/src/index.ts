@@ -346,3 +346,14 @@ export {
   BrowseTool,
 } from './browser.js';
 export { setBrowserManager } from './browser.js';
+
+// Import and register webhook tools
+import { WebhookListTool, WebhookCreateTool, WebhookDeleteTool } from './webhooks.js';
+
+toolRegistry.register(WebhookListTool);
+toolRegistry.register(WebhookCreateTool);
+toolRegistry.register(WebhookDeleteTool);
+
+// Export webhook tools
+export { WebhookListTool, WebhookCreateTool, WebhookDeleteTool } from './webhooks.js';
+export { setWebhookManager } from './webhooks.js';
