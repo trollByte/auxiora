@@ -1,0 +1,28 @@
+{
+  "name": "@auxiora/dashboard",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/audit": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}
