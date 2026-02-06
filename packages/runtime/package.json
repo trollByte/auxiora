@@ -30,7 +30,12 @@
     "@auxiora/providers": "workspace:*",
     "@auxiora/sessions": "workspace:*",
     "@auxiora/tools": "workspace:*",
-    "@auxiora/vault": "workspace:*"
+    "@auxiora/vault": "workspace:*",
+    "@auxiora/webhooks": "workspace:*",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -12,6 +12,7 @@ import {
   getIdentityPath,
   getUserPath,
   getBehaviorsPath,
+  getWebhooksPath,
   getScreenshotsDir,
 } from '@auxiora/core';
 import {
@@ -19,6 +20,7 @@ import {
   toolExecutor,
   initializeToolExecutor,
   setBrowserManager,
+  setWebhookManager,
   type ExecutionContext,
 } from '@auxiora/tools';
 import * as fs from 'node:fs/promises';
@@ -28,6 +30,9 @@ import { BrowserManager } from '@auxiora/browser';
 import { VoiceManager } from '@auxiora/voice';
 import { WhisperSTT } from '@auxiora/stt';
 import { OpenAITTS } from '@auxiora/tts';
+import { WebhookManager } from '@auxiora/webhooks';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -46,6 +51,7 @@ export class Auxiora {
   private behaviors?: BehaviorManager;
   private browserManager?: BrowserManager;
   private voiceManager?: VoiceManager;
+  private webhookManager?: WebhookManager;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -154,6 +160,37 @@ export class Auxiora {
       } else {
         console.warn('Voice mode enabled in config but no OPENAI_API_KEY found in vault');
       }
+    }
+
+    // Initialize webhook system (if enabled)
+    if (this.config.webhooks?.enabled) {
+      this.webhookManager = new WebhookManager({
+        storePath: getWebhooksPath(),
+        config: {
+          enabled: true,
+          basePath: this.config.webhooks.basePath,
+          signatureHeader: this.config.webhooks.signatureHeader,
+          maxPayloadSize: this.config.webhooks.maxPayloadSize,
+        },
+      });
+
+      setWebhookManager(this.webhookManager);
+
+      // Wire behavior trigger
+      if (this.behaviors) {
+        this.webhookManager.setBehaviorTrigger(async (behaviorId: string, _payload: string) => {
+          const behavior = await this.behaviors!.get(behaviorId);
+          if (!behavior) {
+            throw new Error(`Behavior ${behaviorId} not found`);
+          }
+          return { success: true };
+        });
+      }
+
+      // Mount webhook routes
+      const webhookRouter = this.createWebhookRouter();
+      this.gateway.mountRouter(this.config.webhooks.basePath, webhookRouter);
+      console.log('Webhook listeners enabled');
     }
   }
 
@@ -848,6 +885,75 @@ export class Auxiora {
       default:
         return `Unknown command: ${cmd}. Try /help`;
     }
+  }
+
+  private createWebhookRouter(): Router {
+    const router = Router();
+
+    // Generic webhooks
+    router.post('/custom/:name', async (req: Request, res: Response) => {
+      if (!this.webhookManager) {
+        res.status(503).json({ error: 'Webhooks not available' });
+        return;
+      }
+
+      // Collect raw body
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      const body = Buffer.concat(chunks);
+
+      const name = Array.isArray(req.params.name) ? req.params.name[0] : req.params.name;
+      const result = await this.webhookManager.handleGenericWebhook(
+        name,
+        body,
+        req.headers as Record<string, string>,
+      );
+
+      res.status(result.status).json({
+        accepted: result.accepted,
+        ...(result.error && !result.accepted ? { error: result.error } : {}),
+      });
+    });
+
+    // Channel webhooks — Twilio
+    router.post('/twilio', async (req: Request, res: Response) => {
+      if (!this.channels) {
+        res.status(503).json({ error: 'Channels not available' });
+        return;
+      }
+
+      const adapter = this.channels.getAdapter('twilio');
+      if (!adapter) {
+        res.status(503).json({ error: 'Twilio not configured' });
+        return;
+      }
+
+      const twilioAdapter = adapter as any;
+      await twilioAdapter.handleWebhook(req.body);
+      res.status(200).type('text/xml').send('<Response></Response>');
+    });
+
+    // Channel webhooks — Telegram
+    router.post('/telegram', async (req: Request, res: Response) => {
+      if (!this.channels) {
+        res.status(503).json({ error: 'Channels not available' });
+        return;
+      }
+
+      const adapter = this.channels.getAdapter('telegram');
+      if (!adapter) {
+        res.status(503).json({ error: 'Telegram not configured' });
+        return;
+      }
+
+      const telegramAdapter = adapter as any;
+      await telegramAdapter.handleWebhook(req.body);
+      res.sendStatus(200);
+    });
+
+    return router;
   }
 
   async start(): Promise<void> {

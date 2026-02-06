@@ -258,6 +258,16 @@ importers:
       '@auxiora/voice':
         specifier: workspace:*
         version: link:../voice
+      '@auxiora/webhooks':
+        specifier: workspace:*
+        version: link:../webhooks
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
 
   packages/sessions:
     dependencies:
