@@ -248,4 +248,94 @@ describe('PluginLoader', () => {
     const plugins = await loader.loadAll();
     expect(plugins).toHaveLength(0);
   });
+
+  it('should reject cross-plugin tool name collision', async () => {
+    await writePlugin('alpha.js', `
+      export const plugin = {
+        name: 'alpha',
+        version: '1.0.0',
+        tools: [{
+          name: 'shared_tool',
+          description: 'Tool from alpha',
+          execute: async () => ({ success: true })
+        }]
+      };
+    `);
+
+    await writePlugin('beta.js', `
+      export const plugin = {
+        name: 'beta',
+        version: '1.0.0',
+        tools: [{
+          name: 'shared_tool',
+          description: 'Tool from beta',
+          execute: async () => ({ success: true })
+        }]
+      };
+    `);
+
+    const loader = new PluginLoader(tmpDir);
+    const plugins = await loader.loadAll();
+    trackTool('shared_tool');
+
+    const loaded = plugins.find(p => p.status === 'loaded');
+    const failed = plugins.find(p => p.status === 'failed');
+
+    expect(loaded).toBeDefined();
+    expect(failed).toBeDefined();
+    expect(failed!.error).toContain('collides');
+  });
+
+  it('should call shutdown hook via shutdownAll', async () => {
+    await writePlugin('shutdown.js', `
+      let shutdownCalled = false;
+      export const plugin = {
+        name: 'shutdown-test',
+        version: '1.0.0',
+        shutdown: async () => { shutdownCalled = true; },
+        tools: [{
+          name: 'check_shutdown',
+          description: 'Check shutdown state',
+          parameters: { type: 'object', properties: {} },
+          execute: async () => ({ success: true, output: String(shutdownCalled) })
+        }]
+      };
+    `);
+
+    const loader = new PluginLoader(tmpDir);
+    await loader.loadAll();
+    trackTool('check_shutdown');
+
+    const tool = toolRegistry.get('check_shutdown')!;
+
+    const before = await tool.execute({}, { sessionId: 'test', workingDirectory: '/tmp', timeout: 5000 });
+    expect(before.output).toBe('false');
+
+    await loader.shutdownAll();
+
+    const after = await tool.execute({}, { sessionId: 'test', workingDirectory: '/tmp', timeout: 5000 });
+    expect(after.output).toBe('true');
+  });
+
+  it('should not crash when shutdown hook throws', async () => {
+    await writePlugin('shutdown-err.js', `
+      export const plugin = {
+        name: 'shutdown-err',
+        version: '1.0.0',
+        shutdown: async () => { throw new Error('shutdown boom'); },
+        tools: [{
+          name: 'sd_err_tool',
+          description: 'Dummy tool',
+          parameters: { type: 'object', properties: {} },
+          execute: async () => ({ success: true })
+        }]
+      };
+    `);
+
+    const loader = new PluginLoader(tmpDir);
+    await loader.loadAll();
+    trackTool('sd_err_tool');
+
+    await expect(loader.shutdownAll()).resolves.toBeUndefined();
+  });
 });

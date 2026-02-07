@@ -34,7 +34,7 @@ export class PluginLoader {
     let files: string[];
     try {
       const entries = await fs.readdir(this.pluginsDir);
-      files = entries.filter(f => f.endsWith('.js') && !f.startsWith('_') && !f.startsWith('.'));
+      files = entries.filter(f => f.endsWith('.js') && !f.startsWith('_') && !f.startsWith('.')).sort();
     } catch {
       return [];
     }
@@ -64,7 +64,14 @@ export class PluginLoader {
       }
 
       if (pluginExport.initialize) {
-        await pluginExport.initialize();
+        try {
+          await pluginExport.initialize();
+        } catch (initError) {
+          for (const name of toolNames) {
+            toolRegistry.unregister(name);
+          }
+          throw initError;
+        }
       }
 
       const loaded: LoadedPlugin = {
@@ -116,6 +123,10 @@ export class PluginLoader {
 
     if (typeof p.name !== 'string' || !p.name) {
       throw new Error('Plugin must have a non-empty "name" string');
+    }
+
+    if (typeof p.version !== 'string' || !p.version) {
+      throw new Error('Plugin must have a non-empty "version" string');
     }
 
     if (!Array.isArray(p.tools) || p.tools.length === 0) {
@@ -173,12 +184,13 @@ export class PluginLoader {
       parameters,
       getPermission: () => ToolPermission.USER_APPROVAL,
       execute: async (params: any, context: ExecutionContext): Promise<ToolResult> => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
         try {
           const result = await Promise.race([
             toolDef.execute(params),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Plugin tool timed out')), context.timeout || 30_000)
-            ),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(new Error('Plugin tool timed out')), context.timeout || 30_000);
+            }),
           ]);
           return {
             success: result.success,
@@ -188,6 +200,10 @@ export class PluginLoader {
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           return { success: false, error: message };
+        } finally {
+          if (timer !== undefined) {
+            clearTimeout(timer);
+          }
         }
       },
     };
@@ -203,7 +219,7 @@ export class PluginLoader {
         try {
           await plugin.shutdown();
         } catch (error) {
-          logger.warn('Plugin shutdown error', { name: plugin.name, error });
+          logger.warn('Plugin shutdown error', { name: plugin.name, error: error instanceof Error ? error : new Error(String(error)) });
         }
       }
     }
