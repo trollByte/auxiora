@@ -71,6 +71,22 @@ export interface DashboardDeps {
     accessCount: number;
   }>>;
   setup?: SetupDeps;
+  models?: {
+    listProviders(): Array<{
+      name: string;
+      displayName: string;
+      available: boolean;
+      models: Record<string, unknown>;
+    }>;
+    getRoutingConfig(): Record<string, unknown>;
+    getCostSummary(): {
+      today: number;
+      thisMonth: number;
+      budgetRemaining?: number;
+      isOverBudget: boolean;
+      warningThresholdReached: boolean;
+    };
+  };
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

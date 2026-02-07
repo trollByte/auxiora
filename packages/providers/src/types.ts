@@ -66,8 +66,28 @@ export interface CompletionResult {
   finishReason: string;
 }
 
+export interface ModelCapabilities {
+  maxContextTokens: number;
+  supportsVision: boolean;
+  supportsTools: boolean;
+  supportsStreaming: boolean;
+  supportsImageGen: boolean;
+  costPer1kInput: number;
+  costPer1kOutput: number;
+  strengths: string[];
+  isLocal: boolean;
+}
+
+export interface ProviderMetadata {
+  name: string;
+  displayName: string;
+  models: Record<string, ModelCapabilities>;
+  isAvailable(): Promise<boolean>;
+}
+
 export interface Provider {
   name: string;
+  metadata: ProviderMetadata;
   complete(messages: ChatMessage[], options?: CompletionOptions): Promise<CompletionResult>;
   stream(
     messages: ChatMessage[],
@@ -88,5 +108,22 @@ export interface ProviderConfig {
     apiKey: string;
     model?: string;
     maxTokens?: number;
+  };
+  google?: {
+    apiKey: string;
+    model?: string;
+    maxTokens?: number;
+  };
+  ollama?: {
+    baseUrl?: string;
+    model?: string;
+    maxTokens?: number;
+  };
+  openaiCompatible?: {
+    baseUrl: string;
+    apiKey?: string;
+    model?: string;
+    maxTokens?: number;
+    name?: string;
   };
 }

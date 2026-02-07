@@ -8,80 +8,63 @@ import type {
   StreamChunk,
 } from './types.js';
 
-const DEFAULT_MODEL = 'gpt-4o';
 const DEFAULT_MAX_TOKENS = 4096;
 
-export interface OpenAIProviderOptions {
-  apiKey: string;
-  model?: string;
+export interface OpenAICompatibleProviderOptions {
+  baseUrl: string;
+  apiKey?: string;
+  model: string;
   maxTokens?: number;
-  baseURL?: string;
+  name?: string;
 }
 
-export class OpenAIProvider implements Provider {
-  name = 'openai';
-  metadata: ProviderMetadata = {
-    name: 'openai',
-    displayName: 'OpenAI GPT',
-    models: {
-      'gpt-4o': {
-        maxContextTokens: 128000,
-        supportsVision: true,
-        supportsTools: true,
-        supportsStreaming: true,
-        supportsImageGen: false,
-        costPer1kInput: 0.0025,
-        costPer1kOutput: 0.01,
-        strengths: ['reasoning', 'code', 'vision', 'creative'],
-        isLocal: false,
-      },
-      'gpt-4o-mini': {
-        maxContextTokens: 128000,
-        supportsVision: true,
-        supportsTools: true,
-        supportsStreaming: true,
-        supportsImageGen: false,
-        costPer1kInput: 0.00015,
-        costPer1kOutput: 0.0006,
-        strengths: ['fast', 'code'],
-        isLocal: false,
-      },
-      'o1': {
-        maxContextTokens: 200000,
-        supportsVision: true,
-        supportsTools: true,
-        supportsStreaming: true,
-        supportsImageGen: false,
-        costPer1kInput: 0.015,
-        costPer1kOutput: 0.06,
-        strengths: ['reasoning', 'code', 'long-context'],
-        isLocal: false,
-      },
-    },
-    isAvailable: async () => {
-      try {
-        return this.client !== undefined;
-      } catch {
-        return false;
-      }
-    },
-  };
+export class OpenAICompatibleProvider implements Provider {
+  name: string;
+  metadata: ProviderMetadata;
   private client: OpenAI;
   private defaultModel: string;
   private defaultMaxTokens: number;
 
-  constructor(options: OpenAIProviderOptions) {
-    this.client = new OpenAI({
-      apiKey: options.apiKey,
-      baseURL: options.baseURL,
-    });
-    this.defaultModel = options.model || DEFAULT_MODEL;
+  constructor(options: OpenAICompatibleProviderOptions) {
+    this.name = options.name || 'openai-compatible';
+    this.defaultModel = options.model;
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+
+    this.client = new OpenAI({
+      apiKey: options.apiKey || 'not-needed',
+      baseURL: options.baseUrl,
+    });
+
+    this.metadata = {
+      name: this.name,
+      displayName: options.name ? `${options.name} (OpenAI-compatible)` : 'OpenAI-compatible',
+      models: {
+        [this.defaultModel]: {
+          maxContextTokens: 128000,
+          supportsVision: false,
+          supportsTools: true,
+          supportsStreaming: true,
+          supportsImageGen: false,
+          costPer1kInput: 0,
+          costPer1kOutput: 0,
+          strengths: ['code', 'reasoning'],
+          isLocal: true,
+        },
+      },
+      isAvailable: async () => {
+        try {
+          await this.client.models.list();
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
   }
 
   async complete(
     messages: ChatMessage[],
-    options?: CompletionOptions
+    options?: CompletionOptions,
   ): Promise<CompletionResult> {
     const openaiMessages = this.prepareMessages(messages, options);
 
@@ -89,6 +72,7 @@ export class OpenAIProvider implements Provider {
       model: options?.model || this.defaultModel,
       max_tokens: options?.maxTokens || this.defaultMaxTokens,
       messages: openaiMessages,
+      temperature: options?.temperature,
     });
 
     const choice = response.choices[0];
@@ -107,7 +91,7 @@ export class OpenAIProvider implements Provider {
 
   async *stream(
     messages: ChatMessage[],
-    options?: CompletionOptions
+    options?: CompletionOptions,
   ): AsyncGenerator<StreamChunk, void, unknown> {
     const openaiMessages = this.prepareMessages(messages, options);
 
@@ -116,6 +100,7 @@ export class OpenAIProvider implements Provider {
         model: options?.model || this.defaultModel,
         max_tokens: options?.maxTokens || this.defaultMaxTokens,
         messages: openaiMessages,
+        temperature: options?.temperature,
         stream: true,
         stream_options: { include_usage: true },
       });
@@ -152,24 +137,16 @@ export class OpenAIProvider implements Provider {
 
   private prepareMessages(
     messages: ChatMessage[],
-    options?: CompletionOptions
+    options?: CompletionOptions,
   ): OpenAI.ChatCompletionMessageParam[] {
     const openaiMessages: OpenAI.ChatCompletionMessageParam[] = [];
 
-    // Add system prompt if provided
     if (options?.systemPrompt) {
-      openaiMessages.push({
-        role: 'system',
-        content: options.systemPrompt,
-      });
+      openaiMessages.push({ role: 'system', content: options.systemPrompt });
     }
 
-    // Convert messages
     for (const msg of messages) {
-      openaiMessages.push({
-        role: msg.role,
-        content: msg.content,
-      });
+      openaiMessages.push({ role: msg.role, content: msg.content });
     }
 
     return openaiMessages;

@@ -10,6 +10,7 @@ import { createAuthCommand } from './commands/auth.js';
 import { createDaemonCommand } from './commands/daemon.js';
 import { createInitCommand } from './commands/init.js';
 import { createPersonalityCommand } from './commands/personality.js';
+import { createModelsCommand } from './commands/models.js';
 
 const program = new Command();
 
@@ -28,5 +29,6 @@ program.addCommand(createDoctorCommand());
 program.addCommand(createAuditCommand());
 program.addCommand(createPathsCommand());
 program.addCommand(createPersonalityCommand());
+program.addCommand(createModelsCommand());
 
 program.parse();

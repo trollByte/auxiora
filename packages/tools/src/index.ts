@@ -369,3 +369,12 @@ toolRegistry.register(ListMemoriesTool);
 // Export memory tools
 export { SaveMemoryTool, RecallMemoryTool, ForgetMemoryTool, ListMemoriesTool } from './memory.js';
 export { setMemoryStore } from './memory.js';
+
+// Import and register ask-model tool
+import { AskModelTool } from './ask-model.js';
+
+toolRegistry.register(AskModelTool);
+
+// Export ask-model tool
+export { AskModelTool } from './ask-model.js';
+export { setProviderFactory } from './ask-model.js';

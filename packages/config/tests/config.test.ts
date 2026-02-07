@@ -36,8 +36,10 @@ describe('Config', () => {
     });
 
     it('should validate provider options', () => {
-      expect(() => ConfigSchema.parse({ provider: { primary: 'invalid' } })).toThrow();
+      // primary is now a string for extensibility (supports 'anthropic', 'openai', 'google', 'ollama', etc.)
       expect(() => ConfigSchema.parse({ provider: { primary: 'openai' } })).not.toThrow();
+      expect(() => ConfigSchema.parse({ provider: { primary: 'google' } })).not.toThrow();
+      expect(() => ConfigSchema.parse({ provider: { primary: 'ollama' } })).not.toThrow();
     });
 
     it('should merge partial config with defaults', () => {
@@ -167,6 +169,90 @@ describe('Config', () => {
       });
       expect(config.plugins.enabled).toBe(false);
       expect(config.plugins.dir).toBe('/custom/plugins');
+    });
+  });
+
+  describe('routing config', () => {
+    it('should default routing to enabled with empty rules', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.routing.enabled).toBe(true);
+      expect(config.routing.rules).toEqual([]);
+      expect(config.routing.costLimits.warnAt).toBe(0.8);
+      expect(config.routing.preferences.preferLocal).toBe(false);
+      expect(config.routing.preferences.preferCheap).toBe(false);
+      expect(config.routing.preferences.sensitiveToLocal).toBe(false);
+    });
+
+    it('should accept routing rules', () => {
+      const config = ConfigSchema.parse({
+        routing: {
+          rules: [
+            { task: 'reasoning', provider: 'anthropic', model: 'claude-sonnet-4-20250514', priority: 1 },
+            { task: 'fast', provider: 'openai', model: 'gpt-4o-mini', priority: 0 },
+          ],
+        },
+      });
+      expect(config.routing.rules).toHaveLength(2);
+      expect(config.routing.rules[0].task).toBe('reasoning');
+      expect(config.routing.rules[0].provider).toBe('anthropic');
+    });
+
+    it('should reject invalid task types', () => {
+      expect(() => ConfigSchema.parse({
+        routing: { rules: [{ task: 'invalid', provider: 'anthropic', model: 'x' }] },
+      })).toThrow();
+    });
+
+    it('should accept cost limits', () => {
+      const config = ConfigSchema.parse({
+        routing: {
+          costLimits: { dailyBudget: 10, monthlyBudget: 100, perMessageMax: 0.5, warnAt: 0.9 },
+        },
+      });
+      expect(config.routing.costLimits.dailyBudget).toBe(10);
+      expect(config.routing.costLimits.monthlyBudget).toBe(100);
+      expect(config.routing.costLimits.warnAt).toBe(0.9);
+    });
+
+    it('should reject negative budgets', () => {
+      expect(() => ConfigSchema.parse({
+        routing: { costLimits: { dailyBudget: -5 } },
+      })).toThrow();
+    });
+
+    it('should accept a default model override', () => {
+      const config = ConfigSchema.parse({
+        routing: { defaultModel: 'claude-sonnet-4-20250514' },
+      });
+      expect(config.routing.defaultModel).toBe('claude-sonnet-4-20250514');
+    });
+  });
+
+  describe('expanded provider config', () => {
+    it('should have google provider defaults', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.provider.google.model).toBe('gemini-2.5-flash');
+      expect(config.provider.google.maxTokens).toBe(4096);
+    });
+
+    it('should have ollama provider defaults', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.provider.ollama.model).toBe('llama3');
+      expect(config.provider.ollama.baseUrl).toBe('http://localhost:11434');
+    });
+
+    it('should have openaiCompatible provider defaults', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.provider.openaiCompatible.model).toBe('');
+      expect(config.provider.openaiCompatible.name).toBe('custom');
+    });
+
+    it('should accept custom ollama config', () => {
+      const config = ConfigSchema.parse({
+        provider: { ollama: { model: 'mistral', baseUrl: 'http://192.168.1.5:11434' } },
+      });
+      expect(config.provider.ollama.model).toBe('mistral');
+      expect(config.provider.ollama.baseUrl).toBe('http://192.168.1.5:11434');
     });
   });
 

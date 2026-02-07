@@ -23,6 +23,7 @@
     "@auxiora/logger": "workspace:*",
     "@auxiora/browser": "workspace:*",
     "@auxiora/metrics": "workspace:*",
+    "@auxiora/providers": "workspace:*",
     "@auxiora/webhooks": "workspace:*"
   },
   "engines": {

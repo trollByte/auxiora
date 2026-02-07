@@ -1,6 +1,7 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, type ProviderMetadata, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
+import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, type Config, type AgentIdentity } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
@@ -22,6 +23,7 @@ import {
   setBrowserManager,
   setWebhookManager,
   setBehaviorManager,
+  setProviderFactory,
   type ExecutionContext,
 } from '@auxiora/tools';
 import * as crypto from 'node:crypto';
@@ -62,6 +64,7 @@ export class Auxiora {
   private voiceManager?: VoiceManager;
   private webhookManager?: WebhookManager;
   private pluginLoader?: PluginLoader;
+  private modelRouter?: ModelRouter;
   private memoryStore?: MemoryStore;
   private memoryRetriever?: MemoryRetriever;
 
@@ -98,6 +101,12 @@ export class Auxiora {
 
     // Initialize providers (if vault is unlocked and has keys)
     await this.initializeProviders();
+
+    // Initialize model router (if providers are set up)
+    if (this.providers) {
+      this.initializeRouter();
+      setProviderFactory(this.providers);
+    }
 
     // Initialize channels (if configured and vault is unlocked)
     await this.initializeChannels();
@@ -277,12 +286,14 @@ export class Auxiora {
     let anthropicKey: string | undefined;
     let anthropicOAuthToken: string | undefined;
     let openaiKey: string | undefined;
+    let googleKey: string | undefined;
     let vaultLocked = false;
 
     try {
       anthropicKey = this.vault.get('ANTHROPIC_API_KEY');
       anthropicOAuthToken = this.vault.get('ANTHROPIC_OAUTH_TOKEN');
       openaiKey = this.vault.get('OPENAI_API_KEY');
+      googleKey = this.vault.get('GOOGLE_API_KEY');
 
       // Check if ANTHROPIC_API_KEY is actually an OAuth token (sk-ant-oat01-*)
       // This handles users who stored their OAuth token in the wrong vault key
@@ -299,7 +310,8 @@ export class Auxiora {
     const hasCliCredentials = cliCreds !== null;
 
     const hasAnthropic = anthropicKey || anthropicOAuthToken || hasCliCredentials;
-    if (!hasAnthropic && !openaiKey) {
+    const hasOllama = this.config.provider.ollama?.model;
+    if (!hasAnthropic && !openaiKey && !googleKey && !hasOllama) {
       if (vaultLocked) {
         console.warn('Vault is locked. AI providers not initialized.');
         console.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
@@ -356,8 +368,55 @@ export class Auxiora {
               maxTokens: this.config.provider.openai.maxTokens,
             }
           : undefined,
+        google: googleKey
+          ? {
+              apiKey: googleKey,
+              model: this.config.provider.google.model,
+              maxTokens: this.config.provider.google.maxTokens,
+            }
+          : undefined,
+        ollama: {
+          baseUrl: this.config.provider.ollama.baseUrl,
+          model: this.config.provider.ollama.model,
+          maxTokens: this.config.provider.ollama.maxTokens,
+        },
+        openaiCompatible: this.config.provider.openaiCompatible.baseUrl
+          ? {
+              baseUrl: this.config.provider.openaiCompatible.baseUrl,
+              model: this.config.provider.openaiCompatible.model,
+              maxTokens: this.config.provider.openaiCompatible.maxTokens,
+              name: this.config.provider.openaiCompatible.name,
+            }
+          : undefined,
       },
     });
+  }
+
+  private initializeRouter(): void {
+    // Gather provider metadata from available providers
+    const availableProviders = new Map<string, ProviderMetadata>();
+    for (const name of this.providers.listAvailable()) {
+      const provider = this.providers.getProvider(name);
+      if (provider.metadata) {
+        availableProviders.set(name, provider.metadata);
+      }
+    }
+
+    if (availableProviders.size === 0) return;
+
+    const classifier = new TaskClassifier();
+    const selector = new ModelSelector(availableProviders, this.config.routing);
+    const costTracker = new CostTracker(this.config.routing.costLimits);
+    this.modelRouter = new ModelRouter(classifier, selector, costTracker, availableProviders);
+    console.log(`Model router initialized with ${availableProviders.size} provider(s)`);
+  }
+
+  getRouter(): ModelRouter | undefined {
+    return this.modelRouter;
+  }
+
+  getCostSummary() {
+    return this.modelRouter?.getCostSummary();
   }
 
   private async initializeChannels(): Promise<void> {
@@ -587,14 +646,28 @@ export class Auxiora {
         }
       }
 
-      // Stream response with tools
-      const provider = this.providers.getPrimaryProvider();
+      // Route to best model for this message
+      let provider;
+      let routingResult: RoutingResult | undefined;
+
+      if (this.modelRouter && this.config.routing?.enabled !== false) {
+        try {
+          routingResult = this.modelRouter.route(content, { hasImages: false });
+          provider = this.providers.getProvider(routingResult.selection.provider);
+        } catch {
+          provider = this.providers.getPrimaryProvider();
+        }
+      } else {
+        provider = this.providers.getPrimaryProvider();
+      }
+
       let fullResponse = '';
       let usage = { inputTokens: 0, outputTokens: 0 };
       const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
       for await (const chunk of provider.stream(chatMessages, {
         systemPrompt: enrichedPrompt,
+        model: routingResult?.selection.model,
         tools: tools.length > 0 ? tools : undefined,
       })) {
         if (chunk.type === 'text' && chunk.content) {
@@ -625,6 +698,16 @@ export class Auxiora {
         output: usage.outputTokens,
       });
 
+      // Record usage for cost tracking
+      if (this.modelRouter && routingResult) {
+        this.modelRouter.recordUsage(
+          routingResult.selection.provider,
+          routingResult.selection.model,
+          usage.inputTokens,
+          usage.outputTokens,
+        );
+      }
+
       // Extract memories from conversation (if auto-extract enabled)
       if (this.config.memory?.autoExtract !== false && this.memoryStore && this.providers && fullResponse && content.length > 20) {
         this.extractMemories(content, fullResponse).catch(err => {
@@ -640,7 +723,15 @@ export class Auxiora {
         this.sendToClient(client, {
           type: 'done',
           id: requestId,
-          payload: { usage },
+          payload: {
+            usage,
+            routing: routingResult ? {
+              model: routingResult.selection.model,
+              provider: routingResult.selection.provider,
+              isLocal: routingResult.selection.isLocal,
+              taskType: routingResult.classification.type,
+            } : undefined,
+          },
         });
       }
 
@@ -648,6 +739,8 @@ export class Auxiora {
         sessionId: session.id,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        model: routingResult?.selection.model,
+        provider: routingResult?.selection.provider,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

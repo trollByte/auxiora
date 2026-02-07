@@ -108,6 +108,12 @@ importers:
       '@auxiora/personality':
         specifier: workspace:*
         version: link:../personality
+      '@auxiora/providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@auxiora/router':
+        specifier: workspace:*
+        version: link:../router
       '@auxiora/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -314,9 +320,24 @@ importers:
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
+      '@google/generative-ai':
+        specifier: ^0.24.0
+        version: 0.24.1
       openai:
         specifier: ^4.103.0
         version: 4.104.0(ws@8.19.0)(zod@3.25.76)
+
+  packages/router:
+    dependencies:
+      '@auxiora/config':
+        specifier: workspace:*
+        version: link:../config
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/providers':
+        specifier: workspace:*
+        version: link:../providers
 
   packages/runtime:
     dependencies:
@@ -353,6 +374,9 @@ importers:
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
+      '@auxiora/router':
+        specifier: workspace:*
+        version: link:../router
       '@auxiora/sessions':
         specifier: workspace:*
         version: link:../sessions
@@ -417,6 +441,9 @@ importers:
       '@auxiora/metrics':
         specifier: workspace:*
         version: link:../metrics
+      '@auxiora/providers':
+        specifier: workspace:*
+        version: link:../providers
       '@auxiora/webhooks':
         specifier: workspace:*
         version: link:../webhooks
@@ -901,6 +928,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@google/generative-ai@0.24.1':
+    resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
+    engines: {node: '>=18.0.0'}
 
   '@grammyjs/types@3.23.0':
     resolution: {integrity: sha512-D3jQ4UWERPsyR3op/YFudMMIPNTU47vy7L51uO9/73tMELmjO/+LX5N36/Y0CG5IQfIsz43MxiHI5rgsK0/k+g==}
@@ -2828,6 +2859,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.2':
     optional: true
+
+  '@google/generative-ai@0.24.1': {}
 
   '@grammyjs/types@3.23.0': {}
 

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type {
   Provider,
+  ProviderMetadata,
   ChatMessage,
   CompletionOptions,
   CompletionResult,
@@ -37,6 +38,53 @@ export interface AnthropicProviderOptions {
 
 export class AnthropicProvider implements Provider {
   name = 'anthropic';
+  metadata: ProviderMetadata = {
+    name: 'anthropic',
+    displayName: 'Anthropic Claude',
+    models: {
+      'claude-sonnet-4-20250514': {
+        maxContextTokens: 200000,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.003,
+        costPer1kOutput: 0.015,
+        strengths: ['reasoning', 'code', 'long-context', 'creative'],
+        isLocal: false,
+      },
+      'claude-opus-4-20250514': {
+        maxContextTokens: 200000,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.015,
+        costPer1kOutput: 0.075,
+        strengths: ['reasoning', 'code', 'long-context', 'creative'],
+        isLocal: false,
+      },
+      'claude-haiku-3-5-20241022': {
+        maxContextTokens: 200000,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.0008,
+        costPer1kOutput: 0.004,
+        strengths: ['fast', 'code'],
+        isLocal: false,
+      },
+    },
+    isAvailable: async () => {
+      try {
+        // Check if we have valid credentials
+        return this.client !== undefined;
+      } catch {
+        return false;
+      }
+    },
+  };
   private client: Anthropic;
   private defaultModel: string;
   private defaultMaxTokens: number;

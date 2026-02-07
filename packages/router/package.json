@@ -1,7 +1,7 @@
 {
-  "name": "@auxiora/providers",
+  "name": "@auxiora/router",
   "version": "1.0.0",
-  "description": "AI provider adapters for Auxiora",
+  "description": "Model routing engine for Auxiora - task classification, model selection, and cost tracking",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,11 +17,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
     "@auxiora/core": "workspace:*",
-    "@auxiora/vault": "workspace:*",
-    "@google/generative-ai": "^0.24.0",
-    "openai": "^4.103.0"
+    "@auxiora/config": "workspace:*",
+    "@auxiora/providers": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

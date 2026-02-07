@@ -31,9 +31,31 @@ const PairingConfigSchema = z.object({
   expiryMinutes: z.number().int().positive().default(15),
 });
 
+const ModelRoutingSchema = z.object({
+  enabled: z.boolean().default(true),
+  defaultModel: z.string().optional(),
+  rules: z.array(z.object({
+    task: z.enum(['reasoning', 'code', 'creative', 'vision', 'long-context', 'fast', 'private', 'image-gen']),
+    provider: z.string(),
+    model: z.string(),
+    priority: z.number().default(0),
+  })).default([]),
+  costLimits: z.object({
+    dailyBudget: z.number().positive().optional(),
+    monthlyBudget: z.number().positive().optional(),
+    perMessageMax: z.number().positive().optional(),
+    warnAt: z.number().min(0).max(1).default(0.8),
+  }).default({}),
+  preferences: z.object({
+    preferLocal: z.boolean().default(false),
+    preferCheap: z.boolean().default(false),
+    sensitiveToLocal: z.boolean().default(false),
+  }).default({}),
+});
+
 const ProviderConfigSchema = z.object({
-  primary: z.enum(['anthropic', 'openai']).default('anthropic'),
-  fallback: z.enum(['anthropic', 'openai']).optional(),
+  primary: z.string().default('anthropic'),
+  fallback: z.string().optional(),
   anthropic: z.object({
     model: z.string().default('claude-sonnet-4-20250514'),
     maxTokens: z.number().int().positive().default(4096),
@@ -41,6 +63,21 @@ const ProviderConfigSchema = z.object({
   openai: z.object({
     model: z.string().default('gpt-4o'),
     maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  google: z.object({
+    model: z.string().default('gemini-2.5-flash'),
+    maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  ollama: z.object({
+    model: z.string().default('llama3'),
+    maxTokens: z.number().int().positive().default(4096),
+    baseUrl: z.string().default('http://localhost:11434'),
+  }).default({}),
+  openaiCompatible: z.object({
+    model: z.string().default(''),
+    maxTokens: z.number().int().positive().default(4096),
+    baseUrl: z.string().default(''),
+    name: z.string().default('custom'),
   }).default({}),
 });
 
@@ -147,6 +184,7 @@ export const ConfigSchema = z.object({
   rateLimit: RateLimitConfigSchema.default({}),
   pairing: PairingConfigSchema.default({}),
   provider: ProviderConfigSchema.default({}),
+  routing: ModelRoutingSchema.default({}),
   session: SessionConfigSchema.default({}),
   logging: LoggingConfigSchema.default({}),
   channels: ChannelConfigSchema.default({}),
@@ -159,6 +197,7 @@ export const ConfigSchema = z.object({
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
+export type ModelRouting = z.infer<typeof ModelRoutingSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 

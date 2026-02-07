@@ -1,9 +1,12 @@
 import { AnthropicProvider, type AnthropicProviderOptions } from './anthropic.js';
 import { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
+import { GoogleProvider, type GoogleProviderOptions } from './google.js';
+import { OllamaProvider, type OllamaProviderOptions } from './ollama.js';
+import { OpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from './openai-compatible.js';
 import { readClaudeCliCredentials } from './claude-oauth.js';
 import type { Provider, ProviderConfig } from './types.js';
 
-export type ProviderName = 'anthropic' | 'openai';
+export type ProviderName = string;
 
 export interface ProviderFactoryOptions {
   primary: ProviderName;
@@ -33,6 +36,28 @@ export class ProviderFactory {
 
     if (options.config.openai?.apiKey) {
       this.providers.set('openai', new OpenAIProvider(options.config.openai));
+    }
+
+    if (options.config.google?.apiKey) {
+      this.providers.set('google', new GoogleProvider(options.config.google));
+    }
+
+    if (options.config.ollama) {
+      this.providers.set('ollama', new OllamaProvider(options.config.ollama));
+    }
+
+    if (options.config.openaiCompatible?.baseUrl) {
+      const compat = options.config.openaiCompatible;
+      this.providers.set(
+        compat.name || 'openai-compatible',
+        new OpenAICompatibleProvider({
+          baseUrl: compat.baseUrl,
+          apiKey: compat.apiKey,
+          model: compat.model || '',
+          maxTokens: compat.maxTokens,
+          name: compat.name,
+        }),
+      );
     }
   }
 

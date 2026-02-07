@@ -387,5 +387,33 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: memories });
   });
 
+  // Models
+  router.get('/models', (req: Request, res: Response) => {
+    if (!deps.models) {
+      res.json({ providers: [] });
+      return;
+    }
+    const providers = deps.models.listProviders();
+    res.json({ providers });
+  });
+
+  router.get('/models/routing', (req: Request, res: Response) => {
+    if (!deps.models) {
+      res.json({ enabled: false });
+      return;
+    }
+    const routing = deps.models.getRoutingConfig();
+    res.json(routing);
+  });
+
+  router.get('/models/cost', (req: Request, res: Response) => {
+    if (!deps.models) {
+      res.json({ today: 0, thisMonth: 0, isOverBudget: false, warningThresholdReached: false });
+      return;
+    }
+    const summary = deps.models.getCostSummary();
+    res.json(summary);
+  });
+
   return { router, auth };
 }
