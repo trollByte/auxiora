@@ -33,6 +33,7 @@ import { WhisperSTT } from '@auxiora/stt';
 import { OpenAITTS } from '@auxiora/tts';
 import { WebhookManager } from '@auxiora/webhooks';
 import { createDashboardRouter } from '@auxiora/dashboard';
+import { PluginLoader } from '@auxiora/plugins';
 import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
 import express from 'express';
@@ -57,6 +58,7 @@ export class Auxiora {
   private browserManager?: BrowserManager;
   private voiceManager?: VoiceManager;
   private webhookManager?: WebhookManager;
+  private pluginLoader?: PluginLoader;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -206,6 +208,7 @@ export class Auxiora {
             const auditLogger = getAuditLogger();
             return auditLogger.getEntries(limit);
           },
+          getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
         },
         config: {
           enabled: true,
@@ -239,6 +242,17 @@ export class Auxiora {
       this.gateway.mountRouter('/dashboard', spaRouter as any);
 
       console.log('Dashboard enabled at /dashboard');
+    }
+
+    // Initialize plugin system (if enabled)
+    if (this.config.plugins?.enabled !== false) {
+      const pluginsDir = this.config.plugins?.dir || undefined;
+      this.pluginLoader = new PluginLoader(pluginsDir);
+      const loaded = await this.pluginLoader.loadAll();
+      const successful = loaded.filter(p => p.status === 'loaded');
+      if (loaded.length > 0) {
+        console.log(`Plugins: ${successful.length} loaded, ${loaded.length - successful.length} failed`);
+      }
     }
   }
 
@@ -1043,6 +1057,9 @@ export class Auxiora {
     }
     if (this.voiceManager) {
       await this.voiceManager.shutdown();
+    }
+    if (this.pluginLoader) {
+      await this.pluginLoader.shutdownAll();
     }
     this.sessions.destroy();
     this.vault.lock();
