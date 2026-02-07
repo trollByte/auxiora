@@ -12,6 +12,7 @@
     { "path": "../audit" },
     { "path": "../gateway" },
     { "path": "../onboarding" },
-    { "path": "../personality" }
+    { "path": "../personality" },
+    { "path": "../memory" }
   ]
 }

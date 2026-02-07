@@ -1,3 +1,16 @@
-export type { MemoryEntry, MemoryCategory, MemorySource } from './types.js';
+export type {
+  MemoryEntry,
+  MemoryCategory,
+  MemorySource,
+  RelationshipMemory,
+  PatternMemory,
+  PersonalityAdaptation,
+  LivingMemoryState,
+} from './types.js';
 export { MemoryStore } from './store.js';
 export { MemoryRetriever } from './retriever.js';
+export { MemoryExtractor } from './extractor.js';
+export type { ExtractionResult, AIProvider } from './extractor.js';
+export { PatternDetector } from './pattern-detector.js';
+export type { PatternSignal } from './pattern-detector.js';
+export { PersonalityAdapter } from './personality-adapter.js';

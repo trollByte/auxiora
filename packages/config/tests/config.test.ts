@@ -261,7 +261,7 @@ describe('Config', () => {
       const config = ConfigSchema.parse({});
       expect(config.memory.enabled).toBe(true);
       expect(config.memory.autoExtract).toBe(true);
-      expect(config.memory.maxEntries).toBe(500);
+      expect(config.memory.maxEntries).toBe(1000);
     });
 
     it('should accept custom memory config', () => {

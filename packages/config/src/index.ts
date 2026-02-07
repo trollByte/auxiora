@@ -148,7 +148,13 @@ const PluginsConfigSchema = z.object({
 const MemoryConfigSchema = z.object({
   enabled: z.boolean().default(true),
   autoExtract: z.boolean().default(true),
-  maxEntries: z.number().int().positive().default(500),
+  maxEntries: z.number().int().positive().default(1000),
+  encryptAtRest: z.boolean().default(false),
+  cleanupIntervalMinutes: z.number().int().positive().default(60),
+  adaptivePersonality: z.boolean().default(true),
+  patternDetection: z.boolean().default(true),
+  relationshipTracking: z.boolean().default(true),
+  importanceDecay: z.number().min(0).max(1).default(0.01),
 });
 
 const AgentIdentitySchema = z.object({

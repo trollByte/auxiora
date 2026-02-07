@@ -4,7 +4,7 @@ import * as crypto from 'node:crypto';
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { getMemoryDir } from '@auxiora/core';
-import type { MemoryEntry, MemoryCategory } from './types.js';
+import type { MemoryEntry, MemoryCategory, LivingMemoryState } from './types.js';
 
 const logger = getLogger('memory:store');
 
@@ -15,10 +15,15 @@ export class MemoryStore {
   constructor(options?: { dir?: string; maxEntries?: number }) {
     const dir = options?.dir ?? getMemoryDir();
     this.filePath = path.join(dir, 'memories.json');
-    this.maxEntries = options?.maxEntries ?? 500;
+    this.maxEntries = options?.maxEntries ?? 1000;
   }
 
-  async add(content: string, category: MemoryCategory, source: 'extracted' | 'explicit'): Promise<MemoryEntry> {
+  async add(
+    content: string,
+    category: MemoryCategory,
+    source: MemoryEntry['source'],
+    extra?: Partial<Pick<MemoryEntry, 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted' | 'relatedMemories'>>,
+  ): Promise<MemoryEntry> {
     const memories = await this.readFile();
     const tags = this.extractTags(content);
 
@@ -28,6 +33,9 @@ export class MemoryStore {
       existing.content = content;
       existing.updatedAt = Date.now();
       existing.tags = tags;
+      if (extra?.importance !== undefined) existing.importance = extra.importance;
+      if (extra?.confidence !== undefined) existing.confidence = extra.confidence;
+      if (extra?.sentiment !== undefined) existing.sentiment = extra.sentiment;
       await this.writeFile(memories);
       logger.debug('Updated existing memory (dedup)', { id: existing.id });
       return existing;
@@ -42,6 +50,12 @@ export class MemoryStore {
       updatedAt: Date.now(),
       accessCount: 0,
       tags,
+      importance: extra?.importance ?? 0.5,
+      confidence: extra?.confidence ?? 0.8,
+      sentiment: extra?.sentiment ?? 'neutral',
+      encrypted: extra?.encrypted ?? false,
+      ...(extra?.expiresAt !== undefined ? { expiresAt: extra.expiresAt } : {}),
+      ...(extra?.relatedMemories !== undefined ? { relatedMemories: extra.relatedMemories } : {}),
     };
 
     memories.push(entry);
@@ -68,7 +82,7 @@ export class MemoryStore {
     return true;
   }
 
-  async update(id: string, updates: Partial<Pick<MemoryEntry, 'content' | 'category'>>): Promise<MemoryEntry | undefined> {
+  async update(id: string, updates: Partial<Pick<MemoryEntry, 'content' | 'category' | 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted'>>): Promise<MemoryEntry | undefined> {
     const memories = await this.readFile();
     const entry = memories.find(m => m.id === id);
     if (!entry) return undefined;
@@ -78,6 +92,11 @@ export class MemoryStore {
       entry.tags = this.extractTags(updates.content);
     }
     if (updates.category !== undefined) entry.category = updates.category;
+    if (updates.importance !== undefined) entry.importance = updates.importance;
+    if (updates.confidence !== undefined) entry.confidence = updates.confidence;
+    if (updates.sentiment !== undefined) entry.sentiment = updates.sentiment;
+    if (updates.expiresAt !== undefined) entry.expiresAt = updates.expiresAt;
+    if (updates.encrypted !== undefined) entry.encrypted = updates.encrypted;
     entry.updatedAt = Date.now();
 
     await this.writeFile(memories);
@@ -99,13 +118,185 @@ export class MemoryStore {
       return { entry: m, score: overlap };
     });
 
-    return scored
+    const results = scored
       .filter(s => s.score > 0)
       .sort((a, b) => b.score - a.score)
       .map(s => {
         s.entry.accessCount++;
         return s.entry;
       });
+
+    // Fix: persist accessCount increments
+    if (results.length > 0) {
+      await this.writeFile(memories);
+    }
+
+    return results;
+  }
+
+  async getByCategory(category: MemoryCategory): Promise<MemoryEntry[]> {
+    const memories = await this.readFile();
+    return memories.filter(m => m.category === category);
+  }
+
+  async getExpired(): Promise<MemoryEntry[]> {
+    const memories = await this.readFile();
+    const now = Date.now();
+    return memories.filter(m => m.expiresAt !== undefined && m.expiresAt <= now);
+  }
+
+  async cleanExpired(): Promise<number> {
+    const memories = await this.readFile();
+    const now = Date.now();
+    const before = memories.length;
+    const kept = memories.filter(m => m.expiresAt === undefined || m.expiresAt > now);
+    const removed = before - kept.length;
+    if (removed > 0) {
+      await this.writeFile(kept);
+      logger.debug('Cleaned expired memories', { removed });
+    }
+    return removed;
+  }
+
+  async merge(id1: string, id2: string, mergedContent: string): Promise<MemoryEntry> {
+    const memories = await this.readFile();
+    const entry1 = memories.find(m => m.id === id1);
+    const entry2 = memories.find(m => m.id === id2);
+    if (!entry1) throw new Error(`Memory not found: ${id1}`);
+    if (!entry2) throw new Error(`Memory not found: ${id2}`);
+
+    // Keep the older entry's id, merge fields
+    const merged: MemoryEntry = {
+      id: entry1.id,
+      content: mergedContent,
+      category: entry1.category,
+      source: entry1.source,
+      createdAt: Math.min(entry1.createdAt, entry2.createdAt),
+      updatedAt: Date.now(),
+      accessCount: entry1.accessCount + entry2.accessCount,
+      tags: this.extractTags(mergedContent),
+      importance: Math.max(entry1.importance, entry2.importance),
+      confidence: Math.max(entry1.confidence, entry2.confidence),
+      sentiment: entry1.sentiment,
+      encrypted: entry1.encrypted || entry2.encrypted,
+      relatedMemories: [
+        ...new Set([
+          ...(entry1.relatedMemories ?? []),
+          ...(entry2.relatedMemories ?? []),
+        ]),
+      ],
+    };
+
+    // Remove both originals and add merged
+    const filtered = memories.filter(m => m.id !== id1 && m.id !== id2);
+    filtered.push(merged);
+    await this.writeFile(filtered);
+
+    logger.debug('Merged memories', { id1, id2, mergedId: merged.id });
+    return merged;
+  }
+
+  async getStats(): Promise<LivingMemoryState['stats']> {
+    const memories = await this.readFile();
+
+    if (memories.length === 0) {
+      return {
+        totalMemories: 0,
+        oldestMemory: 0,
+        newestMemory: 0,
+        averageImportance: 0,
+        topTags: [],
+      };
+    }
+
+    const tagCounts = new Map<string, number>();
+    let totalImportance = 0;
+    let oldest = Infinity;
+    let newest = 0;
+
+    for (const m of memories) {
+      totalImportance += m.importance;
+      if (m.createdAt < oldest) oldest = m.createdAt;
+      if (m.createdAt > newest) newest = m.createdAt;
+      for (const tag of m.tags) {
+        tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      }
+    }
+
+    const topTags = Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    return {
+      totalMemories: memories.length,
+      oldestMemory: oldest,
+      newestMemory: newest,
+      averageImportance: totalImportance / memories.length,
+      topTags,
+    };
+  }
+
+  async exportAll(): Promise<{ version: string; memories: MemoryEntry[]; exportedAt: number }> {
+    const memories = await this.readFile();
+    return {
+      version: '1.0',
+      memories,
+      exportedAt: Date.now(),
+    };
+  }
+
+  async importAll(data: { memories: MemoryEntry[] }): Promise<{ imported: number; skipped: number }> {
+    const existing = await this.readFile();
+    const existingIds = new Set(existing.map(m => m.id));
+    let imported = 0;
+    let skipped = 0;
+
+    for (const entry of data.memories) {
+      if (existingIds.has(entry.id)) {
+        skipped++;
+        continue;
+      }
+      // Ensure new fields have defaults for legacy imports
+      existing.push(this.applyDefaults(entry));
+      existingIds.add(entry.id);
+      imported++;
+    }
+
+    // Enforce max entries
+    if (existing.length > this.maxEntries) {
+      existing.sort((a, b) => b.updatedAt - a.updatedAt);
+      existing.length = this.maxEntries;
+    }
+
+    await this.writeFile(existing);
+    logger.debug('Imported memories', { imported, skipped });
+    return { imported, skipped };
+  }
+
+  async setImportance(id: string, importance: number): Promise<void> {
+    if (importance < 0 || importance > 1) {
+      throw new Error('Importance must be between 0 and 1');
+    }
+    const result = await this.update(id, { importance });
+    if (!result) throw new Error(`Memory not found: ${id}`);
+  }
+
+  async linkMemories(id1: string, id2: string): Promise<void> {
+    const memories = await this.readFile();
+    const entry1 = memories.find(m => m.id === id1);
+    const entry2 = memories.find(m => m.id === id2);
+    if (!entry1) throw new Error(`Memory not found: ${id1}`);
+    if (!entry2) throw new Error(`Memory not found: ${id2}`);
+
+    if (!entry1.relatedMemories) entry1.relatedMemories = [];
+    if (!entry2.relatedMemories) entry2.relatedMemories = [];
+
+    if (!entry1.relatedMemories.includes(id2)) entry1.relatedMemories.push(id2);
+    if (!entry2.relatedMemories.includes(id1)) entry2.relatedMemories.push(id1);
+
+    await this.writeFile(memories);
+    logger.debug('Linked memories', { id1, id2 });
   }
 
   extractTags(text: string): string[] {
@@ -143,10 +334,23 @@ export class MemoryStore {
     return undefined;
   }
 
+  /** Apply defaults for new fields when loading legacy entries */
+  private applyDefaults(entry: MemoryEntry): MemoryEntry {
+    return {
+      ...entry,
+      importance: entry.importance ?? 0.5,
+      confidence: entry.confidence ?? 0.8,
+      sentiment: entry.sentiment ?? 'neutral',
+      encrypted: entry.encrypted ?? false,
+    };
+  }
+
   private async readFile(): Promise<MemoryEntry[]> {
     try {
       const content = await fs.readFile(this.filePath, 'utf-8');
-      return JSON.parse(content) as MemoryEntry[];
+      const raw = JSON.parse(content) as MemoryEntry[];
+      // Apply defaults for legacy entries that lack new fields
+      return raw.map(e => this.applyDefaults(e));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return [];

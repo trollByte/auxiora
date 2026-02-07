@@ -102,6 +102,9 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@auxiora/onboarding':
         specifier: workspace:*
         version: link:../onboarding

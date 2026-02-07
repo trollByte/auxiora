@@ -70,6 +70,20 @@ export interface DashboardDeps {
     updatedAt: number;
     accessCount: number;
   }>>;
+  memory?: {
+    getLivingState(): Promise<{
+      facts: any[];
+      relationships: any[];
+      patterns: any[];
+      adaptations: any[];
+      stats: any;
+    }>;
+    getStats(): Promise<any>;
+    getAdaptations(): Promise<any[]>;
+    deleteMemory(id: string): Promise<boolean>;
+    exportAll(): Promise<any>;
+    importAll(data: { memories: any[] }): Promise<{ imported: number; skipped: number }>;
+  };
   setup?: SetupDeps;
   models?: {
     listProviders(): Array<{

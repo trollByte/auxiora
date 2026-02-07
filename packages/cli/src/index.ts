@@ -11,6 +11,7 @@ import { createDaemonCommand } from './commands/daemon.js';
 import { createInitCommand } from './commands/init.js';
 import { createPersonalityCommand } from './commands/personality.js';
 import { createModelsCommand } from './commands/models.js';
+import { createMemoryCommand } from './commands/memory.js';
 
 const program = new Command();
 
@@ -30,5 +31,6 @@ program.addCommand(createAuditCommand());
 program.addCommand(createPathsCommand());
 program.addCommand(createPersonalityCommand());
 program.addCommand(createModelsCommand());
+program.addCommand(createMemoryCommand());
 
 program.parse();

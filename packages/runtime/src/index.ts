@@ -37,7 +37,14 @@ import { OpenAITTS } from '@auxiora/tts';
 import { WebhookManager } from '@auxiora/webhooks';
 import { createDashboardRouter } from '@auxiora/dashboard';
 import { PluginLoader } from '@auxiora/plugins';
-import { MemoryStore, MemoryRetriever } from '@auxiora/memory';
+import {
+  MemoryStore,
+  MemoryRetriever,
+  MemoryExtractor,
+  PatternDetector,
+  PersonalityAdapter,
+} from '@auxiora/memory';
+import type { LivingMemoryState } from '@auxiora/memory';
 import { setMemoryStore } from '@auxiora/tools';
 import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
@@ -67,6 +74,10 @@ export class Auxiora {
   private modelRouter?: ModelRouter;
   private memoryStore?: MemoryStore;
   private memoryRetriever?: MemoryRetriever;
+  private memoryExtractor?: MemoryExtractor;
+  private patternDetector?: PatternDetector;
+  private personalityAdapter?: PersonalityAdapter;
+  private memoryCleanupInterval?: ReturnType<typeof setInterval>;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -225,6 +236,17 @@ export class Auxiora {
           },
           getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
           getMemories: async () => this.memoryStore?.getAll() ?? [],
+          memory: {
+            getLivingState: async () => {
+              const state = await this.getLivingMemoryState();
+              return state ?? { facts: [], relationships: [], patterns: [], adaptations: [], stats: { totalMemories: 0, oldestMemory: 0, newestMemory: 0, averageImportance: 0, topTags: [] } };
+            },
+            getStats: async () => this.memoryStore ? this.memoryStore.getStats() : {},
+            getAdaptations: async () => this.personalityAdapter ? this.personalityAdapter.getAdjustments() : [],
+            deleteMemory: async (id: string) => this.memoryStore ? this.memoryStore.remove(id) : false,
+            exportAll: async () => this.memoryStore ? this.memoryStore.exportAll() : { version: '1.0', memories: [], exportedAt: Date.now() },
+            importAll: async (data: { memories: any[] }) => this.memoryStore ? this.memoryStore.importAll(data) : { imported: 0, skipped: 0 },
+          },
         },
         config: {
           enabled: true,
@@ -277,8 +299,28 @@ export class Auxiora {
         maxEntries: this.config.memory?.maxEntries,
       });
       this.memoryRetriever = new MemoryRetriever();
+      this.patternDetector = new PatternDetector();
+      this.personalityAdapter = new PersonalityAdapter(this.memoryStore);
       setMemoryStore(this.memoryStore);
-      console.log('Memory system enabled');
+
+      // Create extractor with AI provider (needs providers initialized)
+      if (this.providers) {
+        this.memoryExtractor = new MemoryExtractor(
+          this.memoryStore,
+          this.providers.getPrimaryProvider(),
+        );
+      }
+
+      // Set up periodic cleanup of expired memories
+      const cleanupMinutes = this.config.memory?.cleanupIntervalMinutes;
+      if (cleanupMinutes) {
+        this.memoryCleanupInterval = setInterval(
+          () => void this.memoryStore?.cleanExpired(),
+          cleanupMinutes * 60 * 1000,
+        );
+      }
+
+      console.log('Memory system enabled (living memory)');
     }
   }
 
@@ -541,6 +583,14 @@ export class Auxiora {
     const agent = this.config.agent;
     parts.push(this.buildIdentityPreamble(agent));
 
+    // Add personality adaptations from living memory
+    if (this.personalityAdapter) {
+      const modifier = await this.personalityAdapter.getPromptModifier();
+      if (modifier) {
+        parts.push(modifier);
+      }
+    }
+
     // Load SOUL.md
     try {
       const soul = await fs.readFile(getSoulPath(), 'utf-8');
@@ -708,11 +758,9 @@ export class Auxiora {
         );
       }
 
-      // Extract memories from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && this.providers && fullResponse && content.length > 20) {
-        this.extractMemories(content, fullResponse).catch(err => {
-          console.warn('Memory extraction failed:', err instanceof Error ? err.message : err);
-        });
+      // Extract memories and learn from conversation (if auto-extract enabled)
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && fullResponse && content.length > 20) {
+        void this.extractAndLearn(content, fullResponse, session.id);
       }
 
       // Execute tools if any were called
@@ -1082,11 +1130,9 @@ export class Auxiora {
         output: result.usage.outputTokens,
       });
 
-      // Extract memories from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && this.providers && result.content && inbound.content.length > 20) {
-        this.extractMemories(inbound.content, result.content).catch(err => {
-          console.warn('Memory extraction failed:', err instanceof Error ? err.message : err);
-        });
+      // Extract memories and learn from conversation (if auto-extract enabled)
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && result.content && inbound.content.length > 20) {
+        void this.extractAndLearn(inbound.content, result.content, session.id);
       }
 
       // Send response
@@ -1142,44 +1188,66 @@ export class Auxiora {
     }
   }
 
-  private async extractMemories(userMessage: string, assistantResponse: string): Promise<void> {
-    if (!this.memoryStore || !this.providers) return;
-
-    const extractionPrompt = `You are a fact extraction system. Given a conversation exchange, extract new facts about the user. Return a JSON array of objects with "content" (the fact) and "category" ("preference", "fact", or "context") fields. Return an empty array [] if there are no new facts worth remembering. Only extract concrete, specific facts — not vague observations.
-
-User said: "${userMessage}"
-Assistant said: "${assistantResponse}"
-
-Respond with ONLY a JSON array, no other text.`;
-
+  private async extractAndLearn(userMessage: string, assistantResponse: string, sessionId: string): Promise<void> {
     try {
-      const provider = this.providers.getPrimaryProvider();
-      const result = await provider.complete(
-        [{ role: 'user', content: extractionPrompt }],
-        { maxTokens: 200 }
-      );
+      const recentMessages = this.sessions.getContextMessages(sessionId);
 
-      const parsed = JSON.parse(result.content);
-      if (!Array.isArray(parsed)) return;
+      // AI-powered extraction
+      if (this.memoryExtractor) {
+        const result = await this.memoryExtractor.extract(userMessage, assistantResponse, {
+          messageCount: recentMessages.length,
+          sessionAge: 0, // approximation; session age not easily available here
+        });
 
-      let count = 0;
-      for (const fact of parsed) {
-        if (fact.content && typeof fact.content === 'string') {
-          await this.memoryStore.add(
-            fact.content,
-            fact.category || 'fact',
-            'extracted'
-          );
-          count++;
+        // Record personality adaptation signals
+        if (this.personalityAdapter && result.personalitySignals.length > 0) {
+          for (const signal of result.personalitySignals) {
+            await this.personalityAdapter.recordSignal(signal);
+          }
+        }
+
+        const totalExtracted =
+          result.factsExtracted.length +
+          result.patternsDetected.length +
+          result.relationshipsFound.length;
+        if (totalExtracted > 0) {
+          void audit('memory.extracted', { count: totalExtracted });
         }
       }
 
-      if (count > 0) {
-        void audit('memory.extracted', { count });
+      // Run local pattern detection on recent messages
+      if (this.patternDetector && this.memoryStore) {
+        const recent = recentMessages.slice(-20);
+        const patterns = this.patternDetector.detect(
+          recent.map(m => ({
+            content: m.content,
+            role: m.role,
+            timestamp: m.timestamp,
+          })),
+        );
+        for (const pattern of patterns) {
+          await this.memoryStore.add(pattern.pattern, 'pattern', 'observed', {
+            confidence: pattern.confidence,
+          });
+        }
       }
-    } catch {
-      // Extraction is best-effort — don't crash on parse errors
+    } catch (error) {
+      // Silent failure — don't block the response
+      console.warn('Memory extraction failed:', error instanceof Error ? error.message : error);
     }
+  }
+
+  async getLivingMemoryState(): Promise<LivingMemoryState | null> {
+    if (!this.memoryStore) return null;
+    const all = await this.memoryStore.getAll();
+    const stats = await this.memoryStore.getStats();
+    return {
+      facts: all.filter(m => ['preference', 'fact', 'context'].includes(m.category)),
+      relationships: all.filter(m => m.category === 'relationship'),
+      patterns: all.filter(m => m.category === 'pattern'),
+      adaptations: this.personalityAdapter ? await this.personalityAdapter.getAdjustments() : [],
+      stats,
+    };
   }
 
   private createWebhookRouter(): Router {
@@ -1293,6 +1361,10 @@ Respond with ONLY a JSON array, no other text.`;
     }
     if (this.pluginLoader) {
       await this.pluginLoader.shutdownAll();
+    }
+    if (this.memoryCleanupInterval) {
+      clearInterval(this.memoryCleanupInterval);
+      this.memoryCleanupInterval = undefined;
     }
     this.sessions.destroy();
     this.vault.lock();

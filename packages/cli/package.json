@@ -18,6 +18,7 @@
     "@auxiora/audit": "workspace:*",
     "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
+    "@auxiora/memory": "workspace:*",
     "@auxiora/providers": "workspace:*",
     "@auxiora/router": "workspace:*",
     "@auxiora/daemon": "workspace:*",

@@ -387,6 +387,70 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: memories });
   });
 
+  // Living memory routes
+  router.get('/memories/living', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const state = await deps.memory.getLivingState();
+    res.json({ data: state });
+  });
+
+  router.get('/memories/stats', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const stats = await deps.memory.getStats();
+    res.json({ data: stats });
+  });
+
+  router.get('/memories/adaptations', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const adaptations = await deps.memory.getAdaptations();
+    res.json({ data: adaptations });
+  });
+
+  router.delete('/memories/:id', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const deleted = await deps.memory.deleteMemory(String(req.params.id));
+    if (!deleted) {
+      res.status(404).json({ error: 'Memory not found' });
+      return;
+    }
+    res.json({ data: { deleted: true } });
+  });
+
+  router.post('/memories/export', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const exported = await deps.memory.exportAll();
+    res.json({ data: exported });
+  });
+
+  router.post('/memories/import', async (req: Request, res: Response) => {
+    if (!deps.memory) {
+      res.status(503).json({ error: 'Living memory not available' });
+      return;
+    }
+    const body = req.body as { memories?: any[] };
+    if (!body.memories || !Array.isArray(body.memories)) {
+      res.status(400).json({ error: 'Request body must contain a "memories" array' });
+      return;
+    }
+    const result = await deps.memory.importAll({ memories: body.memories });
+    res.json({ data: result });
+  });
+
   // Models
   router.get('/models', (req: Request, res: Response) => {
     if (!deps.models) {

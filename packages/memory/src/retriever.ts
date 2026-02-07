@@ -1,67 +1,182 @@
-import type { MemoryEntry } from './types.js';
+import type { MemoryEntry, MemoryCategory } from './types.js';
 
-const TOKEN_BUDGET = 500;
-const CHARS_PER_TOKEN = 4; // rough approximation
+const TOKEN_BUDGET = 1000;
+const CHARS_PER_TOKEN = 4;
 const MAX_CHARS = TOKEN_BUDGET * CHARS_PER_TOKEN;
 const MIN_SCORE = 0.1;
 
+const SCORING_WEIGHTS = {
+  tagRelevance: 0.35,
+  importance: 0.25,
+  recency: 0.15,
+  access: 0.10,
+  confidence: 0.10,
+  relationship: 0.05,
+};
+
+const BUDGET_ALLOCATION: Record<MemoryCategory, number> = {
+  preference: 0.25,
+  fact: 0.25,
+  context: 0.15,
+  relationship: 0.15,
+  pattern: 0.10,
+  personality: 0.10,
+};
+
+const SECTION_HEADERS: Record<string, string> = {
+  fact: '### Key Facts',
+  preference: '### Preferences',
+  context: '### Context',
+  relationship: '### Your Relationship',
+  pattern: '### Communication Patterns',
+  personality: '### Personality Notes',
+};
+
+interface ScoredMemory {
+  entry: MemoryEntry;
+  score: number;
+}
+
 export class MemoryRetriever {
-  /**
-   * Select relevant memories and format them for system prompt injection.
-   * Returns empty string if no memories are relevant.
-   */
   retrieve(memories: MemoryEntry[], userMessage: string): string {
     if (memories.length === 0) return '';
 
-    const queryTags = this.extractQueryTags(userMessage);
     const now = Date.now();
 
+    // Filter out expired memories
+    const active = memories.filter(m => m.expiresAt === undefined || m.expiresAt > now);
+    if (active.length === 0) return '';
+
+    const queryTags = this.extractQueryTags(userMessage);
+
     // Score each memory
-    const scored = memories.map(m => ({
+    const scored: ScoredMemory[] = active.map(m => ({
       entry: m,
       score: this.scoreMemory(m, queryTags, now),
     }));
 
-    // Filter and sort by score descending
+    // Boost related memories
+    this.boostRelatedMemories(scored);
+
+    // Filter by minimum score
     const relevant = scored
       .filter(s => s.score >= MIN_SCORE)
       .sort((a, b) => b.score - a.score);
 
     if (relevant.length === 0) return '';
 
-    // Build output within token budget
-    const lines: string[] = [];
-    let totalChars = 0;
+    // Group by category and allocate budget
+    const sections = this.buildSections(relevant);
+    if (sections.length === 0) return '';
 
-    for (const { entry } of relevant) {
-      const line = `- ${entry.content} (${entry.category})`;
-      if (totalChars + line.length > MAX_CHARS) break;
-      lines.push(line);
-      totalChars += line.length;
-    }
-
-    if (lines.length === 0) return '';
-
-    return `\n\n---\n\n## What you know about the user\n\n${lines.join('\n')}`;
+    return `\n\n---\n\n## What you know about the user\n\n${sections.join('\n\n')}`;
   }
 
   private scoreMemory(memory: MemoryEntry, queryTags: string[], now: number): number {
-    // 1. Tag overlap (0-1, weight 0.6)
+    // 1. Tag relevance (0-1)
     let tagScore = 0;
     if (queryTags.length > 0 && memory.tags.length > 0) {
       const overlap = memory.tags.filter(t => queryTags.includes(t)).length;
       tagScore = overlap / Math.max(queryTags.length, 1);
     }
 
-    // 2. Recency (0-1, weight 0.25) — within last 7 days scores highest
+    // 2. Importance (0-1)
+    const importanceScore = memory.importance;
+
+    // 3. Recency (0-1) — decays over 30 days
     const ageMs = now - memory.updatedAt;
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
-    const recencyScore = Math.max(0, 1 - ageDays / 30); // decays over 30 days
+    const recencyScore = Math.max(0, 1 - ageDays / 30);
 
-    // 3. Access frequency (0-1, weight 0.15)
+    // 4. Access frequency (0-1)
     const accessScore = Math.min(memory.accessCount / 10, 1);
 
-    return tagScore * 0.6 + recencyScore * 0.25 + accessScore * 0.15;
+    // 5. Confidence (0-1)
+    const confidenceScore = memory.confidence;
+
+    // 6. Relationship bonus
+    const relationshipBonus = memory.category === 'relationship' ? 1 : 0;
+
+    return (
+      tagScore * SCORING_WEIGHTS.tagRelevance +
+      importanceScore * SCORING_WEIGHTS.importance +
+      recencyScore * SCORING_WEIGHTS.recency +
+      accessScore * SCORING_WEIGHTS.access +
+      confidenceScore * SCORING_WEIGHTS.confidence +
+      relationshipBonus * SCORING_WEIGHTS.relationship
+    );
+  }
+
+  private boostRelatedMemories(scored: ScoredMemory[]): void {
+    const byId = new Map(scored.map(s => [s.entry.id, s]));
+
+    for (const item of scored) {
+      if (item.score >= MIN_SCORE && item.entry.relatedMemories) {
+        for (const relatedId of item.entry.relatedMemories) {
+          const related = byId.get(relatedId);
+          if (related) {
+            related.score += item.score * 0.15;
+          }
+        }
+      }
+    }
+  }
+
+  private buildSections(scored: ScoredMemory[]): string[] {
+    // Group by category
+    const groups = new Map<MemoryCategory, ScoredMemory[]>();
+    for (const s of scored) {
+      const cat = s.entry.category;
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push(s);
+    }
+
+    const sections: string[] = [];
+    let totalChars = 0;
+
+    // Process categories in budget allocation order (highest allocation first)
+    const orderedCategories = Object.entries(BUDGET_ALLOCATION)
+      .sort(([, a], [, b]) => b - a)
+      .map(([cat]) => cat as MemoryCategory);
+
+    for (const category of orderedCategories) {
+      const items = groups.get(category);
+      if (!items || items.length === 0) continue;
+
+      const budgetChars = MAX_CHARS * BUDGET_ALLOCATION[category];
+      const header = SECTION_HEADERS[category] ?? `### ${category}`;
+      const lines: string[] = [header];
+      let sectionChars = header.length;
+
+      for (const { entry } of items) {
+        const line = this.formatLine(entry);
+        if (sectionChars + line.length > budgetChars) break;
+        if (totalChars + sectionChars + line.length > MAX_CHARS) break;
+        lines.push(line);
+        sectionChars += line.length;
+      }
+
+      if (lines.length > 1) {
+        sections.push(lines.join('\n'));
+        totalChars += sectionChars;
+      }
+
+      if (totalChars >= MAX_CHARS) break;
+    }
+
+    return sections;
+  }
+
+  private formatLine(entry: MemoryEntry): string {
+    const meta: string[] = [];
+    if (entry.category === 'fact' && entry.confidence >= 0.8) {
+      meta.push('high confidence');
+    }
+    if (entry.category === 'relationship') {
+      // Try to extract relationship type from tags or just show category
+    }
+    const suffix = meta.length > 0 ? ` (${meta.join(', ')})` : '';
+    return `- ${entry.content}${suffix}`;
   }
 
   private extractQueryTags(text: string): string[] {
