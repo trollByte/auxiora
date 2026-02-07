@@ -357,3 +357,15 @@ toolRegistry.register(WebhookDeleteTool);
 // Export webhook tools
 export { WebhookListTool, WebhookCreateTool, WebhookDeleteTool } from './webhooks.js';
 export { setWebhookManager } from './webhooks.js';
+
+// Import and register memory tools
+import { SaveMemoryTool, RecallMemoryTool, ForgetMemoryTool, ListMemoriesTool } from './memory.js';
+
+toolRegistry.register(SaveMemoryTool);
+toolRegistry.register(RecallMemoryTool);
+toolRegistry.register(ForgetMemoryTool);
+toolRegistry.register(ListMemoriesTool);
+
+// Export memory tools
+export { SaveMemoryTool, RecallMemoryTool, ForgetMemoryTool, ListMemoriesTool } from './memory.js';
+export { setMemoryStore } from './memory.js';
