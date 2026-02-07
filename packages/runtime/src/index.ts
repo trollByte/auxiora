@@ -21,6 +21,7 @@ import {
   initializeToolExecutor,
   setBrowserManager,
   setWebhookManager,
+  setBehaviorManager,
   type ExecutionContext,
 } from '@auxiora/tools';
 import * as crypto from 'node:crypto';
@@ -127,6 +128,7 @@ export class Auxiora {
         },
       });
       await this.behaviors.start();
+      setBehaviorManager(this.behaviors);
     }
 
     // Initialize browser system
