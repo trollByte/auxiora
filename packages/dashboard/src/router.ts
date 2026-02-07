@@ -215,5 +215,11 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
     });
   });
 
+  // Plugins
+  router.get('/plugins', (req: Request, res: Response) => {
+    const plugins = deps.getPlugins ? deps.getPlugins() : [];
+    res.json({ data: plugins });
+  });
+
   return { router, auth };
 }

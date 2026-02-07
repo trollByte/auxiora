@@ -34,6 +34,15 @@ export interface DashboardDeps {
     voiceActive?: boolean;
   }>;
   getAuditEntries: (limit?: number) => Promise<any[]>;
+  getPlugins?: () => Array<{
+    name: string;
+    version: string;
+    file: string;
+    toolCount: number;
+    toolNames: string[];
+    status: string;
+    error?: string;
+  }>;
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

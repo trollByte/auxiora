@@ -34,6 +34,9 @@ function createMockDeps(): DashboardDeps {
     getAuditEntries: vi.fn().mockResolvedValue([
       { timestamp: '2026-01-01T00:00:00Z', event: 'system.startup', details: {} },
     ]),
+    getPlugins: vi.fn().mockReturnValue([
+      { name: 'test-plugin', version: '1.0.0', file: 'test.js', toolCount: 1, toolNames: ['test_tool'], status: 'loaded' },
+    ]),
   };
 }
 
@@ -217,6 +220,18 @@ describe('Dashboard Router', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.uptime).toBeDefined();
       expect(res.body.data.connections).toBe(1);
+    });
+  });
+
+  describe('plugins API', () => {
+    it('should list loaded plugins', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/plugins')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].name).toBe('test-plugin');
     });
   });
 });
