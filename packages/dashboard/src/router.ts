@@ -381,6 +381,156 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: plugins });
   });
 
+  router.get('/plugins/:id', (req: Request, res: Response) => {
+    const plugins = deps.getPlugins ? deps.getPlugins() : [];
+    const plugin = plugins.find(p => p.name === String(req.params.id));
+    if (!plugin) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    res.json({ data: plugin });
+  });
+
+  router.post('/plugins/:id/enable', async (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const success = await deps.pluginManager.enable(String(req.params.id));
+    if (!success) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    void audit('plugin.enabled', { name: String(req.params.id) });
+    res.json({ data: { enabled: true } });
+  });
+
+  router.post('/plugins/:id/disable', async (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const success = await deps.pluginManager.disable(String(req.params.id));
+    if (!success) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    void audit('plugin.disabled', { name: String(req.params.id) });
+    res.json({ data: { disabled: true } });
+  });
+
+  router.delete('/plugins/:id', async (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const success = await deps.pluginManager.remove(String(req.params.id));
+    if (!success) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    void audit('plugin.removed', { name: String(req.params.id) });
+    res.json({ data: { deleted: true } });
+  });
+
+  router.get('/plugins/:id/config', (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const config = deps.pluginManager.getConfig(String(req.params.id));
+    if (config === null) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    res.json({ data: config });
+  });
+
+  router.post('/plugins/:id/config', async (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const success = await deps.pluginManager.setConfig(String(req.params.id), body);
+    if (!success) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    void audit('plugin.config_updated', { name: String(req.params.id) });
+    res.json({ data: { updated: true } });
+  });
+
+  router.get('/plugins/:id/permissions', (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const permissions = deps.pluginManager.getPermissions(String(req.params.id));
+    if (permissions === null) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    res.json({ data: permissions });
+  });
+
+  router.post('/plugins/:id/permissions', async (req: Request, res: Response) => {
+    if (!deps.pluginManager) {
+      res.status(503).json({ error: 'Plugin manager not available' });
+      return;
+    }
+    const { permissions } = req.body as { permissions?: string[] };
+    if (!Array.isArray(permissions)) {
+      res.status(400).json({ error: 'Permissions must be an array' });
+      return;
+    }
+    const success = await deps.pluginManager.setPermissions(String(req.params.id), permissions);
+    if (!success) {
+      res.status(404).json({ error: 'Plugin not found' });
+      return;
+    }
+    void audit('plugin.permissions_updated', { name: String(req.params.id), permissions });
+    res.json({ data: { updated: true } });
+  });
+
+  // Marketplace
+  router.get('/marketplace', async (req: Request, res: Response) => {
+    if (!deps.marketplace) {
+      res.json({ data: [] });
+      return;
+    }
+    const query = (req.query.q as string) || '';
+    const results = await deps.marketplace.search(query);
+    res.json({ data: results });
+  });
+
+  router.get('/marketplace/:id', async (req: Request, res: Response) => {
+    if (!deps.marketplace) {
+      res.status(503).json({ error: 'Marketplace not available' });
+      return;
+    }
+    const plugin = await deps.marketplace.getPlugin(String(req.params.id));
+    if (!plugin) {
+      res.status(404).json({ error: 'Plugin not found in marketplace' });
+      return;
+    }
+    res.json({ data: plugin });
+  });
+
+  router.post('/marketplace/:id/install', async (req: Request, res: Response) => {
+    if (!deps.marketplace) {
+      res.status(503).json({ error: 'Marketplace not available' });
+      return;
+    }
+    const result = await deps.marketplace.install(String(req.params.id));
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Install failed' });
+      return;
+    }
+    void audit('marketplace.install', { name: String(req.params.id) });
+    res.json({ data: result });
+  });
+
   // Memories
   router.get('/memories', async (req: Request, res: Response) => {
     const memories = deps.getMemories ? await deps.getMemories() : [];

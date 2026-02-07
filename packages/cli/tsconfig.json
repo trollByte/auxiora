@@ -13,6 +13,8 @@
     { "path": "../gateway" },
     { "path": "../onboarding" },
     { "path": "../personality" },
-    { "path": "../memory" }
+    { "path": "../memory" },
+    { "path": "../plugins" },
+    { "path": "../marketplace" }
   ]
 }

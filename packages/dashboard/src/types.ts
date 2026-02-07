@@ -58,9 +58,26 @@ export interface DashboardDeps {
     file: string;
     toolCount: number;
     toolNames: string[];
+    behaviorNames: string[];
+    providerNames: string[];
+    permissions: string[];
     status: string;
     error?: string;
   }>;
+  pluginManager?: {
+    enable(id: string): Promise<boolean>;
+    disable(id: string): Promise<boolean>;
+    remove(id: string): Promise<boolean>;
+    getConfig(id: string): Record<string, unknown> | null;
+    setConfig(id: string, config: Record<string, unknown>): Promise<boolean>;
+    getPermissions(id: string): string[] | null;
+    setPermissions(id: string, permissions: string[]): Promise<boolean>;
+  };
+  marketplace?: {
+    search(query: string): Promise<any[]>;
+    getPlugin(id: string): Promise<any | null>;
+    install(id: string): Promise<{ success: boolean; error?: string }>;
+  };
   getMemories?: () => Promise<Array<{
     id: string;
     content: string;

@@ -35,8 +35,22 @@ function createMockDeps(): DashboardDeps {
       { timestamp: '2026-01-01T00:00:00Z', event: 'system.startup', details: {} },
     ]),
     getPlugins: vi.fn().mockReturnValue([
-      { name: 'test-plugin', version: '1.0.0', file: 'test.js', toolCount: 1, toolNames: ['test_tool'], status: 'loaded' },
+      { name: 'test-plugin', version: '1.0.0', file: 'test.js', toolCount: 1, toolNames: ['test_tool'], behaviorNames: [], providerNames: [], permissions: ['NETWORK'], status: 'loaded' },
     ]),
+    pluginManager: {
+      enable: vi.fn().mockResolvedValue(true),
+      disable: vi.fn().mockResolvedValue(true),
+      remove: vi.fn().mockResolvedValue(true),
+      getConfig: vi.fn().mockReturnValue({ key: 'value' }),
+      setConfig: vi.fn().mockResolvedValue(true),
+      getPermissions: vi.fn().mockReturnValue(['NETWORK']),
+      setPermissions: vi.fn().mockResolvedValue(true),
+    },
+    marketplace: {
+      search: vi.fn().mockResolvedValue([{ name: 'cool-plugin', version: '1.0.0' }]),
+      getPlugin: vi.fn().mockResolvedValue({ name: 'cool-plugin', version: '1.0.0', description: 'Cool' }),
+      install: vi.fn().mockResolvedValue({ success: true }),
+    },
     getMemories: vi.fn().mockResolvedValue([
       { id: 'mem-abc', content: 'Likes TypeScript', category: 'preference', source: 'explicit', createdAt: Date.now(), updatedAt: Date.now(), accessCount: 1 },
     ]),
@@ -247,6 +261,128 @@ describe('Dashboard Router', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
       expect(res.body.data[0].content).toBe('Likes TypeScript');
+    });
+  });
+
+  describe('plugin management API', () => {
+    it('should get a single plugin by id', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/plugins/test-plugin')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe('test-plugin');
+    });
+
+    it('should return 404 for unknown plugin', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/plugins/nonexistent')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(404);
+    });
+
+    it('should enable a plugin', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/plugins/test-plugin/enable')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.enabled).toBe(true);
+    });
+
+    it('should disable a plugin', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/plugins/test-plugin/disable')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.disabled).toBe(true);
+    });
+
+    it('should delete a plugin', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .delete('/api/v1/dashboard/plugins/test-plugin')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.deleted).toBe(true);
+    });
+
+    it('should get plugin config', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/plugins/test-plugin/config')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.key).toBe('value');
+    });
+
+    it('should set plugin config', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/plugins/test-plugin/config')
+        .set('Cookie', cookie)
+        .send({ newKey: 'newValue' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.updated).toBe(true);
+    });
+
+    it('should get plugin permissions', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/plugins/test-plugin/permissions')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual(['NETWORK']);
+    });
+
+    it('should set plugin permissions', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/plugins/test-plugin/permissions')
+        .set('Cookie', cookie)
+        .send({ permissions: ['NETWORK', 'FILESYSTEM'] });
+      expect(res.status).toBe(200);
+      expect(res.body.data.updated).toBe(true);
+    });
+
+    it('should reject invalid permissions body', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/plugins/test-plugin/permissions')
+        .set('Cookie', cookie)
+        .send({ permissions: 'not-array' });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('marketplace API', () => {
+    it('should search marketplace', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/marketplace')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+    });
+
+    it('should get marketplace plugin details', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/marketplace/cool-plugin')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe('cool-plugin');
+    });
+
+    it('should install from marketplace', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .post('/api/v1/dashboard/marketplace/cool-plugin/install')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
     });
   });
 });

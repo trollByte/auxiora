@@ -35,6 +35,70 @@ export const plugin = {
 };
 `;
 
+const MANIFEST_PLUGIN = `
+export const plugin = {
+  name: 'manifest-plugin',
+  version: '2.0.0',
+  permissions: ['NETWORK'],
+  tools: [{
+    name: 'manifest_tool',
+    description: 'A manifest tool',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Query' }
+      },
+      required: ['query']
+    },
+    execute: async ({ query }) => ({ success: true, output: 'queried: ' + query })
+  }],
+  behaviors: [{
+    name: 'test-behavior',
+    description: 'A test behavior',
+    type: 'scheduled',
+    defaultSchedule: '0 * * * *',
+    execute: async (ctx) => 'done'
+  }],
+  providers: [{
+    name: 'test-provider',
+    displayName: 'Test Provider',
+    description: 'A test provider',
+    models: ['test-model-1'],
+    initialize: async () => {},
+    complete: async () => ({ content: 'hello', model: 'test-model-1' })
+  }]
+};
+`;
+
+const MANIFEST_WITH_CONTEXT = `
+export const plugin = {
+  name: 'ctx-plugin',
+  version: '1.0.0',
+  permissions: [],
+  tools: [{
+    name: 'ctx_base_tool',
+    description: 'Base tool',
+    parameters: { type: 'object', properties: {} },
+    execute: async () => ({ success: true, output: 'base' })
+  }],
+  initialize: async (ctx) => {
+    ctx.logger.info('Initializing');
+    ctx.registerTool({
+      name: 'ctx_dynamic_tool',
+      description: 'Dynamically registered',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => ({ success: true, output: 'dynamic' })
+    });
+    ctx.registerBehavior({
+      name: 'dynamic-behavior',
+      description: 'Dynamic behavior',
+      type: 'one-shot',
+      execute: async () => 'done'
+    });
+  }
+};
+`;
+
 describe('PluginLoader', () => {
   beforeEach(async () => {
     tmpDir = path.join(os.tmpdir(), `auxiora-plugins-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -59,6 +123,9 @@ describe('PluginLoader', () => {
     expect(plugins[0].name).toBe('test-plugin');
     expect(plugins[0].status).toBe('loaded');
     expect(plugins[0].toolNames).toEqual(['test_tool']);
+    expect(plugins[0].behaviorNames).toEqual([]);
+    expect(plugins[0].providerNames).toEqual([]);
+    expect(plugins[0].permissions).toEqual([]);
     expect(toolRegistry.get('test_tool')).toBeDefined();
     trackTool('test_tool');
   });
@@ -337,5 +404,117 @@ describe('PluginLoader', () => {
     trackTool('sd_err_tool');
 
     await expect(loader.shutdownAll()).resolves.toBeUndefined();
+  });
+
+  // New tests for expanded plugin interface
+
+  describe('PluginManifest support', () => {
+    it('should load a manifest plugin with behaviors and providers', async () => {
+      await writePlugin('manifest.js', MANIFEST_PLUGIN);
+
+      const loader = new PluginLoader({
+        pluginsDir: tmpDir,
+        approvedPermissions: { 'manifest-plugin': ['NETWORK'] },
+      });
+      const plugins = await loader.loadAll();
+      trackTool('manifest_tool');
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('loaded');
+      expect(plugins[0].name).toBe('manifest-plugin');
+      expect(plugins[0].permissions).toEqual(['NETWORK']);
+      expect(plugins[0].behaviorNames).toEqual(['test-behavior']);
+      expect(plugins[0].providerNames).toEqual(['test-provider']);
+
+      expect(loader.listBehaviors()).toHaveLength(1);
+      expect(loader.listBehaviors()[0].name).toBe('test-behavior');
+      expect(loader.listProviders()).toHaveLength(1);
+      expect(loader.listProviders()[0].name).toBe('test-provider');
+    });
+
+    it('should reject plugin with unapproved permissions', async () => {
+      await writePlugin('unapproved.js', MANIFEST_PLUGIN);
+
+      const loader = new PluginLoader({
+        pluginsDir: tmpDir,
+        approvedPermissions: { 'manifest-plugin': [] },
+      });
+      const plugins = await loader.loadAll();
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('failed');
+      expect(plugins[0].error).toContain('unapproved permissions');
+      expect(plugins[0].error).toContain('NETWORK');
+    });
+
+    it('should pass PluginContext to manifest initialize', async () => {
+      await writePlugin('ctx.js', MANIFEST_WITH_CONTEXT);
+
+      const loader = new PluginLoader(tmpDir);
+      const plugins = await loader.loadAll();
+      trackTool('ctx_base_tool');
+      trackTool('ctx_dynamic_tool');
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('loaded');
+      expect(plugins[0].toolNames).toContain('ctx_base_tool');
+      expect(plugins[0].toolNames).toContain('ctx_dynamic_tool');
+      expect(plugins[0].behaviorNames).toContain('dynamic-behavior');
+
+      // Verify dynamic tool works
+      const tool = toolRegistry.get('ctx_dynamic_tool')!;
+      const result = await tool.execute({}, { sessionId: 'test', workingDirectory: '/tmp', timeout: 5000 });
+      expect(result.success).toBe(true);
+      expect(result.output).toBe('dynamic');
+    });
+
+    it('should allow plugins with no approved permissions entry (permissive)', async () => {
+      await writePlugin('manifest.js', MANIFEST_PLUGIN);
+
+      // No approvedPermissions entry for this plugin = permissive mode
+      const loader = new PluginLoader({ pluginsDir: tmpDir });
+      const plugins = await loader.loadAll();
+      trackTool('manifest_tool');
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('loaded');
+    });
+
+    it('should accept options object in constructor', async () => {
+      await writePlugin('test.js', VALID_PLUGIN);
+
+      const loader = new PluginLoader({
+        pluginsDir: tmpDir,
+        pluginConfigs: { 'test-plugin': { foo: 'bar' } },
+      });
+      const plugins = await loader.loadAll();
+      trackTool('test_tool');
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('loaded');
+    });
+
+    it('should reject unknown permission values', async () => {
+      await writePlugin('badperm.js', `
+        export const plugin = {
+          name: 'badperm',
+          version: '1.0.0',
+          permissions: ['INVALID_PERMISSION'],
+          tools: [{
+            name: 'badperm_tool',
+            description: 'Bad perm tool',
+            parameters: { type: 'object', properties: {} },
+            execute: async () => ({ success: true })
+          }]
+        };
+      `);
+
+      const loader = new PluginLoader(tmpDir);
+      const plugins = await loader.loadAll();
+
+      expect(plugins).toHaveLength(1);
+      expect(plugins[0].status).toBe('failed');
+      expect(plugins[0].error).toContain('unknown permission');
+    });
   });
 });

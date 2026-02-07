@@ -5,18 +5,45 @@ import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { toolRegistry, type Tool, type ToolParameter, ToolPermission, type ToolResult, type ExecutionContext } from '@auxiora/tools';
 import { getPluginsDir, isWindows } from '@auxiora/core';
-import type { PluginExport, PluginToolDefinition, LoadedPlugin } from './types.js';
-import { TOOL_NAME_PATTERN } from './types.js';
+import type {
+  PluginExport,
+  PluginManifest,
+  PluginToolDefinition,
+  PluginBehaviorDefinition,
+  PluginProviderDefinition,
+  PluginContext,
+  LoadedPlugin,
+  PluginPermission,
+} from './types.js';
+import { TOOL_NAME_PATTERN, ALL_PLUGIN_PERMISSIONS } from './types.js';
 
 const logger = getLogger('plugins:loader');
+
+export interface PluginLoaderOptions {
+  pluginsDir?: string;
+  pluginConfigs?: Record<string, Record<string, unknown>>;
+  approvedPermissions?: Record<string, PluginPermission[]>;
+}
 
 export class PluginLoader {
   private pluginsDir: string;
   private loaded: LoadedPlugin[] = [];
   private builtinToolNames: Set<string>;
+  private registeredBehaviors: PluginBehaviorDefinition[] = [];
+  private registeredProviders: PluginProviderDefinition[] = [];
+  private pluginConfigs: Record<string, Record<string, unknown>>;
+  private approvedPermissions: Record<string, PluginPermission[]>;
 
-  constructor(pluginsDir?: string) {
-    this.pluginsDir = pluginsDir ?? getPluginsDir();
+  constructor(pluginsDirOrOptions?: string | PluginLoaderOptions) {
+    if (typeof pluginsDirOrOptions === 'string' || pluginsDirOrOptions === undefined) {
+      this.pluginsDir = pluginsDirOrOptions ?? getPluginsDir();
+      this.pluginConfigs = {};
+      this.approvedPermissions = {};
+    } else {
+      this.pluginsDir = pluginsDirOrOptions.pluginsDir ?? getPluginsDir();
+      this.pluginConfigs = pluginsDirOrOptions.pluginConfigs ?? {};
+      this.approvedPermissions = pluginsDirOrOptions.approvedPermissions ?? {};
+    }
     this.builtinToolNames = new Set(toolRegistry.listNames());
   }
 
@@ -52,25 +79,107 @@ export class PluginLoader {
     try {
       const fileUrl = pathToFileURL(filePath).href;
       const module = await import(fileUrl);
-      const pluginExport: PluginExport = module.plugin;
+
+      // Support both legacy PluginExport and new PluginManifest
+      const pluginExport: PluginExport | PluginManifest = module.plugin;
 
       this.validatePlugin(pluginExport, fileName);
 
+      const isManifest = this.isManifest(pluginExport);
+      const manifest = isManifest ? pluginExport as PluginManifest : null;
+
+      // Validate permissions if manifest
+      const permissions = manifest?.permissions ?? [];
+      if (permissions.length > 0) {
+        this.validatePermissions(pluginExport.name, permissions);
+      }
+
+      // Validate plugin config against schema if provided
+      let pluginConfig: Record<string, unknown> = {};
+      if (manifest?.configSchema) {
+        const rawConfig = this.pluginConfigs[pluginExport.name] ?? {};
+        pluginConfig = manifest.configSchema.parse(rawConfig);
+      }
+
       const toolNames: string[] = [];
+      const behaviorNames: string[] = [];
+      const providerNames: string[] = [];
+
+      // Dynamically registered items via context
+      const dynamicTools: PluginToolDefinition[] = [];
+      const dynamicBehaviors: PluginBehaviorDefinition[] = [];
+      const dynamicProviders: PluginProviderDefinition[] = [];
+
+      // Register static tools
       for (const toolDef of pluginExport.tools) {
         const tool = this.adaptTool(toolDef, pluginExport.name);
         toolRegistry.register(tool);
         toolNames.push(toolDef.name);
       }
 
-      if (pluginExport.initialize) {
-        try {
-          await pluginExport.initialize();
-        } catch (initError) {
-          for (const name of toolNames) {
-            toolRegistry.unregister(name);
+      // Register static behaviors
+      if (manifest?.behaviors) {
+        for (const behavior of manifest.behaviors) {
+          this.registeredBehaviors.push(behavior);
+          behaviorNames.push(behavior.name);
+        }
+      }
+
+      // Register static providers
+      if (manifest?.providers) {
+        for (const provider of manifest.providers) {
+          this.registeredProviders.push(provider);
+          providerNames.push(provider.name);
+        }
+      }
+
+      // Initialize plugin
+      if (manifest && isManifest) {
+        // New-style: pass PluginContext
+        if (manifest.initialize) {
+          const context = this.createPluginContext(
+            pluginExport.name,
+            pluginConfig,
+            dynamicTools,
+            dynamicBehaviors,
+            dynamicProviders,
+          );
+          try {
+            await manifest.initialize(context);
+          } catch (initError) {
+            for (const name of toolNames) {
+              toolRegistry.unregister(name);
+            }
+            throw initError;
           }
-          throw initError;
+
+          // Register dynamically added items
+          for (const toolDef of dynamicTools) {
+            const tool = this.adaptTool(toolDef, pluginExport.name);
+            toolRegistry.register(tool);
+            toolNames.push(toolDef.name);
+          }
+          for (const behavior of dynamicBehaviors) {
+            this.registeredBehaviors.push(behavior);
+            behaviorNames.push(behavior.name);
+          }
+          for (const provider of dynamicProviders) {
+            this.registeredProviders.push(provider);
+            providerNames.push(provider.name);
+          }
+        }
+      } else {
+        // Legacy: call initialize() with no args
+        const legacy = pluginExport as PluginExport;
+        if (legacy.initialize) {
+          try {
+            await legacy.initialize();
+          } catch (initError) {
+            for (const name of toolNames) {
+              toolRegistry.unregister(name);
+            }
+            throw initError;
+          }
         }
       }
 
@@ -80,6 +189,9 @@ export class PluginLoader {
         file: fileName,
         toolCount: toolNames.length,
         toolNames,
+        behaviorNames,
+        providerNames,
+        permissions,
         status: 'loaded',
         shutdown: pluginExport.shutdown,
       };
@@ -89,12 +201,15 @@ export class PluginLoader {
         name: pluginExport.name,
         version: pluginExport.version,
         toolCount: toolNames.length,
+        permissions,
       });
 
       logger.info('Plugin loaded', {
         name: pluginExport.name,
         version: pluginExport.version,
         tools: toolNames,
+        behaviors: behaviorNames,
+        providers: providerNames,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -105,6 +220,9 @@ export class PluginLoader {
         file: fileName,
         toolCount: 0,
         toolNames: [],
+        behaviorNames: [],
+        providerNames: [],
+        permissions: [],
         status: 'failed',
         error: errorMessage,
       });
@@ -114,7 +232,68 @@ export class PluginLoader {
     }
   }
 
-  private validatePlugin(plugin: unknown, fileName: string): asserts plugin is PluginExport {
+  private isManifest(plugin: PluginExport | PluginManifest): plugin is PluginManifest {
+    return 'permissions' in plugin && Array.isArray((plugin as PluginManifest).permissions);
+  }
+
+  private validatePermissions(pluginName: string, requested: PluginPermission[]): void {
+    // Validate permission values
+    for (const perm of requested) {
+      if (!ALL_PLUGIN_PERMISSIONS.includes(perm)) {
+        throw new Error(`Plugin "${pluginName}" requests unknown permission: ${perm}`);
+      }
+    }
+
+    // Check against approved permissions
+    const approved = this.approvedPermissions[pluginName];
+    if (approved !== undefined) {
+      const denied = requested.filter(p => !approved.includes(p));
+      if (denied.length > 0) {
+        throw new Error(
+          `Plugin "${pluginName}" requires unapproved permissions: ${denied.join(', ')}. ` +
+          `Approve them in config plugins.approvedPermissions.`
+        );
+      }
+    }
+  }
+
+  private createPluginContext(
+    pluginName: string,
+    config: Record<string, unknown>,
+    dynamicTools: PluginToolDefinition[],
+    dynamicBehaviors: PluginBehaviorDefinition[],
+    dynamicProviders: PluginProviderDefinition[],
+  ): PluginContext {
+    const pluginLogger = getLogger(`plugin:${pluginName}`);
+
+    return {
+      logger: {
+        info: (msg, meta) => pluginLogger.info(msg, meta),
+        warn: (msg, meta) => pluginLogger.warn(msg, meta),
+        error: (msg, meta) => pluginLogger.error(msg, meta ? { error: new Error(msg), ...meta } : { error: new Error(msg) }),
+        debug: (msg, meta) => pluginLogger.debug(msg, meta),
+      },
+      config,
+      registerTool: (tool: PluginToolDefinition) => {
+        dynamicTools.push(tool);
+      },
+      registerBehavior: (behavior: PluginBehaviorDefinition) => {
+        dynamicBehaviors.push(behavior);
+      },
+      registerProvider: (provider: PluginProviderDefinition) => {
+        dynamicProviders.push(provider);
+      },
+      getMemory: async (_key: string) => {
+        // Placeholder — will be wired to memory store
+        return undefined;
+      },
+      sendMessage: async (_channel: string, _content: string) => {
+        // Placeholder — will be wired to channel system
+      },
+    };
+  }
+
+  private validatePlugin(plugin: unknown, fileName: string): asserts plugin is PluginExport | PluginManifest {
     if (!plugin || typeof plugin !== 'object') {
       throw new Error(`Plugin file ${fileName} must export a 'plugin' object`);
     }
@@ -211,6 +390,14 @@ export class PluginLoader {
 
   listPlugins(): LoadedPlugin[] {
     return [...this.loaded];
+  }
+
+  listBehaviors(): PluginBehaviorDefinition[] {
+    return [...this.registeredBehaviors];
+  }
+
+  listProviders(): PluginProviderDefinition[] {
+    return [...this.registeredProviders];
   }
 
   async shutdownAll(): Promise<void> {

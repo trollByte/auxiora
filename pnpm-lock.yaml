@@ -102,6 +102,9 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/marketplace':
+        specifier: workspace:*
+        version: link:../marketplace
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory
@@ -111,6 +114,9 @@ importers:
       '@auxiora/personality':
         specifier: workspace:*
         version: link:../personality
+      '@auxiora/plugins':
+        specifier: workspace:*
+        version: link:../plugins
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
@@ -262,6 +268,18 @@ importers:
         specifier: ^25.1.0
         version: 25.1.0
 
+  packages/marketplace:
+    dependencies:
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/plugins':
+        specifier: workspace:*
+        version: link:../plugins
+
   packages/memory:
     dependencies:
       '@auxiora/audit':
@@ -326,6 +344,9 @@ importers:
       '@auxiora/tools':
         specifier: workspace:*
         version: link:../tools
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   packages/providers:
     dependencies:

@@ -143,6 +143,14 @@ const DashboardConfigSchema = z.object({
 const PluginsConfigSchema = z.object({
   enabled: z.boolean().default(true),
   dir: z.string().optional(),
+  marketplace: z.object({
+    registryUrl: z.string().default('https://registry.auxiora.dev'),
+    autoUpdate: z.boolean().default(false),
+  }).default({}),
+  pluginConfigs: z.record(z.string(), z.unknown()).default({}),
+  approvedPermissions: z.record(z.string(), z.array(z.enum([
+    'NETWORK', 'FILESYSTEM', 'SHELL', 'PROVIDER_ACCESS', 'CHANNEL_ACCESS', 'MEMORY_ACCESS',
+  ]))).default({}),
 });
 
 const MemoryConfigSchema = z.object({

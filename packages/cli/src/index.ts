@@ -13,6 +13,7 @@ import { createPersonalityCommand } from './commands/personality.js';
 import { createModelsCommand } from './commands/models.js';
 import { createMemoryCommand } from './commands/memory.js';
 import { createOrchestrationCommand } from './commands/orchestration.js';
+import { createPluginCommand } from './commands/plugin.js';
 
 const program = new Command();
 
@@ -34,5 +35,6 @@ program.addCommand(createPersonalityCommand());
 program.addCommand(createModelsCommand());
 program.addCommand(createMemoryCommand());
 program.addCommand(createOrchestrationCommand());
+program.addCommand(createPluginCommand());
 
 program.parse();
