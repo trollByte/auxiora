@@ -55,6 +55,7 @@ export type AuditEventType =
   | 'webhook.triggered'
   | 'webhook.error'
   | 'webhook.created'
+  | 'webhook.updated'
   | 'webhook.deleted'
   | 'dashboard.login'
   | 'dashboard.logout'

@@ -62,6 +62,20 @@ export class WebhookManager {
     return this.store.getAll();
   }
 
+  async update(
+    id: string,
+    updates: Partial<Pick<WebhookDefinition, 'name' | 'enabled' | 'secret' | 'behaviorId'>>,
+  ): Promise<WebhookDefinition | null> {
+    const webhook = await this.store.get(id);
+    if (!webhook) return null;
+
+    const updated: WebhookDefinition = { ...webhook, ...updates };
+    await this.store.save(updated);
+    void audit('webhook.updated', { id, name: updated.name });
+    logger.info('Webhook updated', { id, name: updated.name });
+    return updated;
+  }
+
   async delete(id: string): Promise<boolean> {
     const webhook = await this.store.get(id);
     const removed = await this.store.remove(id);

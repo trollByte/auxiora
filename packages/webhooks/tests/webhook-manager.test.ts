@@ -62,6 +62,22 @@ describe('WebhookManager', () => {
       expect(all).toHaveLength(2);
     });
 
+    it('should update a webhook', async () => {
+      const wh = await manager.create({ name: 'original', type: 'generic', secret: 's' });
+      const updated = await manager.update(wh.id, { name: 'renamed', enabled: false });
+      expect(updated).not.toBeNull();
+      expect(updated!.name).toBe('renamed');
+      expect(updated!.enabled).toBe(false);
+
+      const all = await manager.list();
+      expect(all[0].name).toBe('renamed');
+    });
+
+    it('should return null when updating non-existent webhook', async () => {
+      const result = await manager.update('nonexistent', { name: 'test' });
+      expect(result).toBeNull();
+    });
+
     it('should delete a webhook', async () => {
       const wh = await manager.create({ name: 'to-delete', type: 'generic', secret: 's' });
       const deleted = await manager.delete(wh.id);
