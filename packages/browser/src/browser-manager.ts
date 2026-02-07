@@ -182,12 +182,12 @@ export class BrowserManager {
   async extract(sessionId: string, selector: string): Promise<ExtractResult> {
     const page = await this.getPage(sessionId);
 
-    const elements = await page.$$eval(selector, (els: Element[]) =>
+    const elements = await page.$$eval(selector, (els) =>
       els.map((el) => ({
-        text: (el as HTMLElement).innerText || el.textContent || '',
+        text: (el as any).innerText || el.textContent || '',
         tagName: el.tagName.toLowerCase(),
         attributes: Object.fromEntries(
-          Array.from(el.attributes).map((attr) => [attr.name, attr.value])
+          Array.from(el.attributes).map((attr: any) => [attr.name, attr.value])
         ),
       }))
     );

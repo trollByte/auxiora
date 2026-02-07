@@ -110,7 +110,7 @@ export class PluginLoader {
       });
 
       void audit('plugin.load_failed', { name: fileName, error: errorMessage });
-      logger.warn('Failed to load plugin', { file: fileName, error: errorMessage });
+      logger.warn('Failed to load plugin', { file: fileName, error: new Error(errorMessage) });
     }
   }
 

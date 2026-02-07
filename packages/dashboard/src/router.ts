@@ -24,7 +24,7 @@ function parseCookies(header: string | undefined): Record<string, string> {
   return cookies;
 }
 
-export function createDashboardRouter(options: DashboardRouterOptions) {
+export function createDashboardRouter(options: DashboardRouterOptions): { router: Router; auth: DashboardAuth } {
   const { deps, config, verifyPassword } = options;
   const router = Router();
   const auth = new DashboardAuth(config.sessionTtlMs);
@@ -116,7 +116,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       res.status(503).json({ error: 'Behaviors not available' });
       return;
     }
-    const { id } = req.params;
+    const id = String(req.params.id);
     const updates = req.body;
     const result = await deps.behaviors.update(id, updates);
     if (!result) {
@@ -131,7 +131,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       res.status(503).json({ error: 'Behaviors not available' });
       return;
     }
-    const removed = await deps.behaviors.remove(req.params.id);
+    const removed = await deps.behaviors.remove(String(req.params.id));
     if (!removed) {
       res.status(404).json({ error: 'Behavior not found' });
       return;
@@ -156,7 +156,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       res.status(503).json({ error: 'Webhooks not available' });
       return;
     }
-    const result = await deps.webhooks.update(req.params.id, req.body);
+    const result = await deps.webhooks.update(String(req.params.id), req.body);
     if (!result) {
       res.status(404).json({ error: 'Webhook not found' });
       return;
@@ -169,7 +169,7 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
       res.status(503).json({ error: 'Webhooks not available' });
       return;
     }
-    const removed = await deps.webhooks.delete(req.params.id);
+    const removed = await deps.webhooks.delete(String(req.params.id));
     if (!removed) {
       res.status(404).json({ error: 'Webhook not found' });
       return;
