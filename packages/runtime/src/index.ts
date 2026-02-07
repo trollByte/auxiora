@@ -34,6 +34,8 @@ import { OpenAITTS } from '@auxiora/tts';
 import { WebhookManager } from '@auxiora/webhooks';
 import { createDashboardRouter } from '@auxiora/dashboard';
 import { PluginLoader } from '@auxiora/plugins';
+import { MemoryStore, MemoryRetriever } from '@auxiora/memory';
+import { setMemoryStore } from '@auxiora/tools';
 import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
 import express from 'express';
@@ -59,6 +61,8 @@ export class Auxiora {
   private voiceManager?: VoiceManager;
   private webhookManager?: WebhookManager;
   private pluginLoader?: PluginLoader;
+  private memoryStore?: MemoryStore;
+  private memoryRetriever?: MemoryRetriever;
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -209,6 +213,7 @@ export class Auxiora {
             return auditLogger.getEntries(limit);
           },
           getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
+          getMemories: async () => this.memoryStore?.getAll() ?? [],
         },
         config: {
           enabled: true,
@@ -253,6 +258,16 @@ export class Auxiora {
       if (loaded.length > 0) {
         console.log(`Plugins: ${successful.length} loaded, ${loaded.length - successful.length} failed`);
       }
+    }
+
+    // Initialize memory system (if enabled)
+    if (this.config.memory?.enabled !== false) {
+      this.memoryStore = new MemoryStore({
+        maxEntries: this.config.memory?.maxEntries,
+      });
+      this.memoryRetriever = new MemoryRetriever();
+      setMemoryStore(this.memoryStore);
+      console.log('Memory system enabled');
     }
   }
 
@@ -511,6 +526,16 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
+      // Inject relevant memories into system prompt
+      let enrichedPrompt = this.systemPrompt;
+      if (this.memoryRetriever && this.memoryStore) {
+        const memories = await this.memoryStore.getAll();
+        const memorySection = this.memoryRetriever.retrieve(memories, content);
+        if (memorySection) {
+          enrichedPrompt = this.systemPrompt + memorySection;
+        }
+      }
+
       // Stream response with tools
       const provider = this.providers.getPrimaryProvider();
       let fullResponse = '';
@@ -518,7 +543,7 @@ export class Auxiora {
       const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
       for await (const chunk of provider.stream(chatMessages, {
-        systemPrompt: this.systemPrompt,
+        systemPrompt: enrichedPrompt,
         tools: tools.length > 0 ? tools : undefined,
       })) {
         if (chunk.type === 'text' && chunk.content) {
@@ -548,6 +573,13 @@ export class Auxiora {
         input: usage.inputTokens,
         output: usage.outputTokens,
       });
+
+      // Extract memories from conversation (if auto-extract enabled)
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && this.providers && fullResponse && content.length > 20) {
+        this.extractMemories(content, fullResponse).catch(err => {
+          console.warn('Memory extraction failed:', err instanceof Error ? err.message : err);
+        });
+      }
 
       // Execute tools if any were called
       if (toolUses.length > 0) {
@@ -883,10 +915,20 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
+      // Inject relevant memories into system prompt
+      let enrichedPrompt = this.systemPrompt;
+      if (this.memoryRetriever && this.memoryStore) {
+        const memories = await this.memoryStore.getAll();
+        const memorySection = this.memoryRetriever.retrieve(memories, inbound.content);
+        if (memorySection) {
+          enrichedPrompt = this.systemPrompt + memorySection;
+        }
+      }
+
       // Get completion (non-streaming for channels)
       const provider = this.providers.getPrimaryProvider();
       const result = await provider.complete(chatMessages, {
-        systemPrompt: this.systemPrompt,
+        systemPrompt: enrichedPrompt,
         tools: tools.length > 0 ? tools : undefined,
       });
 
@@ -895,6 +937,13 @@ export class Auxiora {
         input: result.usage.inputTokens,
         output: result.usage.outputTokens,
       });
+
+      // Extract memories from conversation (if auto-extract enabled)
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && this.providers && result.content && inbound.content.length > 20) {
+        this.extractMemories(inbound.content, result.content).catch(err => {
+          console.warn('Memory extraction failed:', err instanceof Error ? err.message : err);
+        });
+      }
 
       // Send response
       if (this.channels) {
@@ -946,6 +995,46 @@ export class Auxiora {
 
       default:
         return `Unknown command: ${cmd}. Try /help`;
+    }
+  }
+
+  private async extractMemories(userMessage: string, assistantResponse: string): Promise<void> {
+    if (!this.memoryStore || !this.providers) return;
+
+    const extractionPrompt = `You are a fact extraction system. Given a conversation exchange, extract new facts about the user. Return a JSON array of objects with "content" (the fact) and "category" ("preference", "fact", or "context") fields. Return an empty array [] if there are no new facts worth remembering. Only extract concrete, specific facts — not vague observations.
+
+User said: "${userMessage}"
+Assistant said: "${assistantResponse}"
+
+Respond with ONLY a JSON array, no other text.`;
+
+    try {
+      const provider = this.providers.getPrimaryProvider();
+      const result = await provider.complete(
+        [{ role: 'user', content: extractionPrompt }],
+        { maxTokens: 200 }
+      );
+
+      const parsed = JSON.parse(result.content);
+      if (!Array.isArray(parsed)) return;
+
+      let count = 0;
+      for (const fact of parsed) {
+        if (fact.content && typeof fact.content === 'string') {
+          await this.memoryStore.add(
+            fact.content,
+            fact.category || 'fact',
+            'extracted'
+          );
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        void audit('memory.extracted', { count });
+      }
+    } catch {
+      // Extraction is best-effort — don't crash on parse errors
     }
   }
 
