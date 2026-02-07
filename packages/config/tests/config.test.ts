@@ -169,4 +169,22 @@ describe('Config', () => {
       expect(config.plugins.dir).toBe('/custom/plugins');
     });
   });
+
+  describe('memory config', () => {
+    it('should default memory to enabled with auto-extract', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.memory.enabled).toBe(true);
+      expect(config.memory.autoExtract).toBe(true);
+      expect(config.memory.maxEntries).toBe(500);
+    });
+
+    it('should accept custom memory config', () => {
+      const config = ConfigSchema.parse({
+        memory: { enabled: false, autoExtract: false, maxEntries: 100 },
+      });
+      expect(config.memory.enabled).toBe(false);
+      expect(config.memory.autoExtract).toBe(false);
+      expect(config.memory.maxEntries).toBe(100);
+    });
+  });
 });

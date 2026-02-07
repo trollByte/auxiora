@@ -108,6 +108,12 @@ const PluginsConfigSchema = z.object({
   dir: z.string().optional(),
 });
 
+const MemoryConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  autoExtract: z.boolean().default(true),
+  maxEntries: z.number().int().positive().default(500),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -121,6 +127,7 @@ export const ConfigSchema = z.object({
   webhooks: WebhookConfigSchema.default({}),
   dashboard: DashboardConfigSchema.default({}),
   plugins: PluginsConfigSchema.default({}),
+  memory: MemoryConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

@@ -61,6 +61,9 @@ export type AuditEventType =
   | 'dashboard.login_failed'
   | 'plugin.loaded'
   | 'plugin.load_failed'
+  | 'memory.saved'
+  | 'memory.deleted'
+  | 'memory.extracted'
   | 'system.error';
 
 export interface AuditEntry {
