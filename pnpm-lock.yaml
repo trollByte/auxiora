@@ -249,6 +249,21 @@ importers:
 
   packages/metrics: {}
 
+  packages/plugins:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/tools':
+        specifier: workspace:*
+        version: link:../tools
+
   packages/providers:
     dependencies:
       '@anthropic-ai/sdk':
