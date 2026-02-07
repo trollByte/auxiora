@@ -103,6 +103,11 @@ const DashboardConfigSchema = z.object({
   sessionTtlMs: z.number().int().positive().default(86_400_000),
 });
 
+const PluginsConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  dir: z.string().optional(),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -115,6 +120,7 @@ export const ConfigSchema = z.object({
   voice: VoiceConfigSchema.default({}),
   webhooks: WebhookConfigSchema.default({}),
   dashboard: DashboardConfigSchema.default({}),
+  plugins: PluginsConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

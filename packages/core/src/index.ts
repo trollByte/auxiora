@@ -127,6 +127,10 @@ export function getScreenshotsDir(): string {
   return path.join(getWorkspaceDir(), 'screenshots');
 }
 
+export function getPluginsDir(): string {
+  return path.join(getDataDir(), 'plugins');
+}
+
 export const paths = {
   base: getBaseDir,
   data: getDataDir,
@@ -144,6 +148,7 @@ export const paths = {
   behaviors: getBehaviorsPath,
   webhooks: getWebhooksPath,
   screenshots: getScreenshotsDir,
+  plugins: getPluginsDir,
 };
 
 /**

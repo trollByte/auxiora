@@ -153,4 +153,20 @@ describe('Config', () => {
       expect(config.dashboard.sessionTtlMs).toBe(3_600_000);
     });
   });
+
+  describe('plugins config', () => {
+    it('should default plugins to enabled', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.plugins.enabled).toBe(true);
+      expect(config.plugins.dir).toBeUndefined();
+    });
+
+    it('should accept custom plugins config', () => {
+      const config = ConfigSchema.parse({
+        plugins: { enabled: false, dir: '/custom/plugins' },
+      });
+      expect(config.plugins.enabled).toBe(false);
+      expect(config.plugins.dir).toBe('/custom/plugins');
+    });
+  });
 });
