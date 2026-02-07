@@ -20,6 +20,8 @@
     "@auxiora/core": "workspace:*",
     "@auxiora/daemon": "workspace:*",
     "@auxiora/gateway": "workspace:*",
+    "@auxiora/onboarding": "workspace:*",
+    "@auxiora/personality": "workspace:*",
     "@auxiora/runtime": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "@inquirer/prompts": "^8.2.0",

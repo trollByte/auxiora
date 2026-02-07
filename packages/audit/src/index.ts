@@ -65,6 +65,11 @@ export type AuditEventType =
   | 'memory.saved'
   | 'memory.deleted'
   | 'memory.extracted'
+  | 'setup.identity'
+  | 'setup.personality'
+  | 'setup.provider'
+  | 'setup.channels'
+  | 'setup.complete'
   | 'system.error';
 
 export interface AuditEntry {

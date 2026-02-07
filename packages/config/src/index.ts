@@ -114,6 +114,33 @@ const MemoryConfigSchema = z.object({
   maxEntries: z.number().int().positive().default(500),
 });
 
+const AgentIdentitySchema = z.object({
+  name: z.string().default('Auxiora'),
+  pronouns: z.string().default('they/them'),
+  personality: z.string().default('professional'),
+  tone: z.object({
+    warmth: z.number().min(0).max(1).default(0.6),
+    directness: z.number().min(0).max(1).default(0.5),
+    humor: z.number().min(0).max(1).default(0.3),
+    formality: z.number().min(0).max(1).default(0.5),
+  }).default({}),
+  expertise: z.array(z.string()).default([]),
+  errorStyle: z.enum(['apologetic', 'matter_of_fact', 'self_deprecating', 'professional']).default('professional'),
+  catchphrases: z.object({
+    greeting: z.string().optional(),
+    farewell: z.string().optional(),
+    thinking: z.string().optional(),
+    success: z.string().optional(),
+    error: z.string().optional(),
+  }).default({}),
+  boundaries: z.object({
+    neverJokeAbout: z.array(z.string()).default([]),
+    neverAdviseOn: z.array(z.string()).default([]),
+  }).default({}),
+});
+
+export type AgentIdentity = z.infer<typeof AgentIdentitySchema>;
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -128,6 +155,7 @@ export const ConfigSchema = z.object({
   dashboard: DashboardConfigSchema.default({}),
   plugins: PluginsConfigSchema.default({}),
   memory: MemoryConfigSchema.default({}),
+  agent: AgentIdentitySchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

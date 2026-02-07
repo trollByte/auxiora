@@ -102,6 +102,12 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/onboarding':
+        specifier: workspace:*
+        version: link:../onboarding
+      '@auxiora/personality':
+        specifier: workspace:*
+        version: link:../personality
       '@auxiora/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -260,6 +266,27 @@ importers:
         version: link:../logger
 
   packages/metrics: {}
+
+  packages/onboarding:
+    dependencies:
+      '@auxiora/config':
+        specifier: workspace:*
+        version: link:../config
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/personality':
+        specifier: workspace:*
+        version: link:../personality
+
+  packages/personality:
+    dependencies:
+      '@auxiora/config':
+        specifier: workspace:*
+        version: link:../config
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/plugins:
     dependencies:

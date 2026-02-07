@@ -2,7 +2,7 @@ import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway
 import { SessionManager, type Message } from '@auxiora/sessions';
 import { ProviderFactory, type StreamChunk, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
-import { loadConfig, type Config } from '@auxiora/config';
+import { loadConfig, type Config, type AgentIdentity } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 import {
@@ -431,8 +431,56 @@ export class Auxiora {
     });
   }
 
+  private buildIdentityPreamble(agent: AgentIdentity): string {
+    const lines: string[] = ['# Agent Identity'];
+    lines.push(`You are ${agent.name} (${agent.pronouns}).`);
+
+    lines.push('');
+    lines.push('## Personality');
+    lines.push(
+      `Warmth: ${agent.tone.warmth}/1.0 | Directness: ${agent.tone.directness}/1.0 | Humor: ${agent.tone.humor}/1.0 | Formality: ${agent.tone.formality}/1.0`,
+    );
+    lines.push(`Error handling style: ${agent.errorStyle}`);
+
+    if (agent.expertise.length > 0) {
+      lines.push('');
+      lines.push('## Expertise');
+      for (const area of agent.expertise) {
+        lines.push(`- ${area}`);
+      }
+    }
+
+    const phrases = Object.entries(agent.catchphrases).filter(([, v]) => v);
+    if (phrases.length > 0) {
+      lines.push('');
+      lines.push('## Catchphrases');
+      for (const [key, value] of phrases) {
+        lines.push(`- ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
+      }
+    }
+
+    const hasJokeBoundaries = agent.boundaries.neverJokeAbout.length > 0;
+    const hasAdviseBoundaries = agent.boundaries.neverAdviseOn.length > 0;
+    if (hasJokeBoundaries || hasAdviseBoundaries) {
+      lines.push('');
+      lines.push('## Boundaries');
+      if (hasJokeBoundaries) {
+        lines.push(`Never joke about: ${agent.boundaries.neverJokeAbout.join(', ')}`);
+      }
+      if (hasAdviseBoundaries) {
+        lines.push(`Never advise on: ${agent.boundaries.neverAdviseOn.join(', ')}`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
   private async loadPersonality(): Promise<void> {
     const parts: string[] = [];
+
+    // Build identity preamble from config
+    const agent = this.config.agent;
+    parts.push(this.buildIdentityPreamble(agent));
 
     // Load SOUL.md
     try {
@@ -466,11 +514,12 @@ export class Auxiora {
       // No USER.md
     }
 
-    if (parts.length > 0) {
+    if (parts.length > 1) {
+      // Has content beyond the identity preamble
       this.systemPrompt = parts.join('\n\n---\n\n');
     } else {
-      // Default personality
-      this.systemPrompt = `You are Auxiora, a helpful AI assistant. Be concise, accurate, and friendly.`;
+      // Only identity preamble, no personality files — use enriched default
+      this.systemPrompt = `You are ${agent.name}, a helpful AI assistant. Be concise, accurate, and friendly.`;
     }
   }
 
@@ -1129,7 +1178,7 @@ Respond with ONLY a JSON array, no other text.`;
 
     this.running = true;
 
-    console.log(`\nAuxiora is ready!`);
+    console.log(`\n${this.getAgentName()} is ready!`);
     console.log(`Open http://${this.config.gateway.host}:${this.config.gateway.port} in your browser\n`);
   }
 
@@ -1159,6 +1208,10 @@ Respond with ONLY a JSON array, no other text.`;
 
   getConfig(): Config {
     return this.config;
+  }
+
+  getAgentName(): string {
+    return this.config.agent?.name ?? 'Auxiora';
   }
 }
 

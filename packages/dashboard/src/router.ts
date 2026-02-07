@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { DashboardAuth } from './auth.js';
-import type { DashboardConfig, DashboardDeps } from './types.js';
+import type { DashboardConfig, DashboardDeps, SetupDeps } from './types.js';
 
 const logger = getLogger('dashboard:router');
 
@@ -96,6 +96,166 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     const sessionId = cookies[COOKIE_NAME];
     const authenticated = !!sessionId && auth.validateSession(sessionId);
     res.json({ authenticated });
+  });
+
+  // --- Setup wizard routes (no auth required during first-run) ---
+  const setup = deps.setup;
+  let setupComplete = false;
+
+  async function checkNeedsSetup(): Promise<boolean> {
+    if (setupComplete) return false;
+    if (!setup) return false;
+    const agentName = setup.getAgentName?.() ?? 'Auxiora';
+    const hasSoul = setup.hasSoulFile ? await setup.hasSoulFile() : false;
+    return agentName === 'Auxiora' && !hasSoul;
+  }
+
+  router.get('/setup/status', async (req: Request, res: Response) => {
+    const needsSetup = await checkNeedsSetup();
+    const completedSteps: string[] = [];
+
+    if (setup?.getAgentName) {
+      const name = setup.getAgentName();
+      if (name !== 'Auxiora') completedSteps.push('identity');
+    }
+    if (setup?.hasSoulFile && await setup.hasSoulFile()) {
+      completedSteps.push('personality');
+    }
+    try {
+      if (deps.vault.has('ANTHROPIC_API_KEY') || deps.vault.has('OPENAI_API_KEY')) {
+        completedSteps.push('provider');
+      }
+    } catch {
+      // vault locked
+    }
+
+    res.json({ needsSetup, completedSteps });
+  });
+
+  router.get('/setup/templates', async (req: Request, res: Response) => {
+    if (!setup?.personality) {
+      res.json({ data: [] });
+      return;
+    }
+    const templates = await setup.personality.listTemplates();
+    res.json({ data: templates });
+  });
+
+  router.post('/setup/identity', async (req: Request, res: Response) => {
+    if (!setup?.saveConfig) {
+      res.status(503).json({ error: 'Setup not available' });
+      return;
+    }
+
+    const { name, pronouns } = req.body as { name?: string; pronouns?: string };
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'Agent name is required' });
+      return;
+    }
+
+    await setup.saveConfig({
+      agent: {
+        name,
+        ...(pronouns ? { pronouns } : {}),
+      },
+    });
+
+    void audit('setup.identity', { name, pronouns });
+    res.json({ success: true, name });
+  });
+
+  router.post('/setup/personality', async (req: Request, res: Response) => {
+    if (!setup?.personality) {
+      res.status(503).json({ error: 'Personality not available' });
+      return;
+    }
+
+    const { template, custom } = req.body as { template?: string; custom?: Record<string, unknown> };
+
+    if (template) {
+      try {
+        await setup.personality.applyTemplate(template);
+        void audit('setup.personality', { template });
+        res.json({ success: true, template });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        res.status(404).json({ error: msg });
+      }
+    } else if (custom) {
+      const content = await setup.personality.buildCustom(custom);
+      void audit('setup.personality', { custom: true });
+      res.json({ success: true, content });
+    } else {
+      res.status(400).json({ error: 'Provide either "template" or "custom" in body' });
+    }
+  });
+
+  router.post('/setup/provider', async (req: Request, res: Response) => {
+    const { provider, apiKey } = req.body as { provider?: string; apiKey?: string };
+    if (!provider || !apiKey) {
+      res.status(400).json({ error: 'Provider and apiKey are required' });
+      return;
+    }
+
+    if (provider !== 'anthropic' && provider !== 'openai') {
+      res.status(400).json({ error: 'Provider must be "anthropic" or "openai"' });
+      return;
+    }
+
+    const vaultKey = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+    await deps.vault.add(vaultKey, apiKey);
+
+    if (setup?.saveConfig) {
+      await setup.saveConfig({ provider: { primary: provider } });
+    }
+
+    void audit('setup.provider', { provider });
+    res.json({ success: true, provider });
+  });
+
+  router.post('/setup/channels', async (req: Request, res: Response) => {
+    if (!setup?.saveConfig) {
+      res.status(503).json({ error: 'Setup not available' });
+      return;
+    }
+
+    const { channels } = req.body as { channels?: string[] };
+    if (!Array.isArray(channels)) {
+      res.status(400).json({ error: 'Channels must be an array' });
+      return;
+    }
+
+    const channelConfig: Record<string, { enabled: boolean }> = {};
+    for (const ch of channels) {
+      if (typeof ch === 'string') {
+        channelConfig[ch] = { enabled: true };
+      }
+    }
+
+    await setup.saveConfig({ channels: channelConfig });
+    void audit('setup.channels', { channels });
+    res.json({ success: true, channels });
+  });
+
+  router.post('/setup/complete', async (req: Request, res: Response) => {
+    setupComplete = true;
+    void audit('setup.complete', {});
+
+    const agentName = setup?.getAgentName?.() ?? 'Auxiora';
+    res.json({
+      success: true,
+      greeting: `${agentName} is ready! Setup complete.`,
+    });
+  });
+
+  // --- Setup guard middleware ---
+  router.use(async (req: Request, res: Response, next: NextFunction) => {
+    const needsSetup = await checkNeedsSetup();
+    if (needsSetup) {
+      res.status(403).json({ error: 'Setup required', needsSetup: true });
+      return;
+    }
+    next();
   });
 
   // --- Protected routes ---

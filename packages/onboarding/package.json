@@ -1,0 +1,27 @@
+{
+  "name": "@auxiora/onboarding",
+  "version": "1.0.0",
+  "description": "Onboarding wizard and setup logic for Auxiora",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@auxiora/config": "workspace:*",
+    "@auxiora/core": "workspace:*",
+    "@auxiora/personality": "workspace:*"
+  }
+}

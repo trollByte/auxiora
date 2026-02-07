@@ -1,0 +1,26 @@
+{
+  "name": "@auxiora/personality",
+  "version": "1.0.0",
+  "description": "Personality templates and SOUL.md management for Auxiora",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@auxiora/config": "workspace:*",
+    "@auxiora/core": "workspace:*"
+  }
+}

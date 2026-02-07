@@ -10,6 +10,24 @@ export interface DashboardSession {
   ip: string;
 }
 
+export interface PersonalityTemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  preview: string;
+}
+
+export interface SetupDeps {
+  personality?: {
+    listTemplates(): Promise<PersonalityTemplateSummary[]>;
+    applyTemplate(id: string): Promise<void>;
+    buildCustom(config: Record<string, unknown>): Promise<string>;
+  };
+  saveConfig?: (updates: Record<string, unknown>) => Promise<void>;
+  getAgentName?: () => string;
+  hasSoulFile?: () => Promise<boolean>;
+}
+
 export interface DashboardDeps {
   vault: {
     get(name: string): string | undefined;
@@ -52,6 +70,7 @@ export interface DashboardDeps {
     updatedAt: number;
     accessCount: number;
   }>>;
+  setup?: SetupDeps;
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

@@ -6,12 +6,7 @@
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../core" },
     { "path": "../config" },
-    { "path": "../vault" },
-    { "path": "../audit" },
-    { "path": "../gateway" },
-    { "path": "../onboarding" },
-    { "path": "../personality" }
+    { "path": "../core" }
   ]
 }

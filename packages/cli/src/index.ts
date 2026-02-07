@@ -8,6 +8,8 @@ import { createPathsCommand } from './commands/paths.js';
 import { createStartCommand } from './commands/start.js';
 import { createAuthCommand } from './commands/auth.js';
 import { createDaemonCommand } from './commands/daemon.js';
+import { createInitCommand } from './commands/init.js';
+import { createPersonalityCommand } from './commands/personality.js';
 
 const program = new Command();
 
@@ -17,6 +19,7 @@ program
   .version('1.0.0');
 
 // Core commands
+program.addCommand(createInitCommand());
 program.addCommand(createStartCommand());
 program.addCommand(createVaultCommand());
 program.addCommand(createAuthCommand());
@@ -24,5 +27,6 @@ program.addCommand(createDaemonCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createAuditCommand());
 program.addCommand(createPathsCommand());
+program.addCommand(createPersonalityCommand());
 
 program.parse();
