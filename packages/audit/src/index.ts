@@ -76,7 +76,18 @@ export type AuditEventType =
   | 'setup.provider'
   | 'setup.channels'
   | 'setup.complete'
-  | 'system.error';
+  | 'system.error'
+  // Desktop (Phase 6)
+  | 'desktop.config_updated'
+  | 'desktop.update_check'
+  | 'desktop.notification_sent'
+  // Cloud (Phase 7)
+  | 'cloud.signup'
+  | 'cloud.login'
+  | 'cloud.plan_change'
+  | 'cloud.payment_method'
+  | 'cloud.export'
+  | 'cloud.delete_tenant';
 
 export interface AuditEntry {
   timestamp: string;

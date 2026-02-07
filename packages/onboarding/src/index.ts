@@ -1,3 +1,11 @@
-export type { OnboardingAnswers, OnboardingStep, OnboardingChoice } from './types.js';
+export type {
+  OnboardingAnswers,
+  OnboardingStep,
+  OnboardingChoice,
+  OnboardingVariant,
+  DesktopOnboardingStep,
+  DesktopOnboardingAnswers,
+} from './types.js';
 export { OnboardingWizard } from './wizard.js';
-export { applyOnboarding, type ApplyResult } from './apply.js';
+export { DesktopOnboardingWizard } from './desktop-wizard.js';
+export { applyOnboarding, applyDesktopOnboarding, type ApplyResult, type DesktopApplyResult } from './apply.js';

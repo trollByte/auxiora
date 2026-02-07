@@ -146,6 +146,18 @@ importers:
         specifier: ^9.0.9
         version: 9.0.10
 
+  packages/cloud:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/config:
     dependencies:
       '@auxiora/core':
@@ -213,6 +225,15 @@ importers:
         specifier: ^6.3.0
         version: 6.4.1(@types/node@25.1.0)
 
+  packages/desktop:
+    dependencies:
+      '@auxiora/config':
+        specifier: workspace:*
+        version: link:../config
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/errors: {}
 
   packages/gateway:
@@ -251,6 +272,8 @@ importers:
       '@types/ws':
         specifier: ^8.18.0
         version: 8.18.1
+
+  packages/landing: {}
 
   packages/logger:
     dependencies:

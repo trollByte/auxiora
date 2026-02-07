@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: auxiora-staging
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+patches:
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: auxiora
+      spec:
+        replicas: 1
+        template:
+          spec:
+            containers:
+              - name: auxiora
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 128Mi
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+  - patch: |
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: auxiora
+      spec:
+        minReplicas: 1
+        maxReplicas: 3
+  - patch: |
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: auxiora
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-staging
+      spec:
+        tls:
+          - hosts:
+              - staging.auxiora.dev
+            secretName: auxiora-staging-tls
+        rules:
+          - host: staging.auxiora.dev

@@ -1,0 +1,29 @@
+{
+  "name": "@auxiora/desktop",
+  "version": "1.0.0",
+  "description": "Desktop shell for Auxiora — Tauri integration, tray, hotkeys, notifications, auto-update",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:build": "bash ../../scripts/build-all.sh",
+    "tauri:sign": "bash ../../scripts/sign.sh"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/config": "workspace:*"
+  }
+}

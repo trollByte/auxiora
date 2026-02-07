@@ -14,6 +14,10 @@ import { createModelsCommand } from './commands/models.js';
 import { createMemoryCommand } from './commands/memory.js';
 import { createOrchestrationCommand } from './commands/orchestration.js';
 import { createPluginCommand } from './commands/plugin.js';
+// [P6] Desktop
+import { createDesktopCommand } from './commands/desktop.js';
+// [P7] Cloud
+import { createCloudCommand } from './commands/cloud.js';
 
 const program = new Command();
 
@@ -36,5 +40,9 @@ program.addCommand(createModelsCommand());
 program.addCommand(createMemoryCommand());
 program.addCommand(createOrchestrationCommand());
 program.addCommand(createPluginCommand());
+// [P6] Desktop
+program.addCommand(createDesktopCommand());
+// [P7] Cloud
+program.addCommand(createCloudCommand());
 
 program.parse();

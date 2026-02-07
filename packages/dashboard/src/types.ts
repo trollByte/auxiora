@@ -133,6 +133,27 @@ export interface DashboardDeps {
       warningThresholdReached: boolean;
     };
   };
+  // --- [P6] Desktop ---
+  desktop?: {
+    getStatus(): {
+      status: string;
+      autoStart: boolean;
+      hotkey: string;
+      notificationsEnabled: boolean;
+      ollamaRunning: boolean;
+      updateChannel: string;
+    };
+    updateConfig(updates: Record<string, unknown>): Promise<Record<string, unknown>>;
+    sendNotification(payload: { title: string; body: string }): Promise<void>;
+    checkUpdates(): Promise<{
+      available: boolean;
+      currentVersion: string;
+      latestVersion?: string;
+      channel: string;
+    }>;
+  };
+  // --- Cloud (Phase 7) ---
+  cloud?: import('./cloud-types.js').CloudDeps;
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

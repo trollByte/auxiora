@@ -8,3 +8,6 @@ export {
   zeroBuffer,
 } from './crypto.js';
 export { readVaultFile, writeVaultFile, deleteVaultFile, getVaultPath, vaultExists } from './storage.js';
+export { CloudVault, type EncryptedEnvelope } from './cloud-vault.js';
+export { KeyManager, type ExportedKey } from './key-management.js';
+export { EjectManager, type EjectableData } from './eject.js';

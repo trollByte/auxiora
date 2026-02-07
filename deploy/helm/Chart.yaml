@@ -1,0 +1,16 @@
+apiVersion: v2
+name: auxiora
+description: Auxiora — Secure AI Assistant Platform
+type: application
+version: 0.1.0
+appVersion: "2.0.0"
+keywords:
+  - ai
+  - assistant
+  - self-hosted
+  - multi-tenant
+home: https://auxiora.dev
+sources:
+  - https://github.com/auxiora/auxiora
+maintainers:
+  - name: Auxiora Team

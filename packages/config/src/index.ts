@@ -140,6 +140,31 @@ const DashboardConfigSchema = z.object({
   sessionTtlMs: z.number().int().positive().default(86_400_000),
 });
 
+// [P6] Desktop config
+export const DesktopConfigSchema = z.object({
+  autoStart: z.boolean().default(false),
+  minimizeToTray: z.boolean().default(true),
+  hotkey: z.string().default('CommandOrControl+Shift+A'),
+  notificationsEnabled: z.boolean().default(true),
+  updateChannel: z.enum(['stable', 'beta', 'nightly']).default('stable'),
+  ollamaEnabled: z.boolean().default(false),
+  ollamaPort: z.number().int().min(1).max(65535).default(11434),
+  windowWidth: z.number().int().positive().default(1024),
+  windowHeight: z.number().int().positive().default(768),
+});
+export type DesktopConfig = z.infer<typeof DesktopConfigSchema>;
+
+// [P7] Cloud config
+export const CloudConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  baseDataDir: z.string().default('/data/tenants'),
+  jwtSecret: z.string().default(''),
+  stripeSecretKey: z.string().optional(),
+  stripeWebhookSecret: z.string().optional(),
+  domain: z.string().default('localhost'),
+});
+export type CloudConfig = z.infer<typeof CloudConfigSchema>;
+
 const PluginsConfigSchema = z.object({
   enabled: z.boolean().default(true),
   dir: z.string().optional(),
@@ -220,6 +245,10 @@ export const ConfigSchema = z.object({
   memory: MemoryConfigSchema.default({}),
   orchestration: OrchestrationConfigSchema.default({}),
   agent: AgentIdentitySchema.default({}),
+  // [P6] Desktop
+  desktop: DesktopConfigSchema.default({}),
+  // [P7] Cloud
+  cloud: CloudConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

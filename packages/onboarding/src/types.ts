@@ -1,3 +1,5 @@
+export type OnboardingVariant = 'server' | 'desktop';
+
 export interface OnboardingAnswers {
   agentName: string;
   pronouns: string;
@@ -5,6 +7,21 @@ export interface OnboardingAnswers {
   provider: 'anthropic' | 'openai';
   apiKey: string;
   channels: string[];
+}
+
+export interface DesktopOnboardingStep {
+  id: string;
+  prompt: string;
+  type: 'text' | 'select' | 'toggle' | 'hotkey';
+  choices?: OnboardingChoice[];
+  default?: string | boolean;
+}
+
+export interface DesktopOnboardingAnswers {
+  autoStart: boolean;
+  hotkey: string;
+  notificationsEnabled: boolean;
+  ollamaEnabled: boolean;
 }
 
 export interface OnboardingStep {

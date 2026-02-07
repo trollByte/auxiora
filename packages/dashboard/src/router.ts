@@ -3,6 +3,7 @@ import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { DashboardAuth } from './auth.js';
 import type { DashboardConfig, DashboardDeps, SetupDeps } from './types.js';
+import type { CloudDeps, CloudSignupRequest, CloudLoginRequest, CloudPlanChangeRequest, CloudPaymentMethodRequest } from './cloud-types.js';
 
 const logger = getLogger('dashboard:router');
 
@@ -647,6 +648,212 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
     const summary = deps.models.getCostSummary();
     res.json(summary);
+  });
+
+  // --- [P6] Desktop routes ---
+  router.get('/desktop/status', (req: Request, res: Response) => {
+    if (!deps.desktop) {
+      res.status(503).json({ error: 'Desktop not available' });
+      return;
+    }
+    const status = deps.desktop.getStatus();
+    res.json({ data: status });
+  });
+
+  router.post('/desktop/config', async (req: Request, res: Response) => {
+    if (!deps.desktop) {
+      res.status(503).json({ error: 'Desktop not available' });
+      return;
+    }
+    const updates = req.body as Record<string, unknown>;
+    if (!updates || typeof updates !== 'object') {
+      res.status(400).json({ error: 'Request body must be an object' });
+      return;
+    }
+    const result = await deps.desktop.updateConfig(updates);
+    void audit('desktop.config_updated', { keys: Object.keys(updates) });
+    res.json({ data: result });
+  });
+
+  router.post('/desktop/notification', async (req: Request, res: Response) => {
+    if (!deps.desktop) {
+      res.status(503).json({ error: 'Desktop not available' });
+      return;
+    }
+    const { title, body: notifBody } = req.body as { title?: string; body?: string };
+    if (!title || !notifBody) {
+      res.status(400).json({ error: 'title and body are required' });
+      return;
+    }
+    await deps.desktop.sendNotification({ title, body: notifBody });
+    res.json({ data: { sent: true } });
+  });
+
+  router.get('/desktop/updates', async (req: Request, res: Response) => {
+    if (!deps.desktop) {
+      res.status(503).json({ error: 'Desktop not available' });
+      return;
+    }
+    const updateInfo = await deps.desktop.checkUpdates();
+    res.json({ data: updateInfo });
+  });
+
+  // --- Cloud routes (Phase 7) ---
+  // Signup and login are NOT behind requireAuth — they are public cloud endpoints
+
+  router.post('/cloud/signup', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const { email, name, password, plan } = req.body as CloudSignupRequest;
+    if (!email || !name || !password) {
+      res.status(400).json({ error: 'email, name, and password are required' });
+      return;
+    }
+    try {
+      const result = await deps.cloud.signup(email, name, password, plan);
+      void audit('cloud.signup', { email });
+      res.status(201).json({ data: result });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Signup failed';
+      res.status(409).json({ error: msg });
+    }
+  });
+
+  router.post('/cloud/login', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const { email, password } = req.body as CloudLoginRequest;
+    if (!email || !password) {
+      res.status(400).json({ error: 'email and password are required' });
+      return;
+    }
+    const result = await deps.cloud.login(email, password);
+    if (!result) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+    void audit('cloud.login', { email });
+    res.json({ data: result });
+  });
+
+  router.get('/cloud/tenant', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const tenant = await deps.cloud.getTenant(tenantId);
+    if (!tenant) {
+      res.status(404).json({ error: 'Tenant not found' });
+      return;
+    }
+    res.json({ data: tenant });
+  });
+
+  router.post('/cloud/tenant/plan', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const { plan } = req.body as CloudPlanChangeRequest;
+    if (!plan) {
+      res.status(400).json({ error: 'plan is required' });
+      return;
+    }
+    const result = await deps.cloud.changePlan(tenantId, plan);
+    void audit('cloud.plan_change', { tenantId, plan });
+    res.json({ data: result });
+  });
+
+  router.get('/cloud/tenant/usage', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const usage = await deps.cloud.getUsage(tenantId);
+    res.json({ data: usage });
+  });
+
+  router.get('/cloud/tenant/billing', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const billing = await deps.cloud.getBilling(tenantId);
+    res.json({ data: billing });
+  });
+
+  router.post('/cloud/tenant/billing/payment-method', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const { token } = req.body as CloudPaymentMethodRequest;
+    if (!token) {
+      res.status(400).json({ error: 'token is required' });
+      return;
+    }
+    const result = await deps.cloud.addPaymentMethod(tenantId, token);
+    void audit('cloud.payment_method', { tenantId });
+    res.json({ data: result });
+  });
+
+  router.post('/cloud/tenant/export', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const result = await deps.cloud.exportData(tenantId);
+    void audit('cloud.export', { tenantId });
+    res.json({ data: result });
+  });
+
+  router.delete('/cloud/tenant', async (req: Request, res: Response) => {
+    if (!deps.cloud) {
+      res.status(503).json({ error: 'Cloud not available' });
+      return;
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      res.status(400).json({ error: 'x-tenant-id header required' });
+      return;
+    }
+    const result = await deps.cloud.deleteTenant(tenantId);
+    void audit('cloud.delete_tenant', { tenantId });
+    res.json({ data: result });
   });
 
   return { router, auth };

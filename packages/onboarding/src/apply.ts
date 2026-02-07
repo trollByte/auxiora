@@ -4,7 +4,7 @@ import { loadConfig, saveConfig } from '@auxiora/config';
 import type { Config } from '@auxiora/config';
 import { getSoulPath, getWorkspacePath } from '@auxiora/core';
 import { PersonalityManager } from '@auxiora/personality';
-import type { OnboardingAnswers } from './types.js';
+import type { OnboardingAnswers, DesktopOnboardingAnswers } from './types.js';
 
 export interface ApplyResult {
   configSaved: boolean;
@@ -74,6 +74,48 @@ export async function applyOnboarding(answers: OnboardingAnswers): Promise<Apply
     personalityApplied,
     channelsEnabled: enabledChannels,
     provider: answers.provider,
+    summary: lines.join('\n'),
+  };
+}
+
+export interface DesktopApplyResult {
+  configSaved: boolean;
+  summary: string;
+}
+
+/**
+ * Apply desktop-specific onboarding answers to the system configuration.
+ */
+export async function applyDesktopOnboarding(answers: DesktopOnboardingAnswers): Promise<DesktopApplyResult> {
+  const config = await loadConfig();
+
+  const desktopConfig = (config as Record<string, unknown>).desktop as Record<string, unknown> | undefined;
+  if (desktopConfig) {
+    desktopConfig.autoStart = answers.autoStart;
+    desktopConfig.hotkey = answers.hotkey;
+    desktopConfig.notificationsEnabled = answers.notificationsEnabled;
+    desktopConfig.ollamaEnabled = answers.ollamaEnabled;
+  } else {
+    (config as Record<string, unknown>).desktop = {
+      autoStart: answers.autoStart,
+      hotkey: answers.hotkey,
+      notificationsEnabled: answers.notificationsEnabled,
+      ollamaEnabled: answers.ollamaEnabled,
+    };
+  }
+
+  await saveConfig(config);
+
+  const lines = [
+    `Desktop configured.`,
+    `Auto-start: ${answers.autoStart ? 'enabled' : 'disabled'}`,
+    `Hotkey: ${answers.hotkey}`,
+    `Notifications: ${answers.notificationsEnabled ? 'enabled' : 'disabled'}`,
+    `Ollama: ${answers.ollamaEnabled ? 'enabled' : 'disabled'}`,
+  ];
+
+  return {
+    configSaved: true,
     summary: lines.join('\n'),
   };
 }

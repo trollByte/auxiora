@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auxiora
+  namespace: auxiora
+  labels:
+    app.kubernetes.io/name: auxiora
+    app.kubernetes.io/component: server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auxiora
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auxiora
+        app.kubernetes.io/component: server
+    spec:
+      serviceAccountName: auxiora
+      containers:
+        - name: auxiora
+          image: auxiora/auxiora:latest
+          ports:
+            - name: http
+              containerPort: 18800
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AUXIORA_GATEWAY_HOST
+              value: "0.0.0.0"
+            - name: AUXIORA_GATEWAY_PORT
+              value: "18800"
+          envFrom:
+            - configMapRef:
+                name: auxiora-config
+            - secretRef:
+                name: auxiora-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: auxiora-data
+        - name: config
+          configMap:
+            name: auxiora-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auxiora-data
+  namespace: auxiora
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auxiora
+  namespace: auxiora
+  labels:
+    app.kubernetes.io/name: auxiora
