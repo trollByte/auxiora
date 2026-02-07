@@ -157,6 +157,17 @@ const MemoryConfigSchema = z.object({
   importanceDecay: z.number().min(0).max(1).default(0.01),
 });
 
+const OrchestrationConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  maxConcurrentAgents: z.number().int().min(1).max(10).default(5),
+  defaultTimeout: z.number().int().positive().default(60000),
+  totalTimeout: z.number().int().positive().default(300000),
+  allowedPatterns: z.array(z.enum([
+    'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor',
+  ])).default(['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor']),
+  costMultiplierWarning: z.number().positive().default(3),
+});
+
 const AgentIdentitySchema = z.object({
   name: z.string().default('Auxiora'),
   pronouns: z.string().default('they/them'),
@@ -199,11 +210,13 @@ export const ConfigSchema = z.object({
   dashboard: DashboardConfigSchema.default({}),
   plugins: PluginsConfigSchema.default({}),
   memory: MemoryConfigSchema.default({}),
+  orchestration: OrchestrationConfigSchema.default({}),
   agent: AgentIdentitySchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
 export type ModelRouting = z.infer<typeof ModelRoutingSchema>;
+export type OrchestrationConfig = z.infer<typeof OrchestrationConfigSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 

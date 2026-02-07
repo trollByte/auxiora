@@ -378,3 +378,12 @@ toolRegistry.register(AskModelTool);
 // Export ask-model tool
 export { AskModelTool } from './ask-model.js';
 export { setProviderFactory } from './ask-model.js';
+
+// Import and register assemble-team tool
+import { AssembleTeamTool } from './assemble-team.js';
+
+toolRegistry.register(AssembleTeamTool);
+
+// Export assemble-team tool
+export { AssembleTeamTool } from './assemble-team.js';
+export { setOrchestrationEngine } from './assemble-team.js';

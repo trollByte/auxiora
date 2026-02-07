@@ -1,7 +1,7 @@
 {
-  "name": "@auxiora/tools",
+  "name": "@auxiora/orchestrator",
   "version": "1.0.0",
-  "description": "Tool system for Auxiora AI assistant",
+  "description": "Multi-agent orchestration engine for Auxiora",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,15 +17,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auxiora/audit": "workspace:*",
     "@auxiora/core": "workspace:*",
-    "@auxiora/errors": "workspace:*",
-    "@auxiora/logger": "workspace:*",
-    "@auxiora/browser": "workspace:*",
-    "@auxiora/metrics": "workspace:*",
-    "@auxiora/orchestrator": "workspace:*",
+    "@auxiora/config": "workspace:*",
     "@auxiora/providers": "workspace:*",
-    "@auxiora/webhooks": "workspace:*"
+    "@auxiora/logger": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

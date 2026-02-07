@@ -15,6 +15,7 @@
     { "path": "packages/gateway" },
     { "path": "packages/channels" },
     { "path": "packages/runtime" },
-    { "path": "packages/cli" }
+    { "path": "packages/cli" },
+    { "path": "packages/orchestrator" }
   ]
 }

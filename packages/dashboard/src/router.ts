@@ -451,6 +451,26 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: result });
   });
 
+  // Orchestration
+  router.get('/orchestration/status', (req: Request, res: Response) => {
+    if (!deps.orchestration) {
+      res.json({ data: { enabled: false, maxConcurrentAgents: 0, allowedPatterns: [] } });
+      return;
+    }
+    const config = deps.orchestration.getConfig();
+    res.json({ data: config });
+  });
+
+  router.get('/orchestration/history', (req: Request, res: Response) => {
+    if (!deps.orchestration) {
+      res.json({ data: [] });
+      return;
+    }
+    const limit = parseInt(req.query.limit as string) || 20;
+    const history = deps.orchestration.getHistory(limit);
+    res.json({ data: history });
+  });
+
   // Models
   router.get('/models', (req: Request, res: Response) => {
     if (!deps.models) {

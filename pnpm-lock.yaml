@@ -288,6 +288,21 @@ importers:
         specifier: workspace:*
         version: link:../personality
 
+  packages/orchestrator:
+    dependencies:
+      '@auxiora/config':
+        specifier: workspace:*
+        version: link:../config
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/providers':
+        specifier: workspace:*
+        version: link:../providers
+
   packages/personality:
     dependencies:
       '@auxiora/config':
@@ -371,6 +386,9 @@ importers:
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory
+      '@auxiora/orchestrator':
+        specifier: workspace:*
+        version: link:../orchestrator
       '@auxiora/plugins':
         specifier: workspace:*
         version: link:../plugins
@@ -444,6 +462,9 @@ importers:
       '@auxiora/metrics':
         specifier: workspace:*
         version: link:../metrics
+      '@auxiora/orchestrator':
+        specifier: workspace:*
+        version: link:../orchestrator
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers

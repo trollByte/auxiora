@@ -12,6 +12,7 @@
     { "path": "../logger" },
     { "path": "../metrics" },
     { "path": "../browser" },
-    { "path": "../webhooks" }
+    { "path": "../webhooks" },
+    { "path": "../orchestrator" }
   ]
 }

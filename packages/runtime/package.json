@@ -35,6 +35,7 @@
     "@auxiora/dashboard": "workspace:*",
     "@auxiora/plugins": "workspace:*",
     "@auxiora/memory": "workspace:*",
+    "@auxiora/orchestrator": "workspace:*",
     "@auxiora/router": "workspace:*",
     "express": "^5.1.0"
   },

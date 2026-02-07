@@ -256,6 +256,59 @@ describe('Config', () => {
     });
   });
 
+  describe('orchestration config', () => {
+    it('should default orchestration to enabled', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.orchestration.enabled).toBe(true);
+      expect(config.orchestration.maxConcurrentAgents).toBe(5);
+      expect(config.orchestration.defaultTimeout).toBe(60000);
+      expect(config.orchestration.totalTimeout).toBe(300000);
+      expect(config.orchestration.allowedPatterns).toEqual([
+        'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor',
+      ]);
+      expect(config.orchestration.costMultiplierWarning).toBe(3);
+    });
+
+    it('should accept custom orchestration config', () => {
+      const config = ConfigSchema.parse({
+        orchestration: {
+          enabled: false,
+          maxConcurrentAgents: 3,
+          defaultTimeout: 30000,
+          allowedPatterns: ['parallel', 'sequential'],
+        },
+      });
+      expect(config.orchestration.enabled).toBe(false);
+      expect(config.orchestration.maxConcurrentAgents).toBe(3);
+      expect(config.orchestration.defaultTimeout).toBe(30000);
+      expect(config.orchestration.allowedPatterns).toEqual(['parallel', 'sequential']);
+    });
+
+    it('should reject invalid maxConcurrentAgents', () => {
+      expect(() => ConfigSchema.parse({
+        orchestration: { maxConcurrentAgents: 0 },
+      })).toThrow();
+      expect(() => ConfigSchema.parse({
+        orchestration: { maxConcurrentAgents: 11 },
+      })).toThrow();
+    });
+
+    it('should reject invalid pattern names', () => {
+      expect(() => ConfigSchema.parse({
+        orchestration: { allowedPatterns: ['invalid-pattern'] },
+      })).toThrow();
+    });
+
+    it('should reject non-positive timeouts', () => {
+      expect(() => ConfigSchema.parse({
+        orchestration: { defaultTimeout: 0 },
+      })).toThrow();
+      expect(() => ConfigSchema.parse({
+        orchestration: { totalTimeout: -1 },
+      })).toThrow();
+    });
+  });
+
   describe('memory config', () => {
     it('should default memory to enabled with auto-extract', () => {
       const config = ConfigSchema.parse({});

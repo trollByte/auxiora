@@ -12,6 +12,7 @@ import { createInitCommand } from './commands/init.js';
 import { createPersonalityCommand } from './commands/personality.js';
 import { createModelsCommand } from './commands/models.js';
 import { createMemoryCommand } from './commands/memory.js';
+import { createOrchestrationCommand } from './commands/orchestration.js';
 
 const program = new Command();
 
@@ -32,5 +33,6 @@ program.addCommand(createPathsCommand());
 program.addCommand(createPersonalityCommand());
 program.addCommand(createModelsCommand());
 program.addCommand(createMemoryCommand());
+program.addCommand(createOrchestrationCommand());
 
 program.parse();

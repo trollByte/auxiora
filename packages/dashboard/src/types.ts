@@ -85,6 +85,21 @@ export interface DashboardDeps {
     importAll(data: { memories: any[] }): Promise<{ imported: number; skipped: number }>;
   };
   setup?: SetupDeps;
+  orchestration?: {
+    getConfig(): {
+      enabled: boolean;
+      maxConcurrentAgents: number;
+      allowedPatterns: string[];
+    };
+    getHistory(limit?: number): Array<{
+      workflowId: string;
+      pattern: string;
+      taskCount: number;
+      totalCost: number;
+      duration: number;
+      timestamp: number;
+    }>;
+  };
   models?: {
     listProviders(): Array<{
       name: string;

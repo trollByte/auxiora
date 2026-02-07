@@ -24,8 +24,10 @@ import {
   setWebhookManager,
   setBehaviorManager,
   setProviderFactory,
+  setOrchestrationEngine,
   type ExecutionContext,
 } from '@auxiora/tools';
+import { OrchestrationEngine } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -78,6 +80,15 @@ export class Auxiora {
   private patternDetector?: PatternDetector;
   private personalityAdapter?: PersonalityAdapter;
   private memoryCleanupInterval?: ReturnType<typeof setInterval>;
+  private orchestrationEngine?: OrchestrationEngine;
+  private orchestrationHistory: Array<{
+    workflowId: string;
+    pattern: string;
+    taskCount: number;
+    totalCost: number;
+    duration: number;
+    timestamp: number;
+  }> = [];
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Load config
@@ -117,6 +128,16 @@ export class Auxiora {
     if (this.providers) {
       this.initializeRouter();
       setProviderFactory(this.providers);
+    }
+
+    // Initialize orchestration engine (if enabled and providers available)
+    if (this.providers && this.config.orchestration?.enabled !== false) {
+      this.orchestrationEngine = new OrchestrationEngine(
+        this.providers,
+        this.config.orchestration ?? { enabled: true, maxConcurrentAgents: 5, defaultTimeout: 60000, totalTimeout: 300000, allowedPatterns: ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor'], costMultiplierWarning: 3 },
+      );
+      setOrchestrationEngine(this.orchestrationEngine);
+      console.log('Orchestration engine initialized');
     }
 
     // Initialize channels (if configured and vault is unlocked)
@@ -236,6 +257,17 @@ export class Auxiora {
           },
           getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
           getMemories: async () => this.memoryStore?.getAll() ?? [],
+          orchestration: this.orchestrationEngine ? {
+            getConfig: () => ({
+              enabled: this.config.orchestration?.enabled !== false,
+              maxConcurrentAgents: this.config.orchestration?.maxConcurrentAgents ?? 5,
+              allowedPatterns: this.config.orchestration?.allowedPatterns ?? [],
+            }),
+            getHistory: (limit?: number) => {
+              const max = limit ?? 20;
+              return this.orchestrationHistory.slice(-max);
+            },
+          } : undefined,
           memory: {
             getLivingState: async () => {
               const state = await this.getLivingMemoryState();
@@ -455,6 +487,10 @@ export class Auxiora {
 
   getRouter(): ModelRouter | undefined {
     return this.modelRouter;
+  }
+
+  getOrchestrationEngine(): OrchestrationEngine | undefined {
+    return this.orchestrationEngine;
   }
 
   getCostSummary() {
