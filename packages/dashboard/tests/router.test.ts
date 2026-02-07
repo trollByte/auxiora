@@ -37,6 +37,9 @@ function createMockDeps(): DashboardDeps {
     getPlugins: vi.fn().mockReturnValue([
       { name: 'test-plugin', version: '1.0.0', file: 'test.js', toolCount: 1, toolNames: ['test_tool'], status: 'loaded' },
     ]),
+    getMemories: vi.fn().mockResolvedValue([
+      { id: 'mem-abc', content: 'Likes TypeScript', category: 'preference', source: 'explicit', createdAt: Date.now(), updatedAt: Date.now(), accessCount: 1 },
+    ]),
   };
 }
 
@@ -232,6 +235,18 @@ describe('Dashboard Router', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
       expect(res.body.data[0].name).toBe('test-plugin');
+    });
+  });
+
+  describe('memories API', () => {
+    it('should list memories', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const res = await request(app)
+        .get('/api/v1/dashboard/memories')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].content).toBe('Likes TypeScript');
     });
   });
 });

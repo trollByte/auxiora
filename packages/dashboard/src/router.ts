@@ -221,5 +221,11 @@ export function createDashboardRouter(options: DashboardRouterOptions) {
     res.json({ data: plugins });
   });
 
+  // Memories
+  router.get('/memories', async (req: Request, res: Response) => {
+    const memories = deps.getMemories ? await deps.getMemories() : [];
+    res.json({ data: memories });
+  });
+
   return { router, auth };
 }

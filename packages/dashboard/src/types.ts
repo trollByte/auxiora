@@ -43,6 +43,15 @@ export interface DashboardDeps {
     status: string;
     error?: string;
   }>;
+  getMemories?: () => Promise<Array<{
+    id: string;
+    content: string;
+    category: string;
+    source: string;
+    createdAt: number;
+    updatedAt: number;
+    accessCount: number;
+  }>>;
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {
