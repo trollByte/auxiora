@@ -247,6 +247,18 @@ importers:
         specifier: ^25.1.0
         version: 25.1.0
 
+  packages/memory:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/metrics: {}
 
   packages/plugins:
@@ -305,6 +317,12 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@auxiora/plugins':
+        specifier: workspace:*
+        version: link:../plugins
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
