@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "clean": "pnpm -r clean",
+    "clean": "pnpm -r clean && find packages -name '*.tsbuildinfo' -delete",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",

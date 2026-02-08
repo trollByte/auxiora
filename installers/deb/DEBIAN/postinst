@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+# Create auxiora system user if it doesn't exist
+if ! id -u auxiora >/dev/null 2>&1; then
+    useradd --system --no-create-home --shell /usr/sbin/nologin auxiora
+    echo "Created system user 'auxiora'."
+fi
+
+# Set up config directory
+mkdir -p /etc/auxiora
+chown root:auxiora /etc/auxiora
+chmod 750 /etc/auxiora
+
+# Set up data directory
+mkdir -p /var/lib/auxiora
+chown auxiora:auxiora /var/lib/auxiora
+chmod 750 /var/lib/auxiora
+
+# Reload systemd to pick up the service file
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload
+fi
+
+echo ""
+echo "============================================"
+echo "  Auxiora has been installed successfully!"
+echo "============================================"
+echo ""
+echo "  Getting started:"
+echo "    1. Edit /etc/auxiora/config.yaml"
+echo "    2. Start the service:"
+echo "       sudo systemctl enable --now auxiora"
+echo "    3. Check status:"
+echo "       sudo systemctl status auxiora"
+echo ""
+
+exit 0

@@ -1,0 +1,25 @@
+[Unit]
+Description=Auxiora AI Assistant
+Documentation=https://auxiora.dev/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=auxiora
+Group=auxiora
+WorkingDirectory=/var/lib/auxiora
+ExecStart=/usr/bin/auxiora start --config /etc/auxiora/config.yaml
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/auxiora
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

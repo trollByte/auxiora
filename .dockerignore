@@ -1,0 +1,42 @@
+# Dependencies
+**/node_modules
+
+# Build output
+packages/*/dist/
+**/*.tsbuildinfo
+
+# Version control
+.git/
+.gitignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test and coverage
+coverage/
+*.test.ts
+*.spec.ts
+__tests__/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Docker
+deploy/docker/Dockerfile
+.dockerignore
+
+# Build artifacts
+dist/
+installers/
+
+# Miscellaneous
+*.log
+*.tgz
+.DS_Store
+PROMPT.md
