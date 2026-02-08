@@ -11,6 +11,8 @@ export interface SlackAdapterConfig {
   botToken: string;
   appToken: string;
   signingSecret?: string;
+  allowedChannels?: string[];
+  allowedUsers?: string[];
 }
 
 const MAX_MESSAGE_LENGTH = 40000;
@@ -54,6 +56,18 @@ export class SlackAdapter implements ChannelAdapter {
       // Ignore bot's own messages
       if (message.user === this.botUserId) return;
 
+      // Check allowed channels
+      if (this.config.allowedChannels?.length && message.channel && !this.config.allowedChannels.includes(message.channel as string)) {
+        audit('message.filtered', { channelType: 'slack', senderId: message.user as string, channelId: message.channel as string, reason: 'channel_not_allowed' });
+        return;
+      }
+
+      // Check allowed users
+      if (this.config.allowedUsers?.length && !this.config.allowedUsers.includes(message.user as string)) {
+        audit('message.filtered', { channelType: 'slack', senderId: message.user as string, channelId: message.channel as string, reason: 'user_not_allowed' });
+        return;
+      }
+
       const inbound = this.toInboundMessage(message);
 
       audit('message.received', {
@@ -77,6 +91,18 @@ export class SlackAdapter implements ChannelAdapter {
       if (!this.botUserId) {
         const auth = await client.auth.test();
         this.botUserId = auth.user_id;
+      }
+
+      // Check allowed channels
+      if (this.config.allowedChannels?.length && event.channel && !this.config.allowedChannels.includes(event.channel)) {
+        audit('message.filtered', { channelType: 'slack', senderId: event.user || '', channelId: event.channel, reason: 'channel_not_allowed' });
+        return;
+      }
+
+      // Check allowed users
+      if (this.config.allowedUsers?.length && event.user && !this.config.allowedUsers.includes(event.user)) {
+        audit('message.filtered', { channelType: 'slack', senderId: event.user, channelId: event.channel || '', reason: 'user_not_allowed' });
+        return;
       }
 
       // Strip bot mention from text

@@ -252,4 +252,178 @@ describe('TeamsAdapter', () => {
     const handler = vi.fn();
     adapter.onError(handler);
   });
+
+  describe('sender filtering', () => {
+    it('should allow all messages when allowlists are not set', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        type: 'message',
+        id: 'activity-filter-1',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'any-user', name: 'Anyone' },
+        conversation: { id: 'conv-1', tenantId: 'any-tenant' },
+        text: 'Hello!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      await adapter.disconnect();
+    });
+
+    it('should allow messages from allowed tenants and users', async () => {
+      const filteredAdapter = new TeamsAdapter({
+        microsoftAppId: 'test-app-id',
+        microsoftAppPassword: 'test-app-password',
+        allowedTenants: ['tenant-1'],
+        allowedUsers: ['user-1'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        type: 'message',
+        id: 'activity-filter-2',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-1', tenantId: 'tenant-1' },
+        text: 'Allowed!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed tenants', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new TeamsAdapter({
+        microsoftAppId: 'test-app-id',
+        microsoftAppPassword: 'test-app-password',
+        allowedTenants: ['tenant-1'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        type: 'message',
+        id: 'activity-filter-3',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-1', tenantId: 'wrong-tenant' },
+        text: 'Blocked!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'teams',
+        tenantId: 'wrong-tenant',
+        reason: 'tenant_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed users', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new TeamsAdapter({
+        microsoftAppId: 'test-app-id',
+        microsoftAppPassword: 'test-app-password',
+        allowedUsers: ['user-1'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        type: 'message',
+        id: 'activity-filter-4',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-2', name: 'Eve' },
+        conversation: { id: 'conv-1' },
+        text: 'Blocked!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'teams',
+        senderId: 'user-2',
+        reason: 'user_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+
+    it('should allow messages when tenantId is undefined even with allowedTenants set', async () => {
+      const filteredAdapter = new TeamsAdapter({
+        microsoftAppId: 'test-app-id',
+        microsoftAppPassword: 'test-app-password',
+        allowedTenants: ['tenant-1'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        type: 'message',
+        id: 'activity-filter-5',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-1' }, // no tenantId
+        text: 'No tenant!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      await filteredAdapter.disconnect();
+    });
+  });
 });

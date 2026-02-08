@@ -64,6 +64,7 @@ export function createLogger(name: string, config: LoggerConfig = {}): Logger {
         colorize: true,
         translateTime: 'HH:MM:ss Z',
         ignore: 'pid,hostname',
+        destination: 2, // stderr — keep stdout clean for interactive prompts
       },
     };
   }
@@ -87,7 +88,11 @@ export function createLogger(name: string, config: LoggerConfig = {}): Logger {
     };
   }
 
-  const pinoLogger = pino(options);
+  // When a transport is configured (pretty or file), it handles its own destination.
+  // Otherwise, write to stderr (convention: stdout for data, stderr for diagnostics).
+  const pinoLogger = options.transport
+    ? pino(options)
+    : pino(options, pino.destination(2));
 
   return new Logger(pinoLogger, config.requestId);
 }

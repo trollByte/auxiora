@@ -9,6 +9,7 @@ import type {
 export interface SignalAdapterConfig {
   signalCliEndpoint: string;
   phoneNumber: string;
+  allowedNumbers?: string[];
 }
 
 interface SignalJsonRpcResponse<T = unknown> {
@@ -168,6 +169,13 @@ export class SignalAdapter implements ChannelAdapter {
     // Ignore own messages
     if (msg.envelope.source === this.config.phoneNumber ||
         msg.envelope.sourceNumber === this.config.phoneNumber) {
+      return;
+    }
+
+    // Check allowed numbers
+    const senderNumber = msg.envelope.sourceNumber || msg.envelope.source;
+    if (this.config.allowedNumbers?.length && !this.config.allowedNumbers.includes(senderNumber)) {
+      audit('message.filtered', { channelType: 'signal', senderId: senderNumber, reason: 'number_not_allowed' });
       return;
     }
 

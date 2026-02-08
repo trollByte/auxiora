@@ -33,6 +33,7 @@ export type AuditEventType =
   | 'channel.error'
   | 'message.received'
   | 'message.sent'
+  | 'message.filtered'
   | 'rate_limit.exceeded'
   | 'security.suspicious_input'
   | 'system.startup'

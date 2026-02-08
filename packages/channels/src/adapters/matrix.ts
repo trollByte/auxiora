@@ -11,6 +11,8 @@ export interface MatrixAdapterConfig {
   userId: string;
   accessToken: string;
   autoJoinRooms?: boolean;
+  allowedUsers?: string[];
+  allowedRooms?: string[];
 }
 
 interface MatrixSyncResponse {
@@ -201,6 +203,18 @@ export class MatrixAdapter implements ChannelAdapter {
     // Only process text and notice messages
     const msgtype = event.content.msgtype;
     if (msgtype !== 'm.text' && msgtype !== 'm.notice') return;
+
+    // Check allowed rooms
+    if (this.config.allowedRooms?.length && !this.config.allowedRooms.includes(roomId)) {
+      audit('message.filtered', { channelType: 'matrix', senderId: event.sender, roomId, reason: 'room_not_allowed' });
+      return;
+    }
+
+    // Check allowed users
+    if (this.config.allowedUsers?.length && !this.config.allowedUsers.includes(event.sender)) {
+      audit('message.filtered', { channelType: 'matrix', senderId: event.sender, roomId, reason: 'user_not_allowed' });
+      return;
+    }
 
     const inbound = this.toInboundMessage(roomId, event);
 

@@ -80,7 +80,7 @@ export class ToolRegistry {
     }
 
     this.tools.set(tool.name, tool);
-    logger.info(`Registered tool: ${tool.name}`);
+    logger.debug(`Registered tool: ${tool.name}`);
   }
 
   unregister(toolName: string): void {

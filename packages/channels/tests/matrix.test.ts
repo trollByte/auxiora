@@ -315,6 +315,196 @@ describe('MatrixAdapter', () => {
     // No assertion needed - just verify no error during registration
   });
 
+  describe('sender filtering', () => {
+    it('should allow all messages when allowlists are not set', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!room:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$msg1',
+                    type: 'm.room.message',
+                    sender: '@anyone:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Hello!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await adapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(receivedMessages).toHaveLength(1);
+      await adapter.disconnect();
+    });
+
+    it('should allow messages from allowed users', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new MatrixAdapter({
+        homeserverUrl: 'https://matrix.example.com',
+        userId: '@bot:example.com',
+        accessToken: 'test-access-token',
+        allowedUsers: ['@alice:example.com'],
+      });
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!room:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$msg1',
+                    type: 'm.room.message',
+                    sender: '@alice:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Allowed!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await filteredAdapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(receivedMessages).toHaveLength(1);
+      expect((receivedMessages[0] as { content: string }).content).toBe('Allowed!');
+      expect(audit).not.toHaveBeenCalledWith('message.filtered', expect.anything());
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed users', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new MatrixAdapter({
+        homeserverUrl: 'https://matrix.example.com',
+        userId: '@bot:example.com',
+        accessToken: 'test-access-token',
+        allowedUsers: ['@alice:example.com'],
+      });
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!room:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$msg1',
+                    type: 'm.room.message',
+                    sender: '@eve:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Blocked!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await filteredAdapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'matrix',
+        senderId: '@eve:example.com',
+        reason: 'user_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed rooms', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new MatrixAdapter({
+        homeserverUrl: 'https://matrix.example.com',
+        userId: '@bot:example.com',
+        accessToken: 'test-access-token',
+        allowedRooms: ['!allowed:example.com'],
+      });
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!blocked:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$msg1',
+                    type: 'm.room.message',
+                    sender: '@alice:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Wrong room!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await filteredAdapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'matrix',
+        roomId: '!blocked:example.com',
+        reason: 'room_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+  });
+
   it('should strip reply fallback from content', async () => {
     const receivedMessages: unknown[] = [];
     adapter.onMessage(async (msg) => {

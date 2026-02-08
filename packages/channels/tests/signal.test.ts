@@ -294,4 +294,111 @@ describe('SignalAdapter', () => {
     const handler = vi.fn();
     adapter.onError(handler);
   });
+
+  describe('sender filtering', () => {
+    it('should allow all messages when allowedNumbers is not set', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const pollResponse = [
+        {
+          envelope: {
+            source: '+0987654321',
+            sourceName: 'Alice',
+            sourceNumber: '+0987654321',
+            timestamp: 1700000000000,
+            dataMessage: { message: 'Hello!', timestamp: 1700000000000 },
+          },
+        },
+      ];
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: [] }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: pollResponse }) } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await adapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(receivedMessages).toHaveLength(1);
+      await adapter.disconnect();
+    });
+
+    it('should allow messages from allowed numbers', async () => {
+      const filteredAdapter = new SignalAdapter({
+        signalCliEndpoint: 'http://localhost:7583',
+        phoneNumber: '+1234567890',
+        allowedNumbers: ['+0987654321'],
+      });
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const pollResponse = [
+        {
+          envelope: {
+            source: '+0987654321',
+            sourceName: 'Alice',
+            sourceNumber: '+0987654321',
+            timestamp: 1700000000000,
+            dataMessage: { message: 'Allowed!', timestamp: 1700000000000 },
+          },
+        },
+      ];
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: [] }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: pollResponse }) } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await filteredAdapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(receivedMessages).toHaveLength(1);
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed numbers', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new SignalAdapter({
+        signalCliEndpoint: 'http://localhost:7583',
+        phoneNumber: '+1234567890',
+        allowedNumbers: ['+0987654321'],
+      });
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const pollResponse = [
+        {
+          envelope: {
+            source: '+5555555555',
+            sourceName: 'Eve',
+            sourceNumber: '+5555555555',
+            timestamp: 1700000000000,
+            dataMessage: { message: 'Blocked!', timestamp: 1700000000000 },
+          },
+        },
+      ];
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: [] }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: pollResponse }) } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await filteredAdapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'signal',
+        senderId: '+5555555555',
+        reason: 'number_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+  });
 });

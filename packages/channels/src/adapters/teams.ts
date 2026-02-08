@@ -9,6 +9,8 @@ import type {
 export interface TeamsAdapterConfig {
   microsoftAppId: string;
   microsoftAppPassword: string;
+  allowedTenants?: string[];
+  allowedUsers?: string[];
 }
 
 interface TeamsActivity {
@@ -130,6 +132,19 @@ export class TeamsAdapter implements ChannelAdapter {
   async handleWebhook(activity: TeamsActivity): Promise<void> {
     if (activity.type !== 'message') return;
     if (!activity.text) return;
+
+    // Check allowed tenants
+    const tenantId = activity.conversation.tenantId;
+    if (tenantId && this.config.allowedTenants?.length && !this.config.allowedTenants.includes(tenantId)) {
+      audit('message.filtered', { channelType: 'teams', senderId: activity.from.id, tenantId, reason: 'tenant_not_allowed' });
+      return;
+    }
+
+    // Check allowed users
+    if (this.config.allowedUsers?.length && !this.config.allowedUsers.includes(activity.from.id)) {
+      audit('message.filtered', { channelType: 'teams', senderId: activity.from.id, reason: 'user_not_allowed' });
+      return;
+    }
 
     const inbound = this.toInboundMessage(activity);
 

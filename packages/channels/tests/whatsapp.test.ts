@@ -347,6 +347,139 @@ describe('WhatsAppAdapter', () => {
     await adapter.disconnect();
   });
 
+  describe('sender filtering', () => {
+    it('should allow all messages when allowedNumbers is not set', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: '123456789' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        object: 'whatsapp_business_account',
+        entry: [{
+          id: 'entry-1',
+          changes: [{
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { display_phone_number: '+1234567890', phone_number_id: '123456789' },
+              messages: [{
+                from: '0987654321',
+                id: 'wamid.filter1',
+                timestamp: '1700000000',
+                type: 'text',
+                text: { body: 'Hello!' },
+              }],
+            },
+            field: 'messages',
+          }],
+        }],
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      await adapter.disconnect();
+    });
+
+    it('should allow messages from allowed numbers', async () => {
+      const filteredAdapter = new WhatsAppAdapter({
+        phoneNumberId: '123456789',
+        accessToken: 'test-access-token',
+        verifyToken: 'test-verify-token',
+        allowedNumbers: ['0987654321'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: '123456789' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        object: 'whatsapp_business_account',
+        entry: [{
+          id: 'entry-1',
+          changes: [{
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { display_phone_number: '+1234567890', phone_number_id: '123456789' },
+              messages: [{
+                from: '0987654321',
+                id: 'wamid.filter2',
+                timestamp: '1700000000',
+                type: 'text',
+                text: { body: 'Allowed!' },
+              }],
+            },
+            field: 'messages',
+          }],
+        }],
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      await filteredAdapter.disconnect();
+    });
+
+    it('should block messages from non-allowed numbers', async () => {
+      const { audit } = await import('@auxiora/audit');
+      const filteredAdapter = new WhatsAppAdapter({
+        phoneNumberId: '123456789',
+        accessToken: 'test-access-token',
+        verifyToken: 'test-verify-token',
+        allowedNumbers: ['0987654321'],
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: '123456789' }),
+      } as Response);
+      await filteredAdapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      filteredAdapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await filteredAdapter.handleWebhook({
+        object: 'whatsapp_business_account',
+        entry: [{
+          id: 'entry-1',
+          changes: [{
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { display_phone_number: '+1234567890', phone_number_id: '123456789' },
+              messages: [{
+                from: '5555555555',
+                id: 'wamid.filter3',
+                timestamp: '1700000000',
+                type: 'text',
+                text: { body: 'Blocked!' },
+              }],
+            },
+            field: 'messages',
+          }],
+        }],
+      });
+
+      expect(receivedMessages).toHaveLength(0);
+      expect(audit).toHaveBeenCalledWith('message.filtered', expect.objectContaining({
+        channelType: 'whatsapp',
+        senderId: '5555555555',
+        reason: 'number_not_allowed',
+      }));
+      await filteredAdapter.disconnect();
+    });
+  });
+
   it('should handle message handler errors gracefully', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,

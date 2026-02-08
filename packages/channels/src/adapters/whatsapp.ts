@@ -10,6 +10,7 @@ export interface WhatsAppAdapterConfig {
   phoneNumberId: string;
   accessToken: string;
   verifyToken: string;
+  allowedNumbers?: string[];
 }
 
 interface WhatsAppWebhookBody {
@@ -167,6 +168,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
   ): Promise<void> {
     // Only process text messages for now
     if (msg.type !== 'text' && msg.type !== 'image' && msg.type !== 'document') return;
+
+    // Check allowed numbers
+    if (this.config.allowedNumbers?.length && !this.config.allowedNumbers.includes(msg.from)) {
+      audit('message.filtered', { channelType: 'whatsapp', senderId: msg.from, reason: 'number_not_allowed' });
+      return;
+    }
 
     const inbound = this.toInboundMessage(msg, contact);
 

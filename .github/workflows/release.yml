@@ -272,6 +272,11 @@ jobs:
           cp -r packages/ "${PKG_DIR}/opt/auxiora/packages/"
           cp package.json pnpm-workspace.yaml pnpm-lock.yaml "${PKG_DIR}/opt/auxiora/"
 
+          # Install production dependencies
+          cd "${PKG_DIR}/opt/auxiora"
+          pnpm install --frozen-lockfile --prod
+          cd -
+
           # Create launcher
           cat > "${PKG_DIR}/usr/bin/auxiora" << 'BIN'
           #!/bin/sh

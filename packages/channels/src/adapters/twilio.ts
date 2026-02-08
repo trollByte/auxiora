@@ -13,6 +13,7 @@ export interface TwilioAdapterConfig {
   phoneNumber: string;          // Your Twilio phone number for SMS
   whatsappNumber?: string;      // WhatsApp-enabled number (format: whatsapp:+1234567890)
   webhookUrl?: string;          // For incoming messages
+  allowedNumbers?: string[];
 }
 
 export interface TwilioWebhookBody {
@@ -70,7 +71,14 @@ export class TwilioAdapter implements ChannelAdapter {
    */
   async handleWebhook(body: TwilioWebhookBody): Promise<string | null> {
     const isWhatsApp = body.From.startsWith('whatsapp:');
-    
+
+    // Check allowed numbers (strip whatsapp: prefix for matching)
+    const senderNumber = isWhatsApp ? body.From.replace('whatsapp:', '') : body.From;
+    if (this.config.allowedNumbers?.length && !this.config.allowedNumbers.includes(senderNumber)) {
+      audit('message.filtered', { channelType: 'twilio', senderId: body.From, reason: 'number_not_allowed' });
+      return null;
+    }
+
     const inbound: InboundMessage = {
       id: body.MessageSid,
       channelType: 'twilio',
