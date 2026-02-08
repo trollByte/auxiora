@@ -387,3 +387,11 @@ toolRegistry.register(AssembleTeamTool);
 // Export assemble-team tool
 export { AssembleTeamTool } from './assemble-team.js';
 export { setOrchestrationEngine } from './assemble-team.js';
+
+// Import and register build-personality tool
+import { BuildPersonalityTool } from './build-personality.js';
+
+toolRegistry.register(BuildPersonalityTool);
+
+// Export build-personality tool
+export { BuildPersonalityTool } from './build-personality.js';

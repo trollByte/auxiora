@@ -3,6 +3,11 @@ import { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
 import { GoogleProvider, type GoogleProviderOptions } from './google.js';
 import { OllamaProvider, type OllamaProviderOptions } from './ollama.js';
 import { OpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from './openai-compatible.js';
+import { GroqProvider, type GroqProviderOptions } from './groq.js';
+import { ReplicateProvider, type ReplicateProviderOptions } from './replicate.js';
+import { DeepSeekProvider, type DeepSeekProviderOptions } from './deepseek.js';
+import { CohereProvider, type CohereProviderOptions } from './cohere.js';
+import { XAIProvider, type XAIProviderOptions } from './xai.js';
 import { readClaudeCliCredentials } from './claude-oauth.js';
 import type { Provider, ProviderConfig } from './types.js';
 
@@ -58,6 +63,26 @@ export class ProviderFactory {
           name: compat.name,
         }),
       );
+    }
+
+    if (options.config.groq?.apiKey) {
+      this.providers.set('groq', new GroqProvider(options.config.groq));
+    }
+
+    if (options.config.replicate?.apiToken) {
+      this.providers.set('replicate', new ReplicateProvider(options.config.replicate));
+    }
+
+    if (options.config.deepseek?.apiKey) {
+      this.providers.set('deepseek', new DeepSeekProvider(options.config.deepseek));
+    }
+
+    if (options.config.cohere?.apiKey) {
+      this.providers.set('cohere', new CohereProvider(options.config.cohere));
+    }
+
+    if (options.config.xai?.apiKey) {
+      this.providers.set('xai', new XAIProvider(options.config.xai));
     }
   }
 

@@ -57,6 +57,46 @@ export interface PluginProviderDefinition {
   complete: (messages: Array<{ role: string; content: string }>, options?: Record<string, unknown>) => Promise<{ content: string; model: string }>;
 }
 
+/** CLI command definition registered by a plugin */
+export interface CommandDefinition {
+  name: string;
+  description: string;
+  arguments?: Array<{ name: string; description: string; required?: boolean }>;
+  options?: Array<{ flags: string; description: string; default?: string }>;
+  execute: (args: Record<string, string>, options: Record<string, string>) => Promise<string>;
+}
+
+/** HTTP route definition registered by a plugin */
+export interface RouteDefinition {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  path: string;
+  description: string;
+  handler: (req: { params: Record<string, string>; query: Record<string, string>; body: unknown; headers: Record<string, string> }) => Promise<{ status: number; body: unknown; headers?: Record<string, string> }>;
+}
+
+/** Dashboard widget definition registered by a plugin */
+export interface WidgetDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: 'chart' | 'table' | 'stat' | 'log' | 'custom';
+  size: 'small' | 'medium' | 'large';
+  getData: () => Promise<unknown>;
+  refreshInterval?: number;
+}
+
+/** Channel adapter definition registered by a plugin */
+export interface ChannelDefinition {
+  name: string;
+  displayName: string;
+  description: string;
+  configSchema?: Record<string, { type: string; description: string; required?: boolean }>;
+  connect: (config: Record<string, unknown>) => Promise<void>;
+  disconnect: () => Promise<void>;
+  send: (channelId: string, message: { content: string }) => Promise<{ success: boolean; error?: string }>;
+  onMessage?: (handler: (message: { channelId: string; senderId: string; content: string }) => void) => void;
+}
+
 /** Extended plugin export with permissions, config, behaviors, and providers */
 export interface PluginManifest {
   name: string;
@@ -67,6 +107,10 @@ export interface PluginManifest {
   tools: PluginToolDefinition[];
   behaviors?: PluginBehaviorDefinition[];
   providers?: PluginProviderDefinition[];
+  commands?: CommandDefinition[];
+  routes?: RouteDefinition[];
+  widgets?: WidgetDefinition[];
+  channels?: ChannelDefinition[];
   initialize?: (context: PluginContext) => Promise<void>;
   shutdown?: () => Promise<void>;
 }
@@ -83,6 +127,10 @@ export interface PluginContext {
   registerTool: (tool: PluginToolDefinition) => void;
   registerBehavior: (behavior: PluginBehaviorDefinition) => void;
   registerProvider: (provider: PluginProviderDefinition) => void;
+  registerCommand: (command: CommandDefinition) => void;
+  registerRoute: (route: RouteDefinition) => void;
+  registerWidget: (widget: WidgetDefinition) => void;
+  registerChannel: (channel: ChannelDefinition) => void;
   getMemory: (key: string) => Promise<string | undefined>;
   sendMessage: (channel: string, content: string) => Promise<void>;
 }
@@ -104,6 +152,10 @@ export interface LoadedPlugin {
   toolNames: string[];
   behaviorNames: string[];
   providerNames: string[];
+  commandNames: string[];
+  routePaths: string[];
+  widgetIds: string[];
+  channelNames: string[];
   permissions: PluginPermission[];
   status: 'loaded' | 'failed';
   error?: string;

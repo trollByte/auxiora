@@ -7,6 +7,10 @@ export type {
   PluginBehaviorDefinition,
   PluginBehaviorContext,
   PluginProviderDefinition,
+  CommandDefinition,
+  RouteDefinition,
+  WidgetDefinition,
+  ChannelDefinition,
   PluginContext,
   LoadedPlugin,
 } from './types.js';

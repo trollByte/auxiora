@@ -7,6 +7,10 @@ export type {
   PublishResult,
   InstalledPlugin,
   UpdateInfo,
+  PersonalityListing,
+  PersonalitySearchResult,
+  PersonalityInstallResult,
+  PersonalityPublishResult,
 } from './types.js';
 export { RegistryClient } from './registry.js';
 export {

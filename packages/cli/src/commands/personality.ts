@@ -2,9 +2,20 @@ import { Command } from 'commander';
 import { input, select } from '@inquirer/prompts';
 import { PersonalityManager } from '@auxiora/personality';
 import type { SoulConfig } from '@auxiora/personality';
-import { loadConfig, saveConfig } from '@auxiora/config';
-import { getWorkspacePath } from '@auxiora/core';
+import { loadConfig, saveConfig, type Config } from '@auxiora/config';
+import { getWorkspacePath, getSoulPath, getPluginsDir } from '@auxiora/core';
+import { RegistryClient } from '@auxiora/marketplace';
+import type { MarketplaceConfig } from '@auxiora/marketplace';
 import * as path from 'node:path';
+
+function createRegistryFromConfig(config: Config): RegistryClient {
+  const mktConfig: MarketplaceConfig = {
+    registryUrl: config.plugins.marketplace.registryUrl,
+    autoUpdate: config.plugins.marketplace.autoUpdate,
+    installDir: getPluginsDir(),
+  };
+  return new RegistryClient(mktConfig);
+}
 
 function getManager(): PersonalityManager {
   const workspaceDir = getWorkspacePath();
@@ -225,6 +236,122 @@ export function createPersonalityCommand(): Command {
 
       console.log(`\nCustom personality for "${name}" saved to SOUL.md.`);
       console.log('Run `auxiora personality show` to review.\n');
+    });
+
+  cmd.command('search [query]')
+    .description('Search the personality marketplace')
+    .option('-a, --author <author>', 'Filter by author')
+    .option('-s, --sort <sort>', 'Sort by: downloads, rating, updated, name', 'downloads')
+    .option('-l, --limit <limit>', 'Number of results', '10')
+    .action(async (query: string | undefined, opts: { author?: string; sort?: string; limit?: string }) => {
+      const config = await loadConfig();
+      const registry = createRegistryFromConfig(config);
+
+      try {
+        const result = await registry.searchPersonalities({
+          query,
+          author: opts.author,
+          sortBy: (opts.sort as 'downloads' | 'rating' | 'updated' | 'name') ?? 'downloads',
+          limit: parseInt(opts.limit ?? '10', 10),
+        });
+
+        if (result.personalities.length === 0) {
+          console.log('No personalities found.');
+          return;
+        }
+
+        console.log(`\nPersonality Marketplace (${result.total} total)\n`);
+        for (const p of result.personalities) {
+          console.log(`  ${p.name} v${p.version} by ${p.author}`);
+          console.log(`    ${p.description}`);
+          console.log(`    Preview: "${p.preview}"`);
+          console.log(`    Downloads: ${p.downloads} | Rating: ${p.rating}/5`);
+          console.log('');
+        }
+      } catch (error) {
+        console.error('Failed to search marketplace:', error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
+    });
+
+  cmd.command('install <name>')
+    .description('Install a personality from the marketplace')
+    .option('-v, --version <version>', 'Specific version to install')
+    .action(async (name: string, opts: { version?: string }) => {
+      const config = await loadConfig();
+      const registry = createRegistryFromConfig(config);
+
+      try {
+        console.log(`Installing personality "${name}"...`);
+        const result = await registry.installPersonality(name, opts.version);
+
+        if (!result.success) {
+          console.error(`Installation failed: ${result.error}`);
+          process.exit(1);
+        }
+
+        console.log(`\nPersonality "${result.name}" v${result.version} installed successfully.`);
+        console.log('Run `auxiora personality set <name>` to activate it.\n');
+      } catch (error) {
+        console.error('Failed to install personality:', error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
+    });
+
+  cmd.command('publish [path]')
+    .description('Publish your SOUL.md personality to the marketplace')
+    .action(async (soulPath?: string) => {
+      const config = await loadConfig();
+      const registry = createRegistryFromConfig(config);
+
+      const filePath = soulPath ?? getSoulPath();
+
+      try {
+        console.log(`Publishing personality from ${filePath}...`);
+        const result = await registry.publishPersonality(filePath);
+
+        if (!result.success) {
+          console.error(`Publish failed: ${result.error}`);
+          process.exit(1);
+        }
+
+        console.log(`\nPersonality "${result.name}" v${result.version} published successfully.`);
+      } catch (error) {
+        console.error('Failed to publish personality:', error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
+    });
+
+  cmd.command('preview <name>')
+    .description('Preview a personality from the marketplace')
+    .action(async (name: string) => {
+      const config = await loadConfig();
+      const registry = createRegistryFromConfig(config);
+
+      try {
+        const listing = await registry.getPersonality(name);
+
+        if (!listing) {
+          console.error(`Personality "${name}" not found in marketplace.`);
+          process.exit(1);
+        }
+
+        console.log(`\nPersonality: ${listing.name} v${listing.version}\n`);
+        console.log(`  Author: ${listing.author}`);
+        console.log(`  Description: ${listing.description}`);
+        console.log(`  Preview: "${listing.preview}"`);
+        console.log(`  Tone:`);
+        console.log(`    Warmth: ${listing.tone.warmth}`);
+        console.log(`    Humor: ${listing.tone.humor}`);
+        console.log(`    Formality: ${listing.tone.formality}`);
+        console.log(`  Keywords: ${listing.keywords.join(', ')}`);
+        console.log(`  Downloads: ${listing.downloads} | Rating: ${listing.rating}/5`);
+        console.log(`  Updated: ${listing.updatedAt}`);
+        console.log('');
+      } catch (error) {
+        console.error('Failed to preview personality:', error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
     });
 
   return cmd;

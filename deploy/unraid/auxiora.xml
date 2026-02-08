@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Auxiora</Name>
+  <Repository>ghcr.io/auxiora/auxiora:latest</Repository>
+  <Registry>https://ghcr.io/auxiora/auxiora</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/auxiora/auxiora/issues</Support>
+  <Project>https://github.com/auxiora/auxiora</Project>
+  <Overview>Security-first self-hosted AI assistant platform. Supports multiple AI providers (Anthropic, OpenAI, Groq, DeepSeek) and channels (Discord, Slack, Telegram, Matrix).</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:18800]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/auxiora/auxiora/main/deploy/unraid/auxiora.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/auxiora/auxiora/main/docs/logo.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <DateInstalled/>
+  <Description>Auxiora is a security-first self-hosted AI assistant platform with end-to-end encryption, audit logging, and multi-provider support.</Description>
+  <Config Name="Web UI Port" Target="18800" Default="18800" Mode="tcp" Description="Gateway HTTP port" Type="Port" Display="always" Required="true" Mask="false">18800</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/auxiora" Mode="rw" Description="Persistent data directory" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/auxiora</Config>
+  <Config Name="NODE_ENV" Target="NODE_ENV" Default="production" Description="Node environment" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
+  <Config Name="AUXIORA_GATEWAY_HOST" Target="AUXIORA_GATEWAY_HOST" Default="0.0.0.0" Description="Gateway bind address" Type="Variable" Display="advanced" Required="false" Mask="false">0.0.0.0</Config>
+  <Config Name="AUXIORA_GATEWAY_PORT" Target="AUXIORA_GATEWAY_PORT" Default="18800" Description="Gateway port" Type="Variable" Display="advanced" Required="false" Mask="false">18800</Config>
+  <Config Name="AUXIORA_DASHBOARD_ENABLED" Target="AUXIORA_DASHBOARD_ENABLED" Default="true" Description="Enable web dashboard" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="ANTHROPIC_API_KEY" Target="ANTHROPIC_API_KEY" Default="" Description="Anthropic API key for Claude models" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="OPENAI_API_KEY" Target="OPENAI_API_KEY" Default="" Description="OpenAI API key" Type="Variable" Display="always" Required="false" Mask="true"/>
+</Container>

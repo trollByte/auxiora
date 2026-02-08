@@ -70,3 +70,44 @@ export interface UpdateInfo {
   latestVersion: string;
   hasUpdate: boolean;
 }
+
+export interface PersonalityListing {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  preview: string;
+  tone: {
+    warmth: number;
+    humor: number;
+    formality: number;
+  };
+  keywords: string[];
+  downloads: number;
+  rating: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalitySearchResult {
+  personalities: PersonalityListing[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface PersonalityInstallResult {
+  success: boolean;
+  name: string;
+  version: string;
+  installedAt: string;
+  error?: string;
+}
+
+export interface PersonalityPublishResult {
+  success: boolean;
+  name: string;
+  version: string;
+  publishedAt: string;
+  error?: string;
+}

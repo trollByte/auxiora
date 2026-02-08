@@ -126,4 +126,29 @@ export interface ProviderConfig {
     maxTokens?: number;
     name?: string;
   };
+  groq?: {
+    apiKey: string;
+    model?: string;
+    maxTokens?: number;
+  };
+  replicate?: {
+    apiToken: string;
+    model?: string;
+    pollInterval?: number;
+  };
+  deepseek?: {
+    apiKey: string;
+    model?: string;
+    maxTokens?: number;
+  };
+  cohere?: {
+    apiKey: string;
+    model?: string;
+    maxTokens?: number;
+  };
+  xai?: {
+    apiKey: string;
+    model?: string;
+    maxTokens?: number;
+  };
 }

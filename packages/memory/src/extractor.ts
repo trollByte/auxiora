@@ -1,6 +1,7 @@
 import { getLogger } from '@auxiora/logger';
-import type { MemoryEntry, PersonalityAdaptation } from './types.js';
+import type { MemoryEntry, PersonalityAdaptation, SentimentResult } from './types.js';
 import type { MemoryStore } from './store.js';
+import { SentimentAnalyzer } from './sentiment.js';
 
 const logger = getLogger('memory:extractor');
 
@@ -10,6 +11,7 @@ export interface ExtractionResult {
   relationshipsFound: MemoryEntry[];
   contradictionsFound: Array<{ existing: MemoryEntry; new: string; resolution: string }>;
   personalitySignals: PersonalityAdaptation[];
+  sentiment?: SentimentResult;
 }
 
 export interface AIProvider {
@@ -69,6 +71,8 @@ interface RawExtraction {
 }
 
 export class MemoryExtractor {
+  private sentimentAnalyzer = new SentimentAnalyzer();
+
   constructor(
     private store: MemoryStore,
     private provider: AIProvider,
@@ -86,6 +90,9 @@ export class MemoryExtractor {
       contradictionsFound: [],
       personalitySignals: [],
     };
+
+    // Run heuristic sentiment analysis on user message
+    result.sentiment = this.sentimentAnalyzer.analyzeSentiment(userMessage);
 
     try {
       const prompt = EXTRACTION_PROMPT

@@ -31,6 +31,31 @@ export {
   type TwilioWebhookBody,
 } from './adapters/twilio.js';
 
+export {
+  MatrixAdapter,
+  type MatrixAdapterConfig,
+} from './adapters/matrix.js';
+
+export {
+  SignalAdapter,
+  type SignalAdapterConfig,
+} from './adapters/signal.js';
+
+export {
+  EmailAdapter,
+  type EmailAdapterConfig,
+} from './adapters/email.js';
+
+export {
+  TeamsAdapter,
+  type TeamsAdapterConfig,
+} from './adapters/teams.js';
+
+export {
+  WhatsAppAdapter,
+  type WhatsAppAdapterConfig,
+} from './adapters/whatsapp.js';
+
 // Manager
 export {
   ChannelManager,

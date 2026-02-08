@@ -1,3 +1,5 @@
+import type { SentimentSnapshot, SentimentLabel } from './types.js';
+
 export interface PatternSignal {
   type: 'communication' | 'schedule' | 'topic' | 'mood';
   pattern: string;
@@ -10,7 +12,94 @@ interface MessageInfo {
   timestamp: number;
 }
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export class PatternDetector {
+  private sentimentHistory: SentimentSnapshot[] = [];
+
+  recordSentiment(snapshot: SentimentSnapshot): void {
+    this.sentimentHistory.push(snapshot);
+    // Keep only the last 200 snapshots
+    if (this.sentimentHistory.length > 200) {
+      this.sentimentHistory = this.sentimentHistory.slice(-200);
+    }
+  }
+
+  getSentimentHistory(): SentimentSnapshot[] {
+    return [...this.sentimentHistory];
+  }
+
+  detectMoodByTime(): PatternSignal[] {
+    if (this.sentimentHistory.length < 3) return [];
+
+    const signals: PatternSignal[] = [];
+
+    // Group by time period
+    const periodSentiments = new Map<string, SentimentLabel[]>();
+    for (const snap of this.sentimentHistory) {
+      const period = this.getTimePeriodName(snap.hour);
+      const list = periodSentiments.get(period) ?? [];
+      list.push(snap.sentiment);
+      periodSentiments.set(period, list);
+    }
+
+    for (const [period, sentiments] of periodSentiments) {
+      if (sentiments.length < 3) continue;
+      const dominant = this.getDominantSentiment(sentiments);
+      if (dominant && dominant.label !== 'neutral' && dominant.ratio > 0.6) {
+        signals.push({
+          type: 'mood',
+          pattern: `User tends to be ${dominant.label} in the ${period}`,
+          confidence: Math.min(0.4 + dominant.ratio * 0.4, 0.85),
+        });
+      }
+    }
+
+    // Group by day of week
+    const daySentiments = new Map<number, SentimentLabel[]>();
+    for (const snap of this.sentimentHistory) {
+      const list = daySentiments.get(snap.dayOfWeek) ?? [];
+      list.push(snap.sentiment);
+      daySentiments.set(snap.dayOfWeek, list);
+    }
+
+    for (const [day, sentiments] of daySentiments) {
+      if (sentiments.length < 3) continue;
+      const dominant = this.getDominantSentiment(sentiments);
+      if (dominant && dominant.label !== 'neutral' && dominant.ratio > 0.7) {
+        signals.push({
+          type: 'mood',
+          pattern: `User tends to be ${dominant.label} on ${DAY_NAMES[day]}s`,
+          confidence: Math.min(0.4 + dominant.ratio * 0.4, 0.85),
+        });
+      }
+    }
+
+    return signals;
+  }
+
+  private getDominantSentiment(sentiments: SentimentLabel[]): { label: SentimentLabel; ratio: number } | null {
+    const counts: Record<SentimentLabel, number> = { positive: 0, negative: 0, neutral: 0 };
+    for (const s of sentiments) {
+      counts[s]++;
+    }
+    const total = sentiments.length;
+    const entries: Array<[SentimentLabel, number]> = [
+      ['positive', counts.positive],
+      ['negative', counts.negative],
+      ['neutral', counts.neutral],
+    ];
+    entries.sort((a, b) => b[1] - a[1]);
+    return { label: entries[0][0], ratio: entries[0][1] / total };
+  }
+
+  private getTimePeriodName(hour: number): string {
+    if (hour >= 5 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 17) return 'afternoon';
+    if (hour >= 17 && hour < 21) return 'evening';
+    return 'night';
+  }
+
   detect(messages: MessageInfo[]): PatternSignal[] {
     if (messages.length < 3) return [];
 

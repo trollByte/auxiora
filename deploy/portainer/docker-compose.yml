@@ -1,0 +1,63 @@
+version: "3.9"
+
+# Portainer stack for Auxiora
+# Deploy via Portainer Stacks > Add stack > Upload
+
+services:
+  auxiora:
+    image: ghcr.io/auxiora/auxiora:latest
+    ports:
+      - "18800:18800"
+    environment:
+      NODE_ENV: production
+      AUXIORA_GATEWAY_HOST: "0.0.0.0"
+      AUXIORA_GATEWAY_PORT: "18800"
+      AUXIORA_DASHBOARD_ENABLED: "true"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://auxiora:${POSTGRES_PASSWORD:-auxiora}@postgres:5432/auxiora
+    volumes:
+      - auxiora-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:18800/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auxiora
+      POSTGRES_USER: auxiora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auxiora}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auxiora"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  auxiora-data:
+  redis-data:
+  postgres-data:

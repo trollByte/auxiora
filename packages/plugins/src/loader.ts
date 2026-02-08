@@ -11,6 +11,10 @@ import type {
   PluginToolDefinition,
   PluginBehaviorDefinition,
   PluginProviderDefinition,
+  CommandDefinition,
+  RouteDefinition,
+  WidgetDefinition,
+  ChannelDefinition,
   PluginContext,
   LoadedPlugin,
   PluginPermission,
@@ -31,6 +35,10 @@ export class PluginLoader {
   private builtinToolNames: Set<string>;
   private registeredBehaviors: PluginBehaviorDefinition[] = [];
   private registeredProviders: PluginProviderDefinition[] = [];
+  private registeredCommands: CommandDefinition[] = [];
+  private registeredRoutes: RouteDefinition[] = [];
+  private registeredWidgets: WidgetDefinition[] = [];
+  private registeredChannels: ChannelDefinition[] = [];
   private pluginConfigs: Record<string, Record<string, unknown>>;
   private approvedPermissions: Record<string, PluginPermission[]>;
 
@@ -104,11 +112,19 @@ export class PluginLoader {
       const toolNames: string[] = [];
       const behaviorNames: string[] = [];
       const providerNames: string[] = [];
+      const commandNames: string[] = [];
+      const routePaths: string[] = [];
+      const widgetIds: string[] = [];
+      const channelNames: string[] = [];
 
       // Dynamically registered items via context
       const dynamicTools: PluginToolDefinition[] = [];
       const dynamicBehaviors: PluginBehaviorDefinition[] = [];
       const dynamicProviders: PluginProviderDefinition[] = [];
+      const dynamicCommands: CommandDefinition[] = [];
+      const dynamicRoutes: RouteDefinition[] = [];
+      const dynamicWidgets: WidgetDefinition[] = [];
+      const dynamicChannels: ChannelDefinition[] = [];
 
       // Register static tools
       for (const toolDef of pluginExport.tools) {
@@ -133,6 +149,38 @@ export class PluginLoader {
         }
       }
 
+      // Register static commands
+      if (manifest?.commands) {
+        for (const command of manifest.commands) {
+          this.registeredCommands.push(command);
+          commandNames.push(command.name);
+        }
+      }
+
+      // Register static routes
+      if (manifest?.routes) {
+        for (const route of manifest.routes) {
+          this.registeredRoutes.push(route);
+          routePaths.push(`${route.method} ${route.path}`);
+        }
+      }
+
+      // Register static widgets
+      if (manifest?.widgets) {
+        for (const widget of manifest.widgets) {
+          this.registeredWidgets.push(widget);
+          widgetIds.push(widget.id);
+        }
+      }
+
+      // Register static channels
+      if (manifest?.channels) {
+        for (const channel of manifest.channels) {
+          this.registeredChannels.push(channel);
+          channelNames.push(channel.name);
+        }
+      }
+
       // Initialize plugin
       if (manifest && isManifest) {
         // New-style: pass PluginContext
@@ -143,6 +191,10 @@ export class PluginLoader {
             dynamicTools,
             dynamicBehaviors,
             dynamicProviders,
+            dynamicCommands,
+            dynamicRoutes,
+            dynamicWidgets,
+            dynamicChannels,
           );
           try {
             await manifest.initialize(context);
@@ -166,6 +218,22 @@ export class PluginLoader {
           for (const provider of dynamicProviders) {
             this.registeredProviders.push(provider);
             providerNames.push(provider.name);
+          }
+          for (const command of dynamicCommands) {
+            this.registeredCommands.push(command);
+            commandNames.push(command.name);
+          }
+          for (const route of dynamicRoutes) {
+            this.registeredRoutes.push(route);
+            routePaths.push(`${route.method} ${route.path}`);
+          }
+          for (const widget of dynamicWidgets) {
+            this.registeredWidgets.push(widget);
+            widgetIds.push(widget.id);
+          }
+          for (const channel of dynamicChannels) {
+            this.registeredChannels.push(channel);
+            channelNames.push(channel.name);
           }
         }
       } else {
@@ -191,6 +259,10 @@ export class PluginLoader {
         toolNames,
         behaviorNames,
         providerNames,
+        commandNames,
+        routePaths,
+        widgetIds,
+        channelNames,
         permissions,
         status: 'loaded',
         shutdown: pluginExport.shutdown,
@@ -222,6 +294,10 @@ export class PluginLoader {
         toolNames: [],
         behaviorNames: [],
         providerNames: [],
+        commandNames: [],
+        routePaths: [],
+        widgetIds: [],
+        channelNames: [],
         permissions: [],
         status: 'failed',
         error: errorMessage,
@@ -263,6 +339,10 @@ export class PluginLoader {
     dynamicTools: PluginToolDefinition[],
     dynamicBehaviors: PluginBehaviorDefinition[],
     dynamicProviders: PluginProviderDefinition[],
+    dynamicCommands: CommandDefinition[],
+    dynamicRoutes: RouteDefinition[],
+    dynamicWidgets: WidgetDefinition[],
+    dynamicChannels: ChannelDefinition[],
   ): PluginContext {
     const pluginLogger = getLogger(`plugin:${pluginName}`);
 
@@ -282,6 +362,18 @@ export class PluginLoader {
       },
       registerProvider: (provider: PluginProviderDefinition) => {
         dynamicProviders.push(provider);
+      },
+      registerCommand: (command: CommandDefinition) => {
+        dynamicCommands.push(command);
+      },
+      registerRoute: (route: RouteDefinition) => {
+        dynamicRoutes.push(route);
+      },
+      registerWidget: (widget: WidgetDefinition) => {
+        dynamicWidgets.push(widget);
+      },
+      registerChannel: (channel: ChannelDefinition) => {
+        dynamicChannels.push(channel);
       },
       getMemory: async (_key: string) => {
         // Placeholder — will be wired to memory store
@@ -398,6 +490,22 @@ export class PluginLoader {
 
   listProviders(): PluginProviderDefinition[] {
     return [...this.registeredProviders];
+  }
+
+  listCommands(): CommandDefinition[] {
+    return [...this.registeredCommands];
+  }
+
+  listRoutes(): RouteDefinition[] {
+    return [...this.registeredRoutes];
+  }
+
+  listWidgets(): WidgetDefinition[] {
+    return [...this.registeredWidgets];
+  }
+
+  listChannels(): ChannelDefinition[] {
+    return [...this.registeredChannels];
   }
 
   async shutdownAll(): Promise<void> {

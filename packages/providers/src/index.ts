@@ -3,6 +3,11 @@ export { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
 export { GoogleProvider, type GoogleProviderOptions } from './google.js';
 export { OllamaProvider, type OllamaProviderOptions } from './ollama.js';
 export { OpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from './openai-compatible.js';
+export { GroqProvider, type GroqProviderOptions } from './groq.js';
+export { ReplicateProvider, type ReplicateProviderOptions } from './replicate.js';
+export { DeepSeekProvider, type DeepSeekProviderOptions } from './deepseek.js';
+export { CohereProvider, type CohereProviderOptions } from './cohere.js';
+export { XAIProvider, type XAIProviderOptions } from './xai.js';
 export { ProviderFactory, type ProviderFactoryOptions, type ProviderName } from './factory.js';
 export {
   isSetupToken,

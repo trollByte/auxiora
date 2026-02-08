@@ -116,6 +116,23 @@ const ChannelConfigSchema = z.object({
   webchat: z.object({
     enabled: z.boolean().default(true),
   }).default({}),
+  matrix: z.object({
+    enabled: z.boolean().default(false),
+    autoJoinRooms: z.boolean().default(true),
+  }).default({}),
+  signal: z.object({
+    enabled: z.boolean().default(false),
+  }).default({}),
+  email: z.object({
+    enabled: z.boolean().default(false),
+    pollInterval: z.number().int().positive().default(30000),
+  }).default({}),
+  teams: z.object({
+    enabled: z.boolean().default(false),
+  }).default({}),
+  whatsapp: z.object({
+    enabled: z.boolean().default(false),
+  }).default({}),
 });
 
 const VoiceConfigSchema = z.object({

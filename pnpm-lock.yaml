@@ -509,6 +509,9 @@ importers:
       '@auxiora/orchestrator':
         specifier: workspace:*
         version: link:../orchestrator
+      '@auxiora/personality':
+        specifier: workspace:*
+        version: link:../personality
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers

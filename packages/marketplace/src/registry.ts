@@ -8,6 +8,10 @@ import type {
   PublishResult,
   InstalledPlugin,
   UpdateInfo,
+  PersonalityListing,
+  PersonalitySearchResult,
+  PersonalityInstallResult,
+  PersonalityPublishResult,
 } from './types.js';
 
 const logger = getLogger('marketplace:registry');
@@ -162,6 +166,87 @@ export class RegistryClient {
     }
 
     return updates;
+  }
+
+  async searchPersonalities(options: SearchOptions = {}): Promise<PersonalitySearchResult> {
+    const url = new URL('/api/v1/personalities/search', this.config.registryUrl);
+    if (options.query) url.searchParams.set('q', options.query);
+    if (options.keywords?.length) url.searchParams.set('keywords', options.keywords.join(','));
+    if (options.author) url.searchParams.set('author', options.author);
+    if (options.sortBy) url.searchParams.set('sort', options.sortBy);
+    if (options.limit) url.searchParams.set('limit', String(options.limit));
+    if (options.offset) url.searchParams.set('offset', String(options.offset));
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error(`Personality search failed: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json() as PersonalitySearchResult;
+  }
+
+  async getPersonality(name: string): Promise<PersonalityListing | null> {
+    const url = new URL(`/api/v1/personalities/${encodeURIComponent(name)}`, this.config.registryUrl);
+
+    const response = await fetch(url.toString());
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Personality lookup failed: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json() as PersonalityListing;
+  }
+
+  async installPersonality(name: string, version?: string): Promise<PersonalityInstallResult> {
+    const url = new URL('/api/v1/personalities/install', this.config.registryUrl);
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, version, installDir: this.config.installDir }),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        name,
+        version: version ?? 'latest',
+        installedAt: new Date().toISOString(),
+        error: `Personality install failed: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    const result = await response.json() as PersonalityInstallResult;
+    if (result.success) {
+      logger.info('Personality installed', { name, version: result.version });
+    }
+    return result;
+  }
+
+  async publishPersonality(personalityPath: string): Promise<PersonalityPublishResult> {
+    const url = new URL('/api/v1/personalities/publish', this.config.registryUrl);
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: personalityPath }),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        name: 'unknown',
+        version: 'unknown',
+        publishedAt: new Date().toISOString(),
+        error: `Personality publish failed: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    const result = await response.json() as PersonalityPublishResult;
+    if (result.success) {
+      logger.info('Personality published', { name: result.name, version: result.version });
+    }
+    return result;
   }
 
   getConfig(): MarketplaceConfig {

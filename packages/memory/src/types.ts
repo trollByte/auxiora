@@ -47,6 +47,22 @@ export interface PersonalityAdaptation {
   signalCount: number;
 }
 
+export type SentimentLabel = 'positive' | 'negative' | 'neutral';
+
+export interface SentimentResult {
+  sentiment: SentimentLabel;
+  confidence: number;
+  keywords: string[];
+}
+
+export interface SentimentSnapshot {
+  sentiment: SentimentLabel;
+  confidence: number;
+  timestamp: number;
+  hour: number;
+  dayOfWeek: number;
+}
+
 export interface LivingMemoryState {
   facts: MemoryEntry[];
   relationships: MemoryEntry[];

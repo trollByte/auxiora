@@ -13,6 +13,7 @@
     { "path": "../metrics" },
     { "path": "../browser" },
     { "path": "../webhooks" },
-    { "path": "../orchestrator" }
+    { "path": "../orchestrator" },
+    { "path": "../personality" }
   ]
 }
