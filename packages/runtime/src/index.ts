@@ -68,9 +68,12 @@ import {
   PromptAssembler,
   MODE_IDS,
   DEFAULT_SESSION_MODE_STATE,
+  SecurityFloor,
+  EscalationStateMachine,
   type SessionModeState,
   type ModeId,
   type UserPreferences,
+  type SecurityContext,
 } from '@auxiora/personality';
 import { getModesDir } from '@auxiora/core';
 import { fileURLToPath } from 'node:url';
@@ -128,6 +131,9 @@ export class Auxiora {
   private promptAssembler?: PromptAssembler;
   private sessionModes: Map<string, SessionModeState> = new Map();
   private userPreferences?: UserPreferences;
+  // Security floor
+  private securityFloor?: SecurityFloor;
+  private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   private orchestrationHistory: Array<{
     workflowId: string;
     pattern: string;
@@ -917,6 +923,7 @@ export class Auxiora {
     await this.promptAssembler.buildBase();
 
     this.userPreferences = this.config.modes?.preferences;
+    this.securityFloor = new SecurityFloor();
   }
 
   private getSessionModeState(sessionId: string): SessionModeState {
@@ -927,6 +934,21 @@ export class Auxiora {
       this.sessionModes.set(sessionId, state);
     }
     return state;
+  }
+
+  /** Build enriched prompt with auto-detection (shared by handleMessage and handleChannelMessage). */
+  private buildModeEnrichedPrompt(content: string, modeState: SessionModeState, memorySection: string | null): string {
+    if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
+      const detection = this.modeDetector.detect(content, { currentState: modeState });
+      if (detection) {
+        modeState.lastAutoMode = detection.mode;
+        modeState.autoDetected = true;
+        modeState.lastSwitchAt = Date.now();
+        const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
+        return this.promptAssembler!.enrichForMessage(tempState, memorySection, this.userPreferences);
+      }
+    }
+    return this.promptAssembler!.enrichForMessage(modeState, memorySection, this.userPreferences);
   }
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
@@ -994,21 +1016,25 @@ export class Auxiora {
       if (this.promptAssembler && this.config.modes?.enabled !== false) {
         const modeState = this.getSessionModeState(session.id);
 
-        // Auto-detect mode if in auto mode
-        if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
-          const detection = this.modeDetector.detect(content, { currentState: modeState });
-          if (detection) {
-            modeState.lastAutoMode = detection.mode;
-            modeState.autoDetected = true;
-            modeState.lastSwitchAt = Date.now();
-            // For auto-detection, temporarily use the detected mode
-            const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
-            enrichedPrompt = this.promptAssembler.enrichForMessage(tempState, memorySection, this.userPreferences);
-          } else {
+        // Security context check — BEFORE mode detection
+        if (this.securityFloor) {
+          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: content });
+          if (securityContext.active) {
+            // Suspend current mode and use security floor prompt
+            modeState.suspendedMode = modeState.activeMode;
+            enrichedPrompt = this.promptAssembler.enrichForSecurityContext(securityContext, this.securityFloor, memorySection);
+          } else if (modeState.suspendedMode) {
+            // Restore suspended mode
+            modeState.activeMode = modeState.suspendedMode;
+            delete modeState.suspendedMode;
             enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences);
+          } else {
+            // Normal mode detection
+            enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection);
           }
         } else {
-          enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences);
+          // No security floor — normal mode detection
+          enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection);
         }
       } else if (memorySection) {
         enrichedPrompt = this.systemPrompt + memorySection;
@@ -1503,19 +1529,22 @@ export class Auxiora {
 
       if (this.promptAssembler && this.config.modes?.enabled !== false) {
         const modeState = this.getSessionModeState(session.id);
-        if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
-          const detection = this.modeDetector.detect(inbound.content, { currentState: modeState });
-          if (detection) {
-            modeState.lastAutoMode = detection.mode;
-            modeState.autoDetected = true;
-            modeState.lastSwitchAt = Date.now();
-            const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
-            enrichedPrompt = this.promptAssembler.enrichForMessage(tempState, channelMemorySection, this.userPreferences);
+
+        // Security context check — BEFORE mode detection
+        if (this.securityFloor) {
+          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: inbound.content });
+          if (securityContext.active) {
+            modeState.suspendedMode = modeState.activeMode;
+            enrichedPrompt = this.promptAssembler.enrichForSecurityContext(securityContext, this.securityFloor, channelMemorySection);
+          } else if (modeState.suspendedMode) {
+            modeState.activeMode = modeState.suspendedMode;
+            delete modeState.suspendedMode;
+            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
           } else {
-            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, channelMemorySection, this.userPreferences);
+            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
           }
         } else {
-          enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, channelMemorySection, this.userPreferences);
+          enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
         }
       } else if (channelMemorySection) {
         enrichedPrompt = this.systemPrompt + channelMemorySection;

@@ -19,6 +19,8 @@ export interface SessionMetadata {
   lastActiveAt: number;
   activeMode?: string;
   modeAutoDetected?: boolean;
+  escalationLevel?: string;
+  suspendedMode?: string;
 }
 
 export interface Session {

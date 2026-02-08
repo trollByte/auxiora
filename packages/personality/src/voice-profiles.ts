@@ -49,6 +49,20 @@ const VOICE_PROFILES: Record<string, VoiceProfile> = {
     useFillers: true,
     fillerFrequency: 0.15,
   },
+  chill: {
+    voice: 'nova',
+    speed: 0.95,
+    pauseDuration: 300,
+    useFillers: true,
+    fillerFrequency: 0.15,
+  },
+  mentor: {
+    voice: 'shimmer',
+    speed: 0.9,
+    pauseDuration: 350,
+    useFillers: false,
+    fillerFrequency: 0,
+  },
 };
 
 /** Default voice profile. */

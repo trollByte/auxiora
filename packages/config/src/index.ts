@@ -267,7 +267,7 @@ const AgentIdentitySchema = z.object({
     formality: z.number().min(0).max(1).default(0.5),
   }).default({}),
   expertise: z.array(z.string()).default([]),
-  errorStyle: z.enum(['apologetic', 'matter_of_fact', 'self_deprecating', 'professional']).default('professional'),
+  errorStyle: z.enum(['apologetic', 'matter_of_fact', 'self_deprecating', 'professional', 'gentle', 'detailed', 'encouraging', 'terse', 'educational']).default('professional'),
   catchphrases: z.object({
     greeting: z.string().optional(),
     farewell: z.string().optional(),

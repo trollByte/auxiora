@@ -1,5 +1,6 @@
-import type { SoulConfig } from './types.js';
+import type { SoulConfig, ToneSettings } from './types.js';
 import { buildSoulMd } from './builder.js';
+import { scanAllStringFields } from './marketplace/scanner.js';
 
 export interface ConversationQuestion {
   id: string;
@@ -9,12 +10,14 @@ export interface ConversationQuestion {
 
 export interface ConversationStep {
   question: ConversationQuestion;
+  warning?: string;
   done: false;
 }
 
 export interface ConversationComplete {
   config: SoulConfig;
   soulMd: string;
+  warnings?: string[];
   done: true;
 }
 
@@ -31,6 +34,20 @@ interface PartialConfig {
   catchphrases?: Record<string, string>;
 }
 
+const NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9 _-]{0,63}$/;
+
+const VALID_ERROR_STYLES = [
+  'professional',
+  'apologetic',
+  'matter_of_fact',
+  'self_deprecating',
+  'gentle',
+  'detailed',
+  'encouraging',
+  'terse',
+  'educational',
+];
+
 const QUESTIONS: ConversationQuestion[] = [
   {
     id: 'name',
@@ -40,7 +57,7 @@ const QUESTIONS: ConversationQuestion[] = [
   {
     id: 'error_style',
     text: 'When I make a mistake or hit an error, how should I communicate it?',
-    hint: 'Options: professional, apologetic, matter_of_fact, self_deprecating',
+    hint: 'Options: professional, apologetic, matter_of_fact, self_deprecating, gentle, detailed, encouraging, terse, educational',
   },
   {
     id: 'humor',
@@ -74,13 +91,30 @@ const QUESTIONS: ConversationQuestion[] = [
   },
 ];
 
+/** Check tone values for unusual combinations. */
+function checkToneCoherence(tone: ToneSettings): string[] {
+  const warnings: string[] = [];
+  if (tone.humor > 0.8 && tone.formality > 0.8) {
+    warnings.push('High humor + high formality is unusual. The result may feel inconsistent.');
+  }
+  if (tone.warmth < 0.2 && tone.humor > 0.6) {
+    warnings.push('Low warmth + high humor can come across as mean-spirited.');
+  }
+  if (tone.directness > 0.9 && tone.warmth > 0.9) {
+    warnings.push('Very direct + very warm can feel contradictory.');
+  }
+  return warnings;
+}
+
 export class SoulConversationBuilder {
   private currentStep = 0;
   private partial: PartialConfig = {};
+  private lastWarning?: string;
 
   startConversation(): ConversationResult {
     this.currentStep = 0;
     this.partial = {};
+    this.lastWarning = undefined;
     return {
       question: QUESTIONS[0],
       done: false,
@@ -89,22 +123,29 @@ export class SoulConversationBuilder {
 
   processAnswer(answer: string): ConversationResult {
     const questionId = QUESTIONS[this.currentStep].id;
+    this.lastWarning = undefined;
     this.applyAnswer(questionId, answer.trim());
     this.currentStep++;
 
     if (this.currentStep >= QUESTIONS.length) {
       const config = this.buildConfig();
+      const warnings = checkToneCoherence(config.tone);
       return {
         config,
         soulMd: buildSoulMd(config),
+        warnings: warnings.length > 0 ? warnings : undefined,
         done: true,
       };
     }
 
-    return {
+    const step: ConversationStep = {
       question: QUESTIONS[this.currentStep],
       done: false,
     };
+    if (this.lastWarning) {
+      step.warning = this.lastWarning;
+    }
+    return step;
   }
 
   getProgress(): number {
@@ -114,13 +155,19 @@ export class SoulConversationBuilder {
   private applyAnswer(questionId: string, answer: string): void {
     switch (questionId) {
       case 'name':
-        this.partial.name = answer || 'Auxiora';
+        if (answer && NAME_REGEX.test(answer)) {
+          this.partial.name = answer;
+        } else if (answer) {
+          this.partial.name = 'Auxiora';
+          this.lastWarning = `Name "${answer}" contains invalid characters. Using default "Auxiora".`;
+        } else {
+          this.partial.name = 'Auxiora';
+        }
         break;
 
       case 'error_style': {
-        const valid = ['professional', 'apologetic', 'matter_of_fact', 'self_deprecating'];
         const normalized = answer.toLowerCase().replace(/[\s-]/g, '_');
-        this.partial.errorStyle = valid.includes(normalized) ? normalized : 'professional';
+        this.partial.errorStyle = VALID_ERROR_STYLES.includes(normalized) ? normalized : 'professional';
         break;
       }
 
@@ -175,7 +222,15 @@ export class SoulConversationBuilder {
               }
             }
           }
-          this.partial.catchphrases = phrases;
+
+          // Scan catchphrases for injection patterns
+          const scanResult = scanAllStringFields(phrases);
+          if (!scanResult.clean) {
+            this.partial.catchphrases = {};
+            this.lastWarning = 'Catchphrases contain disallowed patterns and were rejected.';
+          } else {
+            this.partial.catchphrases = phrases;
+          }
         }
         break;
       }

@@ -24,3 +24,32 @@ export {
   DEFAULT_VOICE_PROFILE,
   type VoiceProfile,
 } from './voice-profiles.js';
+// Security floor
+export { SecurityFloor, SECURITY_TOOL_PATTERNS, SECURITY_MESSAGE_PATTERNS } from './security-floor.js';
+export type { SecurityContext, SecurityFloorRule, SecurityDetectionInput } from './security-floor.js';
+// Escalation
+export {
+  EscalationStateMachine,
+  ESCALATION_LEVELS,
+  SEVERITY_LEVELS,
+  RESPONSE_CATEGORIES,
+  ESCALATION_TABLE,
+} from './escalation.js';
+export type {
+  EscalationLevel,
+  SeverityLevel,
+  ResponseCategory,
+  EscalationState,
+  EscalationTableEntry,
+} from './escalation.js';
+// Marketplace scanner
+export { scanString, scanAllStringFields, BLOCKED_PATTERNS } from './marketplace/scanner.js';
+export type { ScanViolation, ScanResult } from './marketplace/scanner.js';
+// Marketplace schema
+export {
+  validatePersonalityConfig,
+  PersonalityConfigSchema,
+  FORBIDDEN_FIELD_NAMES,
+  FORBIDDEN_FIELD_PATTERNS,
+} from './marketplace/schema.js';
+export type { ValidationResult } from './marketplace/schema.js';

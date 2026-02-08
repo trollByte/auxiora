@@ -1,3 +1,5 @@
+import type { EscalationLevel } from '../escalation.js';
+
 export const MODE_IDS = [
   'operator',
   'analyst',
@@ -55,6 +57,8 @@ export interface SessionModeState {
   autoDetected: boolean;
   lastAutoMode?: ModeId;
   lastSwitchAt?: number;
+  escalationLevel?: EscalationLevel;
+  suspendedMode?: ModeId | 'auto' | 'off';
 }
 
 export const DEFAULT_SESSION_MODE_STATE: SessionModeState = {

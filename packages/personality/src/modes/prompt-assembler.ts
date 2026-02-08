@@ -8,6 +8,9 @@ import {
 import type { AgentIdentity } from '@auxiora/config';
 import type { ModeLoader } from './mode-loader.js';
 import type { SessionModeState, UserPreferences, ModeId } from './types.js';
+import type { SecurityContext } from '../security-floor.js';
+import type { SecurityFloor } from '../security-floor.js';
+import type { EscalationState } from '../escalation.js';
 
 export class PromptAssembler {
   private agent: AgentIdentity;
@@ -84,12 +87,54 @@ export class PromptAssembler {
     return this.basePrompt;
   }
 
+  /**
+   * Build a prompt for a security context: base prompt + security floor section + memories.
+   * No mode instructions or user preferences are included.
+   */
+  enrichForSecurityContext(
+    securityContext: SecurityContext,
+    securityFloor: SecurityFloor,
+    memorySection: string | null,
+  ): string {
+    const parts: string[] = [this.basePrompt];
+
+    // Inject security floor section
+    const sfSection = securityFloor.getSecurityPromptSection(securityContext);
+    if (sfSection) {
+      parts.push(`\n\n${sfSection}`);
+    }
+
+    // Inject memories (security context still benefits from memory)
+    if (memorySection) {
+      parts.push(memorySection);
+    }
+
+    return parts.join('');
+  }
+
   enrichForMessage(
     modeState: SessionModeState | undefined,
     memorySection: string | null,
     preferences?: UserPreferences,
+    escalationState?: EscalationState,
   ): string {
-    const parts: string[] = [this.basePrompt];
+    // If escalation is active, dampen tone in the identity preamble
+    let prompt: string;
+    if (escalationState && escalationState.level !== 'normal') {
+      const dampened = this.dampenToneForEscalation(escalationState);
+      const modifiedAgent = { ...this.agent, tone: dampened };
+      prompt = this.buildIdentityPreamble(modifiedAgent);
+
+      // Re-add the rest of the base prompt after identity (if base has more than just identity)
+      const identityEnd = this.basePrompt.indexOf('\n\n---\n\n');
+      if (identityEnd !== -1) {
+        prompt += this.basePrompt.slice(identityEnd);
+      }
+    } else {
+      prompt = this.basePrompt;
+    }
+
+    const parts: string[] = [prompt];
 
     // Inject active mode instructions
     if (modeState && modeState.activeMode !== 'auto' && modeState.activeMode !== 'off') {
@@ -161,6 +206,20 @@ export class PromptAssembler {
     }
 
     return lines.join('\n');
+  }
+
+  private dampenToneForEscalation(state: EscalationState): AgentIdentity['tone'] {
+    const tone = { ...this.agent.tone };
+    switch (state.level) {
+      case 'caution':
+        return { ...tone, humor: tone.humor * 0.5 };
+      case 'serious':
+        return { ...tone, humor: 0, directness: Math.max(tone.directness, 0.6) };
+      case 'lockdown':
+        return { warmth: tone.warmth, humor: 0, directness: Math.max(tone.directness, 0.7), formality: Math.max(tone.formality, 0.5) };
+      default:
+        return tone;
+    }
   }
 
   private buildIdentityPreamble(agent: AgentIdentity): string {

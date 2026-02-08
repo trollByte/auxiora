@@ -7,6 +7,8 @@ import { ModeLoader } from '../mode-loader.js';
 import type { AgentIdentity } from '@auxiora/config';
 import type { SessionModeState, UserPreferences } from '../types.js';
 import { DEFAULT_PREFERENCES } from '../types.js';
+import { SecurityFloor } from '../../security-floor.js';
+import type { EscalationState } from '../../escalation.js';
 
 // Mock @auxiora/core path getters to use temp dirs
 let workspaceDir: string;
@@ -185,5 +187,69 @@ describe('PromptAssembler', () => {
     // With no mode state, enrichment should just be base + memory
     const enriched = assembler.enrichForMessage(undefined, '\n\nmemory');
     expect(enriched).toBe(base + '\n\nmemory');
+  });
+
+  // --- Security context and escalation tests ---
+
+  it('should produce security floor section without mode instructions', async () => {
+    const assembler = await createAssembler({
+      'operator.md': `<!-- mode: operator\n name: Operator\n description: test\n signals: run:0.8 -->\nOperator content`,
+    });
+    await assembler.buildBase();
+
+    const sf = new SecurityFloor();
+    const ctx = sf.detectSecurityContext({ userMessage: 'rotate my API key' });
+    const enriched = assembler.enrichForSecurityContext(ctx, sf, null);
+
+    expect(enriched).toContain('Security Floor Active');
+    expect(enriched).not.toContain('Active Mode');
+    expect(enriched).not.toContain('User Preferences');
+  });
+
+  it('should include memories in security context prompt', async () => {
+    const assembler = await createAssembler();
+    await assembler.buildBase();
+
+    const sf = new SecurityFloor();
+    const ctx = sf.detectSecurityContext({ userMessage: 'revoke access' });
+    const enriched = assembler.enrichForSecurityContext(ctx, sf, '\n\n## Memories\nUser prefers verbose.');
+
+    expect(enriched).toContain('Security Floor Active');
+    expect(enriched).toContain('## Memories');
+    expect(enriched).toContain('User prefers verbose.');
+  });
+
+  it('should dampen tone for caution escalation', async () => {
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const assembler = await createAssembler();
+    await assembler.buildBase();
+
+    const escalation: EscalationState = { level: 'caution', lastEvent: 'uncertainty' };
+    const enriched = assembler.enrichForMessage(undefined, null, undefined, escalation);
+
+    // Humor should be halved: 0.3 * 0.5 = 0.15
+    expect(enriched).toContain('Humor: 0.15/1.0');
+  });
+
+  it('should zero humor for serious escalation', async () => {
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const assembler = await createAssembler();
+    await assembler.buildBase();
+
+    const escalation: EscalationState = { level: 'serious', lastEvent: 'access_failure' };
+    const enriched = assembler.enrichForMessage(undefined, null, undefined, escalation);
+
+    expect(enriched).toContain('Humor: 0/1.0');
+    expect(enriched).toContain('Directness: 0.6/1.0'); // raised from 0.5
+  });
+
+  it('should not dampen tone without escalation param (backward compat)', async () => {
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const assembler = await createAssembler();
+    const base = await assembler.buildBase();
+
+    // Without escalation, enrichment should use original base
+    const enriched = assembler.enrichForMessage(undefined, null);
+    expect(enriched).toBe(base);
   });
 });
