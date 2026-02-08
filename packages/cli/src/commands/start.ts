@@ -42,9 +42,13 @@ export function createStartCommand(): Command {
         }
       }
 
-      // Handle shutdown signals
+      // Handle shutdown signals (SIGINT: Ctrl+C on all platforms, SIGTERM: Unix,
+      // SIGBREAK: Windows console close / Ctrl+Break)
       process.on('SIGINT', gracefulShutdown);
       process.on('SIGTERM', gracefulShutdown);
+      if (process.platform === 'win32') {
+        process.on('SIGBREAK', gracefulShutdown);
+      }
 
       try {
         auxiora = await startAuxiora({ vaultPassword });

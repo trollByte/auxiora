@@ -415,7 +415,7 @@ export class Auxiora {
       // SPA catch-all: serve index.html for client-side routing
       const dashboardIndexPath = path.join(dashboardUiPath, 'index.html');
       const spaRouter = Router();
-      spaRouter.get('*', (_req: Request, res: Response) => {
+      spaRouter.get('/{*splat}', (_req: Request, res: Response) => {
         res.sendFile(dashboardIndexPath);
       });
       this.gateway.mountRouter('/dashboard', spaRouter as any);
