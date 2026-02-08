@@ -33,6 +33,7 @@ export interface DashboardDeps {
     get(name: string): string | undefined;
     has(name: string): boolean;
     add(name: string, value: string): Promise<void>;
+    unlock(password: string): Promise<void>;
   };
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;

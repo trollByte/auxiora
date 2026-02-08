@@ -390,12 +390,16 @@ export class Auxiora {
           sessionTtlMs: this.config.dashboard.sessionTtlMs,
         },
         verifyPassword: (input: string) => {
-          const stored = this.vault.get('DASHBOARD_PASSWORD');
-          if (!stored) return false;
-          const a = Buffer.from(stored, 'utf-8');
-          const b = Buffer.from(input, 'utf-8');
-          if (a.length !== b.length) return false;
-          return crypto.timingSafeEqual(a, b);
+          try {
+            const stored = this.vault.get('DASHBOARD_PASSWORD');
+            if (!stored) return false;
+            const a = Buffer.from(stored, 'utf-8');
+            const b = Buffer.from(input, 'utf-8');
+            if (a.length !== b.length) return false;
+            return crypto.timingSafeEqual(a, b);
+          } catch {
+            return false; // Vault locked
+          }
         },
       });
 

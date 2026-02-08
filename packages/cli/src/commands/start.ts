@@ -24,18 +24,20 @@ export function createStartCommand(): Command {
         vaultPassword = options.password || process.env.AUXIORA_VAULT_PASSWORD;
 
         if (!vaultPassword) {
-          // No password from flag or env — prompt interactively if possible
           if (!process.stdin.isTTY) {
-            console.error('No vault password provided. Set AUXIORA_VAULT_PASSWORD or use --password.');
-            process.exit(1);
-          }
-          try {
-            vaultPassword = await passwordPrompt({
-              message: 'Enter vault password:',
-            });
-          } catch {
-            console.log('Vault password required. Use --no-vault to skip.');
-            process.exit(1);
+            // Setup mode: start without vault, setup wizard handles initialization
+            console.log('No vault password found. Starting in setup mode...');
+            console.log('Open the dashboard in your browser to complete setup.');
+            // vaultPassword stays undefined — runtime starts with vault locked
+          } else {
+            try {
+              vaultPassword = await passwordPrompt({
+                message: 'Enter vault password:',
+              });
+            } catch {
+              console.log('Vault password required. Use --no-vault to skip.');
+              process.exit(1);
+            }
           }
         }
       }

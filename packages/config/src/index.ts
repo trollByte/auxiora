@@ -153,7 +153,7 @@ const WebhookConfigSchema = z.object({
 });
 
 const DashboardConfigSchema = z.object({
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
   sessionTtlMs: z.number().int().positive().default(86_400_000),
 });
 

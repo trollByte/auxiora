@@ -72,6 +72,8 @@ export type AuditEventType =
   | 'memory.saved'
   | 'memory.deleted'
   | 'memory.extracted'
+  | 'setup.vault'
+  | 'setup.dashboard_password'
   | 'setup.identity'
   | 'setup.personality'
   | 'setup.provider'

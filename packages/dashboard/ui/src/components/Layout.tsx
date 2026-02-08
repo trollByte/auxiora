@@ -1,11 +1,26 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
 
 export function Layout() {
+  const [checking, setChecking] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    api.getSetupStatus()
+      .then(status => {
+        if (status.needsSetup) navigate('/setup', { replace: true });
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
+
   const { data: status, refresh } = useApi(() => api.getStatus(), []);
   usePolling(refresh);
+
+  if (checking) return null;
 
   const navItems = [
     { to: '/', label: 'Behaviors' },

@@ -141,9 +141,9 @@ describe('Config', () => {
   });
 
   describe('dashboard config', () => {
-    it('should default dashboard to disabled', () => {
+    it('should default dashboard to enabled', () => {
       const config = ConfigSchema.parse({});
-      expect(config.dashboard.enabled).toBe(false);
+      expect(config.dashboard.enabled).toBe(true);
       expect(config.dashboard.sessionTtlMs).toBe(86_400_000);
     });
 

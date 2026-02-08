@@ -114,6 +114,8 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   router.get('/setup/status', async (req: Request, res: Response) => {
     const needsSetup = await checkNeedsSetup();
     const completedSteps: string[] = [];
+    let vaultUnlocked = false;
+    let dashboardPasswordSet = false;
 
     if (setup?.getAgentName) {
       const name = setup.getAgentName();
@@ -126,11 +128,13 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       if (deps.vault.has('ANTHROPIC_API_KEY') || deps.vault.has('OPENAI_API_KEY')) {
         completedSteps.push('provider');
       }
+      vaultUnlocked = true;
+      dashboardPasswordSet = deps.vault.has('DASHBOARD_PASSWORD');
     } catch {
       // vault locked
     }
 
-    res.json({ needsSetup, completedSteps });
+    res.json({ needsSetup, completedSteps, vaultUnlocked, dashboardPasswordSet });
   });
 
   router.get('/setup/templates', async (req: Request, res: Response) => {
@@ -140,6 +144,40 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
     const templates = await setup.personality.listTemplates();
     res.json({ data: templates });
+  });
+
+  router.post('/setup/vault', async (req: Request, res: Response) => {
+    const { password } = req.body as { password?: string };
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    try {
+      await deps.vault.unlock(password);
+      void audit('setup.vault', {});
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to initialize vault';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  router.post('/setup/dashboard-password', async (req: Request, res: Response) => {
+    const { password } = req.body as { password?: string };
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    try {
+      await deps.vault.add('DASHBOARD_PASSWORD', password);
+      void audit('setup.dashboard_password', {});
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to store dashboard password';
+      res.status(500).json({ error: msg });
+    }
   });
 
   router.post('/setup/identity', async (req: Request, res: Response) => {
@@ -193,13 +231,33 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
 
   router.post('/setup/provider', async (req: Request, res: Response) => {
     const { provider, apiKey } = req.body as { provider?: string; apiKey?: string };
-    if (!provider || !apiKey) {
-      res.status(400).json({ error: 'Provider and apiKey are required' });
+    if (!provider) {
+      res.status(400).json({ error: 'Provider is required' });
       return;
     }
 
-    if (provider !== 'anthropic' && provider !== 'openai') {
-      res.status(400).json({ error: 'Provider must be "anthropic" or "openai"' });
+    if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'ollama') {
+      res.status(400).json({ error: 'Provider must be "anthropic", "openai", or "ollama"' });
+      return;
+    }
+
+    if (provider === 'ollama') {
+      const endpoint = (req.body as any).endpoint;
+      if (setup?.saveConfig) {
+        await setup.saveConfig({
+          provider: {
+            primary: 'ollama',
+            ollama: { baseUrl: endpoint || 'http://localhost:11434' },
+          },
+        });
+      }
+      void audit('setup.provider', { provider });
+      res.json({ success: true, provider });
+      return;
+    }
+
+    if (!apiKey) {
+      res.status(400).json({ error: 'API key is required for this provider' });
       return;
     }
 
@@ -220,22 +278,52 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
 
-    const { channels } = req.body as { channels?: string[] };
+    const CREDENTIAL_VAULT_KEYS: Record<string, Record<string, string>> = {
+      discord: { botToken: 'DISCORD_BOT_TOKEN' },
+      telegram: { botToken: 'TELEGRAM_BOT_TOKEN' },
+      slack: { botToken: 'SLACK_BOT_TOKEN', appToken: 'SLACK_APP_TOKEN' },
+      matrix: { accessToken: 'MATRIX_ACCESS_TOKEN' },
+      signal: {},
+      teams: { appPassword: 'TEAMS_APP_PASSWORD' },
+      whatsapp: { accessToken: 'WHATSAPP_ACCESS_TOKEN', verifyToken: 'WHATSAPP_VERIFY_TOKEN' },
+      twilio: { accountSid: 'TWILIO_ACCOUNT_SID', authToken: 'TWILIO_AUTH_TOKEN' },
+      email: { password: 'EMAIL_PASSWORD' },
+    };
+
+    const { channels } = req.body as { channels?: Array<string | { type: string; enabled: boolean; credentials?: Record<string, string> }> };
     if (!Array.isArray(channels)) {
       res.status(400).json({ error: 'Channels must be an array' });
       return;
     }
 
     const channelConfig: Record<string, { enabled: boolean }> = {};
+    const channelNames: string[] = [];
+
     for (const ch of channels) {
       if (typeof ch === 'string') {
         channelConfig[ch] = { enabled: true };
+        channelNames.push(ch);
+      } else if (typeof ch === 'object' && ch.type) {
+        channelConfig[ch.type] = { enabled: ch.enabled };
+        channelNames.push(ch.type);
+
+        if (ch.credentials) {
+          const keyMap = CREDENTIAL_VAULT_KEYS[ch.type];
+          if (keyMap) {
+            for (const [credKey, credValue] of Object.entries(ch.credentials)) {
+              const vaultKey = keyMap[credKey];
+              if (vaultKey && credValue && typeof credValue === 'string') {
+                await deps.vault.add(vaultKey, credValue);
+              }
+            }
+          }
+        }
       }
     }
 
     await setup.saveConfig({ channels: channelConfig });
-    void audit('setup.channels', { channels });
-    res.json({ success: true, channels });
+    void audit('setup.channels', { channels: channelNames });
+    res.json({ success: true, channels: channelNames });
   });
 
   router.post('/setup/complete', async (req: Request, res: Response) => {

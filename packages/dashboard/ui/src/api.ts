@@ -53,4 +53,22 @@ export const api = {
     return fetchApi<{ data: any[] }>(`/audit${qs ? `?${qs}` : ''}`);
   },
   getStatus: () => fetchApi<{ data: any }>('/status'),
+  getSetupStatus: () =>
+    fetchApi<{ needsSetup: boolean; completedSteps: string[]; vaultUnlocked: boolean; dashboardPasswordSet: boolean }>('/setup/status'),
+  setupVault: (password: string) =>
+    fetchApi<{ success: boolean }>('/setup/vault', { method: 'POST', body: JSON.stringify({ password }) }),
+  setupDashboardPassword: (password: string) =>
+    fetchApi<{ success: boolean }>('/setup/dashboard-password', { method: 'POST', body: JSON.stringify({ password }) }),
+  setupIdentity: (name: string, pronouns: string) =>
+    fetchApi<{ success: boolean }>('/setup/identity', { method: 'POST', body: JSON.stringify({ name, pronouns }) }),
+  getSetupTemplates: () =>
+    fetchApi<{ data: Array<{ id: string; name: string; description: string; preview: string }> }>('/setup/templates'),
+  setupPersonality: (template: string) =>
+    fetchApi<{ success: boolean }>('/setup/personality', { method: 'POST', body: JSON.stringify({ template }) }),
+  setupProvider: (provider: string, apiKey?: string, endpoint?: string) =>
+    fetchApi<{ success: boolean }>('/setup/provider', { method: 'POST', body: JSON.stringify({ provider, apiKey, endpoint }) }),
+  setupChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>
+    fetchApi<{ success: boolean }>('/setup/channels', { method: 'POST', body: JSON.stringify({ channels }) }),
+  completeSetup: () =>
+    fetchApi<{ success: boolean }>('/setup/complete', { method: 'POST' }),
 };
