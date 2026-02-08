@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Background -->
+  <circle cx="64" cy="64" r="62" fill="#0f0f1a"/>
+
+  <!-- Shield outline -->
+  <path d="M64 12 L104 32 L104 62 C104 90 84 110 64 118 C44 110 24 90 24 62 L24 32 Z"
+        fill="none" stroke="#6366f1" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- Shield fill with gradient -->
+  <defs>
+    <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <path d="M64 16 L100 34 L100 62 C100 88 82 106 64 114 C46 106 28 88 28 62 L28 34 Z"
+        fill="url(#sg)"/>
+
+  <!-- Neural network nodes -->
+  <!-- Center node (brain core) -->
+  <circle cx="64" cy="58" r="6" fill="#818cf8"/>
+  <!-- Top nodes -->
+  <circle cx="50" cy="40" r="4" fill="#22c55e"/>
+  <circle cx="78" cy="40" r="4" fill="#22c55e"/>
+  <!-- Mid nodes -->
+  <circle cx="42" cy="62" r="3.5" fill="#818cf8" opacity="0.8"/>
+  <circle cx="86" cy="62" r="3.5" fill="#818cf8" opacity="0.8"/>
+  <!-- Bottom nodes -->
+  <circle cx="52" cy="82" r="3.5" fill="#22c55e" opacity="0.8"/>
+  <circle cx="76" cy="82" r="3.5" fill="#22c55e" opacity="0.8"/>
+  <!-- Bottom center -->
+  <circle cx="64" cy="94" r="3" fill="#818cf8" opacity="0.6"/>
+
+  <!-- Neural connections -->
+  <g stroke="#818cf8" stroke-width="1.5" opacity="0.5">
+    <!-- Center to top -->
+    <line x1="64" y1="58" x2="50" y2="40"/>
+    <line x1="64" y1="58" x2="78" y2="40"/>
+    <!-- Center to mid -->
+    <line x1="64" y1="58" x2="42" y2="62"/>
+    <line x1="64" y1="58" x2="86" y2="62"/>
+    <!-- Center to bottom -->
+    <line x1="64" y1="58" x2="52" y2="82"/>
+    <line x1="64" y1="58" x2="76" y2="82"/>
+    <!-- Cross connections -->
+    <line x1="50" y1="40" x2="42" y2="62"/>
+    <line x1="78" y1="40" x2="86" y2="62"/>
+    <line x1="42" y1="62" x2="52" y2="82"/>
+    <line x1="86" y1="62" x2="76" y2="82"/>
+    <!-- Top cross -->
+    <line x1="50" y1="40" x2="78" y2="40"/>
+    <!-- Bottom to center bottom -->
+    <line x1="52" y1="82" x2="64" y2="94"/>
+    <line x1="76" y1="82" x2="64" y2="94"/>
+  </g>
+
+  <!-- Glow on center node -->
+  <circle cx="64" cy="58" r="10" fill="#6366f1" opacity="0.15"/>
+</svg>

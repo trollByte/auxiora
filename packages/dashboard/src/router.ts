@@ -262,7 +262,13 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
 
     const vaultKey = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
-    await deps.vault.add(vaultKey, apiKey);
+    try {
+      await deps.vault.add(vaultKey, apiKey);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to store API key';
+      res.status(400).json({ error: `Vault is not initialized. Complete the vault setup step first. (${msg})` });
+      return;
+    }
 
     if (setup?.saveConfig) {
       await setup.saveConfig({ provider: { primary: provider } });
@@ -313,7 +319,13 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
             for (const [credKey, credValue] of Object.entries(ch.credentials)) {
               const vaultKey = keyMap[credKey];
               if (vaultKey && credValue && typeof credValue === 'string') {
-                await deps.vault.add(vaultKey, credValue);
+                try {
+                  await deps.vault.add(vaultKey, credValue);
+                } catch (error) {
+                  const msg = error instanceof Error ? error.message : 'Failed to store credential';
+                  res.status(400).json({ error: `Vault is not initialized. Complete the vault setup step first. (${msg})` });
+                  return;
+                }
               }
             }
           }
