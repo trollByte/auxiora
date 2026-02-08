@@ -38,6 +38,7 @@
     "@auxiora/plugins": "workspace:*",
     "@auxiora/memory": "workspace:*",
     "@auxiora/orchestrator": "workspace:*",
+    "@auxiora/personality": "workspace:*",
     "@auxiora/router": "workspace:*",
     "@auxiora/social": "workspace:*",
     "@auxiora/workflows": "workspace:*",

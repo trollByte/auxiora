@@ -3,7 +3,7 @@ import { SessionManager, type Message } from '@auxiora/sessions';
 import { ProviderFactory, type StreamChunk, type ProviderMetadata, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
-import { loadConfig, type Config, type AgentIdentity } from '@auxiora/config';
+import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
 import { Vault } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 import {
@@ -61,6 +61,7 @@ import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
 import express from 'express';
 import type { Request, Response } from 'express';
+import { PersonalityManager } from '@auxiora/personality';
 import { fileURLToPath } from 'node:url';
 
 export interface AuxioraOptions {
@@ -384,6 +385,35 @@ export class Auxiora {
             stop: () => this.conversationEngine!.stop(),
             getTurnCount: () => this.conversationEngine!.getTurnCount(),
           } : undefined,
+          setup: {
+            personality: (() => {
+              const mgr = new PersonalityManager(
+                path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../personality/templates'),
+                getWorkspacePath(),
+              );
+              return {
+                listTemplates: () => mgr.listTemplates(),
+                applyTemplate: (id: string) => mgr.applyTemplate(id),
+                buildCustom: (config: Record<string, unknown>) =>
+                  mgr.buildCustom(config as unknown as import('@auxiora/personality').SoulConfig),
+              };
+            })(),
+            saveConfig: async (updates: Record<string, unknown>) => {
+              const current = await loadConfig();
+              const merged = deepMerge(current, updates);
+              await saveFullConfig(merged as Config);
+              this.config = await loadConfig();
+            },
+            getAgentName: () => this.config.agent?.name ?? 'Auxiora',
+            hasSoulFile: async () => {
+              try {
+                await fs.access(getSoulPath());
+                return true;
+              } catch {
+                return false;
+              }
+            },
+          },
         },
         config: {
           enabled: true,
@@ -1591,6 +1621,20 @@ export class Auxiora {
   getAgentName(): string {
     return this.config.agent?.name ?? 'Auxiora';
   }
+}
+
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    const srcVal = source[key];
+    const tgtVal = target[key];
+    if (srcVal && tgtVal && typeof srcVal === 'object' && typeof tgtVal === 'object' && !Array.isArray(srcVal)) {
+      result[key] = deepMerge(tgtVal as Record<string, unknown>, srcVal as Record<string, unknown>);
+    } else {
+      result[key] = srcVal;
+    }
+  }
+  return result;
 }
 
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
