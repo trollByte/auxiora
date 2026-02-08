@@ -77,6 +77,16 @@ export type AuditEventType =
   | 'setup.channels'
   | 'setup.complete'
   | 'system.error'
+  // Trust / Autonomy (Phase 12)
+  | 'trust.level_changed'
+  | 'trust.promoted'
+  | 'trust.demoted'
+  | 'trust.action_gated'
+  | 'trust.action_executed'
+  | 'trust.action_rolled_back'
+  | 'trust.permission_denied'
+  | 'intent.parsed'
+  | 'intent.planned'
   // Desktop (Phase 6)
   | 'desktop.config_updated'
   | 'desktop.update_check'
@@ -87,7 +97,33 @@ export type AuditEventType =
   | 'cloud.plan_change'
   | 'cloud.payment_method'
   | 'cloud.export'
-  | 'cloud.delete_tenant';
+  | 'cloud.delete_tenant'
+  // Connectors (Phase 13)
+  | 'connector.connected'
+  | 'connector.disconnected'
+  | 'connector.action_executed'
+  | 'connector.action_failed'
+  // Social / Team (Phase 14)
+  | 'social.user_created'
+  | 'social.user_updated'
+  | 'social.user_deleted'
+  | 'social.user_switched'
+  | 'social.role_created'
+  | 'social.role_deleted'
+  | 'social.role_assigned'
+  | 'team.user_created'
+  | 'team.user_deleted'
+  // Workflows (Phase 14)
+  | 'workflow.created'
+  | 'workflow.started'
+  | 'workflow.step_completed'
+  | 'workflow.cancelled'
+  | 'workflow.approved'
+  | 'workflow.rejected'
+  | 'workflow.approval_requested'
+  // Agent Protocol (Phase 14)
+  | 'agent_protocol.message_sent'
+  | 'agent_protocol.message_received';
 
 export interface AuditEntry {
   timestamp: string;

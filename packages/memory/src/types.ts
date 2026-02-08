@@ -23,6 +23,20 @@ export interface MemoryEntry {
   relatedMemories?: string[];
   sentiment?: 'positive' | 'negative' | 'neutral';
   encrypted?: boolean;
+  /** Partition this memory belongs to. Defaults to 'global'. */
+  partitionId?: string;
+  /** User ID that created this memory. */
+  sourceUserId?: string;
+}
+
+/** A memory partition for per-user or shared storage. */
+export interface MemoryPartition {
+  id: string;
+  name: string;
+  type: 'private' | 'shared' | 'global';
+  ownerId?: string;
+  memberIds?: string[];
+  createdAt: number;
 }
 
 export interface RelationshipMemory {

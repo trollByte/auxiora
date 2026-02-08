@@ -182,6 +182,21 @@ export const CloudConfigSchema = z.object({
 });
 export type CloudConfig = z.infer<typeof CloudConfigSchema>;
 
+// [P12] Trust / Autonomy
+const TrustConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  defaultLevel: z.number().int().min(0).max(4).default(0),
+  autoPromote: z.boolean().default(true),
+  promotionThreshold: z.number().int().positive().default(10),
+  demotionThreshold: z.number().int().positive().default(3),
+  autoPromoteCeiling: z.number().int().min(0).max(4).default(3),
+});
+
+const IntentConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  confidenceThreshold: z.number().min(0).max(1).default(0.3),
+});
+
 const PluginsConfigSchema = z.object({
   enabled: z.boolean().default(true),
   dir: z.string().optional(),
@@ -262,6 +277,9 @@ export const ConfigSchema = z.object({
   memory: MemoryConfigSchema.default({}),
   orchestration: OrchestrationConfigSchema.default({}),
   agent: AgentIdentitySchema.default({}),
+  // [P12] Trust / Autonomy
+  trust: TrustConfigSchema.default({}),
+  intent: IntentConfigSchema.default({}),
   // [P6] Desktop
   desktop: DesktopConfigSchema.default({}),
   // [P7] Cloud
@@ -271,6 +289,8 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 export type ModelRouting = z.infer<typeof ModelRoutingSchema>;
 export type OrchestrationConfig = z.infer<typeof OrchestrationConfigSchema>;
+export type TrustConfig = z.infer<typeof TrustConfigSchema>;
+export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 

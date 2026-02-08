@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@auxiora/audit": "workspace:*",
+    "@auxiora/autonomy": "workspace:*",
+    "@auxiora/intent": "workspace:*",
     "@auxiora/behaviors": "workspace:*",
     "@auxiora/browser": "workspace:*",
     "@auxiora/stt": "workspace:*",
@@ -37,6 +39,12 @@
     "@auxiora/memory": "workspace:*",
     "@auxiora/orchestrator": "workspace:*",
     "@auxiora/router": "workspace:*",
+    "@auxiora/social": "workspace:*",
+    "@auxiora/workflows": "workspace:*",
+    "@auxiora/agent-protocol": "workspace:*",
+    "@auxiora/ambient": "workspace:*",
+    "@auxiora/conversation": "workspace:*",
+    "@auxiora/screen": "workspace:*",
     "express": "^5.1.0"
   },
   "devDependencies": {

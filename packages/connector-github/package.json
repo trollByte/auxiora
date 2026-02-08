@@ -1,0 +1,25 @@
+{
+  "name": "@auxiora/connector-github",
+  "version": "1.0.0",
+  "description": "GitHub connector: Issues, PRs, Actions, Repos",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/connectors": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

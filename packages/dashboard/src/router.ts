@@ -856,5 +856,426 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: result });
   });
 
+  // --- [P13] Connector routes ---
+  router.get('/connectors', (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.json({ data: [] });
+      return;
+    }
+    const connectors = deps.connectors.list();
+    res.json({ data: connectors });
+  });
+
+  router.get('/connectors/:id', (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.status(503).json({ error: 'Connectors not available' });
+      return;
+    }
+    const connector = deps.connectors.get(String(req.params.id));
+    if (!connector) {
+      res.status(404).json({ error: 'Connector not found' });
+      return;
+    }
+    res.json({ data: connector });
+  });
+
+  router.post('/connectors/:id', async (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.status(503).json({ error: 'Connectors not available' });
+      return;
+    }
+    const connectorId = String(req.params.id);
+    const { credentials, label } = req.body as { credentials?: Record<string, string>; label?: string };
+    if (!credentials) {
+      res.status(400).json({ error: 'credentials are required' });
+      return;
+    }
+    const result = await deps.connectors.connect(connectorId, credentials, label);
+    if (!result) {
+      res.status(404).json({ error: 'Connector not found' });
+      return;
+    }
+    void audit('connector.connected', { connectorId });
+    res.json({ data: result });
+  });
+
+  router.delete('/connectors/:id', async (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.status(503).json({ error: 'Connectors not available' });
+      return;
+    }
+    const removed = await deps.connectors.disconnect(String(req.params.id));
+    if (!removed) {
+      res.status(404).json({ error: 'Connector not found' });
+      return;
+    }
+    void audit('connector.disconnected', { connectorId: String(req.params.id) });
+    res.json({ data: { deleted: true } });
+  });
+
+  router.get('/connectors/:id/actions', (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.status(503).json({ error: 'Connectors not available' });
+      return;
+    }
+    const actions = deps.connectors.getActions(String(req.params.id));
+    res.json({ data: actions });
+  });
+
+  router.post('/connectors/:id/actions/:actionId', async (req: Request, res: Response) => {
+    if (!deps.connectors) {
+      res.status(503).json({ error: 'Connectors not available' });
+      return;
+    }
+    const connectorId = String(req.params.id);
+    const actionId = String(req.params.actionId);
+    const params = req.body as Record<string, unknown>;
+    const result = await deps.connectors.executeAction(connectorId, actionId, params);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ data: result });
+  });
+
+  // --- [P14] Team / Social routes ---
+  router.get('/team', async (req: Request, res: Response) => {
+    if (!deps.team) {
+      res.json({ data: [] });
+      return;
+    }
+    const users = await deps.team.listUsers();
+    res.json({ data: users });
+  });
+
+  router.post('/team', async (req: Request, res: Response) => {
+    if (!deps.team) {
+      res.status(503).json({ error: 'Team management not available' });
+      return;
+    }
+    const { name, role, channels } = req.body as { name?: string; role?: string; channels?: any[] };
+    if (!name) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const user = await deps.team.createUser(name, role ?? 'member', channels);
+    void audit('team.user_created', { name, role });
+    res.status(201).json({ data: user });
+  });
+
+  router.delete('/team/:id', async (req: Request, res: Response) => {
+    if (!deps.team) {
+      res.status(503).json({ error: 'Team management not available' });
+      return;
+    }
+    const deleted = await deps.team.deleteUser(String(req.params.id));
+    if (!deleted) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    void audit('team.user_deleted', { id: String(req.params.id) });
+    res.json({ data: { deleted: true } });
+  });
+
+  // --- [P14] Workflow routes ---
+  router.get('/workflows', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.json({ data: [] });
+      return;
+    }
+    const all = req.query.all === 'true';
+    const workflows = all ? await deps.workflows.listAll() : await deps.workflows.listActive();
+    res.json({ data: workflows });
+  });
+
+  router.post('/workflows', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.status(503).json({ error: 'Workflows not available' });
+      return;
+    }
+    const workflow = await deps.workflows.createWorkflow(req.body);
+    void audit('workflow.created', { id: workflow.id });
+    res.status(201).json({ data: workflow });
+  });
+
+  router.get('/workflows/:id/status', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.status(503).json({ error: 'Workflows not available' });
+      return;
+    }
+    const status = await deps.workflows.getStatus(String(req.params.id));
+    if (!status) {
+      res.status(404).json({ error: 'Workflow not found' });
+      return;
+    }
+    res.json({ data: status });
+  });
+
+  router.post('/workflows/:id/cancel', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.status(503).json({ error: 'Workflows not available' });
+      return;
+    }
+    const cancelled = await deps.workflows.cancelWorkflow(String(req.params.id));
+    if (!cancelled) {
+      res.status(400).json({ error: 'Cannot cancel workflow' });
+      return;
+    }
+    void audit('workflow.cancelled', { id: String(req.params.id) });
+    res.json({ data: { cancelled: true } });
+  });
+
+  router.get('/workflows/approvals', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.json({ data: [] });
+      return;
+    }
+    const userId = req.query.userId as string | undefined;
+    const approvals = await deps.workflows.getPendingApprovals(userId);
+    res.json({ data: approvals });
+  });
+
+  router.post('/workflows/approvals/:id/approve', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.status(503).json({ error: 'Workflows not available' });
+      return;
+    }
+    const { userId, reason } = req.body as { userId?: string; reason?: string };
+    const result = await deps.workflows.approve(String(req.params.id), userId ?? 'dashboard', reason);
+    if (!result) {
+      res.status(400).json({ error: 'Cannot approve' });
+      return;
+    }
+    void audit('workflow.approved', { id: String(req.params.id) });
+    res.json({ data: result });
+  });
+
+  router.post('/workflows/approvals/:id/reject', async (req: Request, res: Response) => {
+    if (!deps.workflows) {
+      res.status(503).json({ error: 'Workflows not available' });
+      return;
+    }
+    const { userId, reason } = req.body as { userId?: string; reason?: string };
+    const result = await deps.workflows.reject(String(req.params.id), userId ?? 'dashboard', reason);
+    if (!result) {
+      res.status(400).json({ error: 'Cannot reject' });
+      return;
+    }
+    void audit('workflow.rejected', { id: String(req.params.id) });
+    res.json({ data: result });
+  });
+
+  // --- [P14] Agent Protocol routes ---
+  router.get('/agent-protocol/identity', (req: Request, res: Response) => {
+    if (!deps.agentProtocol) {
+      res.status(503).json({ error: 'Agent protocol not available' });
+      return;
+    }
+    const identity = deps.agentProtocol.getIdentity();
+    res.json({ data: identity });
+  });
+
+  router.get('/agent-protocol/inbox', (req: Request, res: Response) => {
+    if (!deps.agentProtocol) {
+      res.json({ data: [] });
+      return;
+    }
+    const limit = parseInt(req.query.limit as string) || 50;
+    const messages = deps.agentProtocol.getInbox(limit);
+    res.json({ data: messages });
+  });
+
+  router.get('/agent-protocol/directory', async (req: Request, res: Response) => {
+    if (!deps.agentProtocol) {
+      res.json({ data: [] });
+      return;
+    }
+    const entries = await deps.agentProtocol.getDirectory();
+    res.json({ data: entries });
+  });
+
+  router.post('/agent-protocol/discover', async (req: Request, res: Response) => {
+    if (!deps.agentProtocol) {
+      res.json({ data: [] });
+      return;
+    }
+    const { query } = req.body as { query?: string };
+    if (!query) {
+      res.status(400).json({ error: 'query is required' });
+      return;
+    }
+    const results = await deps.agentProtocol.discover(query);
+    res.json({ data: results });
+  });
+
+  // --- [P15] Screen routes ---
+  router.get('/screen/capture', async (req: Request, res: Response) => {
+    if (!deps.screen) {
+      res.status(503).json({ error: 'Screen capture not available' });
+      return;
+    }
+    const capture = await deps.screen.capture();
+    res.json({ data: capture });
+  });
+
+  router.post('/screen/analyze', async (req: Request, res: Response) => {
+    if (!deps.screen) {
+      res.status(503).json({ error: 'Screen analysis not available' });
+      return;
+    }
+    const { question } = req.body as { question?: string };
+    const analysis = await deps.screen.analyze(question);
+    res.json({ data: { analysis } });
+  });
+
+  // --- [P15] Ambient routes ---
+  router.get('/ambient/patterns', (req: Request, res: Response) => {
+    if (!deps.ambient) {
+      res.json({ data: [] });
+      return;
+    }
+    const patterns = deps.ambient.getPatterns();
+    res.json({ data: patterns });
+  });
+
+  router.get('/ambient/notifications', (req: Request, res: Response) => {
+    if (!deps.ambient) {
+      res.json({ data: [] });
+      return;
+    }
+    const notifications = deps.ambient.getNotifications();
+    res.json({ data: notifications });
+  });
+
+  router.post('/ambient/notifications/:id/dismiss', (req: Request, res: Response) => {
+    if (!deps.ambient) {
+      res.status(503).json({ error: 'Ambient not available' });
+      return;
+    }
+    const dismissed = deps.ambient.dismissNotification(String(req.params.id));
+    if (!dismissed) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+    res.json({ data: { dismissed: true } });
+  });
+
+  router.get('/ambient/briefing', (req: Request, res: Response) => {
+    if (!deps.ambient) {
+      res.status(503).json({ error: 'Ambient not available' });
+      return;
+    }
+    const time = (req.query.time as string) || 'morning';
+    const briefing = deps.ambient.getBriefing(time);
+    res.json({ data: briefing });
+  });
+
+  router.get('/ambient/anticipations', (req: Request, res: Response) => {
+    if (!deps.ambient) {
+      res.json({ data: [] });
+      return;
+    }
+    const anticipations = deps.ambient.getAnticipations();
+    res.json({ data: anticipations });
+  });
+
+  // --- [P15] Conversation routes ---
+  router.get('/conversation/state', (req: Request, res: Response) => {
+    if (!deps.conversation) {
+      res.json({ data: { state: 'unavailable' } });
+      return;
+    }
+    res.json({ data: { state: deps.conversation.getState(), turnCount: deps.conversation.getTurnCount() } });
+  });
+
+  router.post('/conversation/start', (req: Request, res: Response) => {
+    if (!deps.conversation) {
+      res.status(503).json({ error: 'Conversation engine not available' });
+      return;
+    }
+    deps.conversation.start();
+    res.json({ data: { state: deps.conversation.getState() } });
+  });
+
+  router.post('/conversation/stop', (req: Request, res: Response) => {
+    if (!deps.conversation) {
+      res.status(503).json({ error: 'Conversation engine not available' });
+      return;
+    }
+    deps.conversation.stop();
+    res.json({ data: { state: 'idle' } });
+  });
+
+  // --- Trust / Autonomy routes (Phase 12) ---
+  // NOTE: specific routes must come before parameterized :domain routes
+  router.get('/trust', (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const levels = deps.trust.getLevels();
+    res.json({ data: levels });
+  });
+
+  router.get('/trust/audit', (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const limit = parseInt(req.query.limit as string) || 50;
+    const entries = deps.trust.getAuditEntries(limit);
+    res.json({ data: entries });
+  });
+
+  router.post('/trust/audit/:id/rollback', async (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const id = String(req.params.id);
+    const result = await deps.trust.rollback(id);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    void audit('trust.action_rolled_back', { auditId: id });
+    res.json({ data: { rolledBack: true } });
+  });
+
+  router.get('/trust/promotions', (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const promotions = deps.trust.getPromotions();
+    res.json({ data: promotions });
+  });
+
+  router.get('/trust/:domain', (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const domain = String(req.params.domain);
+    const level = deps.trust.getLevel(domain);
+    res.json({ data: { domain, level } });
+  });
+
+  router.post('/trust/:domain', async (req: Request, res: Response) => {
+    if (!deps.trust) {
+      res.status(503).json({ error: 'Trust engine not available' });
+      return;
+    }
+    const domain = String(req.params.domain);
+    const { level, reason } = req.body as { level?: number; reason?: string };
+    if (level === undefined || typeof level !== 'number' || level < 0 || level > 4) {
+      res.status(400).json({ error: 'level must be 0-4' });
+      return;
+    }
+    await deps.trust.setLevel(domain, level, reason ?? 'Set via dashboard');
+    void audit('trust.level_changed', { domain, level, reason });
+    res.json({ data: { domain, level } });
+  });
+
   return { router, auth };
 }

@@ -4,7 +4,7 @@ import * as crypto from 'node:crypto';
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { getMemoryDir } from '@auxiora/core';
-import type { MemoryEntry, MemoryCategory, LivingMemoryState } from './types.js';
+import type { MemoryEntry, MemoryCategory, LivingMemoryState, MemoryPartition } from './types.js';
 
 const logger = getLogger('memory:store');
 
@@ -22,7 +22,7 @@ export class MemoryStore {
     content: string,
     category: MemoryCategory,
     source: MemoryEntry['source'],
-    extra?: Partial<Pick<MemoryEntry, 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted' | 'relatedMemories'>>,
+    extra?: Partial<Pick<MemoryEntry, 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted' | 'relatedMemories' | 'partitionId' | 'sourceUserId'>>,
   ): Promise<MemoryEntry> {
     const memories = await this.readFile();
     const tags = this.extractTags(content);
@@ -54,6 +54,8 @@ export class MemoryStore {
       confidence: extra?.confidence ?? 0.8,
       sentiment: extra?.sentiment ?? 'neutral',
       encrypted: extra?.encrypted ?? false,
+      partitionId: extra?.partitionId ?? 'global',
+      ...(extra?.sourceUserId !== undefined ? { sourceUserId: extra.sourceUserId } : {}),
       ...(extra?.expiresAt !== undefined ? { expiresAt: extra.expiresAt } : {}),
       ...(extra?.relatedMemories !== undefined ? { relatedMemories: extra.relatedMemories } : {}),
     };
@@ -134,9 +136,23 @@ export class MemoryStore {
     return results;
   }
 
-  async getByCategory(category: MemoryCategory): Promise<MemoryEntry[]> {
+  async getByCategory(category: MemoryCategory, partitionId?: string): Promise<MemoryEntry[]> {
     const memories = await this.readFile();
-    return memories.filter(m => m.category === category);
+    return memories.filter(m =>
+      m.category === category &&
+      (partitionId === undefined || (m.partitionId ?? 'global') === partitionId),
+    );
+  }
+
+  async getByPartition(partitionId: string): Promise<MemoryEntry[]> {
+    const memories = await this.readFile();
+    return memories.filter(m => (m.partitionId ?? 'global') === partitionId);
+  }
+
+  async getByPartitions(partitionIds: string[]): Promise<MemoryEntry[]> {
+    const memories = await this.readFile();
+    const idSet = new Set(partitionIds);
+    return memories.filter(m => idSet.has(m.partitionId ?? 'global'));
   }
 
   async getExpired(): Promise<MemoryEntry[]> {
@@ -342,6 +358,7 @@ export class MemoryStore {
       confidence: entry.confidence ?? 0.8,
       sentiment: entry.sentiment ?? 'neutral',
       encrypted: entry.encrypted ?? false,
+      partitionId: entry.partitionId ?? 'global',
     };
   }
 

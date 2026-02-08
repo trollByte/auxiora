@@ -16,6 +16,14 @@
     { "path": "packages/channels" },
     { "path": "packages/runtime" },
     { "path": "packages/cli" },
-    { "path": "packages/orchestrator" }
+    { "path": "packages/orchestrator" },
+    { "path": "packages/autonomy" },
+    { "path": "packages/intent" },
+    { "path": "packages/connectors" },
+    { "path": "packages/connector-google-workspace" },
+    { "path": "packages/connector-github" },
+    { "path": "packages/connector-homeassistant" },
+    { "path": "packages/connector-notion" },
+    { "path": "packages/connector-linear" }
   ]
 }

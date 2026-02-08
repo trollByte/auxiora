@@ -1,0 +1,27 @@
+{
+  "name": "@auxiora/agent-protocol",
+  "version": "1.0.0",
+  "description": "Agent-to-agent communication protocol with Ed25519 signing and discovery",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/core": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/audit": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

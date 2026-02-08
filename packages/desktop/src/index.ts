@@ -13,3 +13,7 @@ export { HotkeyManager } from './hotkey.js';
 export { NotificationBridge } from './notifications.js';
 export { AutoUpdater } from './updater.js';
 export { OllamaBundleManager, type OllamaStatus } from './ollama.js';
+// [P15] Screen, ambient, voice activation
+export { ScreenPermissionManager, type ScreenPermissionState } from './screen-permission.js';
+export { AmbientTrayIndicator, type AmbientTrayState } from './ambient-tray.js';
+export { VoiceActivation } from './voice-activation.js';

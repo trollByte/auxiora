@@ -46,6 +46,15 @@ import {
   PatternDetector,
   PersonalityAdapter,
 } from '@auxiora/memory';
+import { TrustEngine, ActionAuditTrail, RollbackManager, TrustGate } from '@auxiora/autonomy';
+import { IntentParser, ActionPlanner } from '@auxiora/intent';
+import { UserManager } from '@auxiora/social';
+import { WorkflowEngine, ApprovalManager } from '@auxiora/workflows';
+import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
+import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine } from '@auxiora/ambient';
+import { ConversationEngine } from '@auxiora/conversation';
+import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
+import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
 import { setMemoryStore } from '@auxiora/tools';
 import { getAuditLogger } from '@auxiora/audit';
@@ -80,7 +89,27 @@ export class Auxiora {
   private patternDetector?: PatternDetector;
   private personalityAdapter?: PersonalityAdapter;
   private memoryCleanupInterval?: ReturnType<typeof setInterval>;
+  private trustEngine?: TrustEngine;
+  private trustAuditTrail?: ActionAuditTrail;
+  private rollbackManager?: RollbackManager;
+  private trustGate?: TrustGate;
+  private intentParser?: IntentParser;
+  private actionPlanner?: ActionPlanner;
   private orchestrationEngine?: OrchestrationEngine;
+  // [P14] Team / Social
+  private userManager?: UserManager;
+  private workflowEngine?: WorkflowEngine;
+  private approvalManager?: ApprovalManager;
+  private agentProtocol?: AgentProtocol;
+  private agentDirectory?: AgentDirectory;
+  // [P15] Senses
+  private ambientEngine?: AmbientPatternEngine;
+  private ambientNotifications?: QuietNotificationManager;
+  private briefingGenerator?: BriefingGenerator;
+  private anticipationEngine?: AnticipationEngine;
+  private conversationEngine?: ConversationEngine;
+  private screenCapturer?: ScreenCapturer;
+  private screenAnalyzer?: ScreenAnalyzer;
   private orchestrationHistory: Array<{
     workflowId: string;
     pattern: string;
@@ -279,6 +308,82 @@ export class Auxiora {
             exportAll: async () => this.memoryStore ? this.memoryStore.exportAll() : { version: '1.0', memories: [], exportedAt: Date.now() },
             importAll: async (data: { memories: any[] }) => this.memoryStore ? this.memoryStore.importAll(data) : { imported: 0, skipped: 0 },
           },
+          trust: this.trustEngine && this.trustAuditTrail && this.rollbackManager ? {
+            getLevels: () => this.trustEngine!.getAllLevels(),
+            getLevel: (domain: string) => this.trustEngine!.getTrustLevel(domain as any),
+            setLevel: async (domain: string, level: number, reason: string) => {
+              await this.trustEngine!.setTrustLevel(domain as any, level as any, reason);
+            },
+            getAuditEntries: (limit?: number) => this.trustAuditTrail!.query({ limit }),
+            getAuditEntry: (id: string) => this.trustAuditTrail!.getById(id),
+            rollback: async (id: string) => this.rollbackManager!.rollback(id),
+            getPromotions: () => this.trustEngine!.getPromotions(),
+          } : undefined,
+          // [P14] Team / Social
+          team: this.userManager ? {
+            listUsers: () => this.userManager!.listUsers(),
+            createUser: (name: string, role: string, channels?: any[]) =>
+              this.userManager!.createUser(name, role, { channels }),
+            deleteUser: (id: string) => this.userManager!.deleteUser(id),
+          } : undefined,
+          // [P14] Workflows
+          workflows: this.workflowEngine && this.approvalManager ? {
+            listActive: () => this.workflowEngine!.listActive(),
+            listAll: () => this.workflowEngine!.listAll(),
+            getStatus: (id: string) => this.workflowEngine!.getStatus(id),
+            createWorkflow: (options: any) => this.workflowEngine!.createWorkflow(options),
+            completeStep: (wfId: string, stepId: string, completedBy: string) =>
+              this.workflowEngine!.completeStep(wfId, stepId, completedBy),
+            cancelWorkflow: (id: string) => this.workflowEngine!.cancelWorkflow(id),
+            getPendingApprovals: (userId?: string) => this.approvalManager!.getPending(userId),
+            approve: (id: string, userId: string, reason?: string) =>
+              this.approvalManager!.approve(id, userId, reason),
+            reject: (id: string, userId: string, reason?: string) =>
+              this.approvalManager!.reject(id, userId, reason),
+          } : undefined,
+          // [P14] Agent Protocol
+          agentProtocol: this.agentProtocol && this.agentDirectory ? {
+            getIdentity: () => this.agentProtocol!.getIdentity(),
+            getInbox: (limit?: number) => this.agentProtocol!.getInbox(limit),
+            discover: (query: string) => this.agentProtocol!.discover(query),
+            getDirectory: () => this.agentDirectory!.listAll(),
+          } : undefined,
+          // [P15] Screen
+          screen: this.screenCapturer ? {
+            capture: async () => {
+              const cap = await this.screenCapturer!.captureScreen();
+              return { image: cap.image.toString('base64'), dimensions: cap.dimensions };
+            },
+            analyze: async (question?: string) => {
+              if (!this.screenAnalyzer) return 'Screen analyzer not available';
+              const cap = await this.screenCapturer!.captureScreen();
+              return this.screenAnalyzer.analyzeScreen(cap.image, question);
+            },
+          } : undefined,
+          // [P15] Ambient
+          ambient: this.ambientEngine && this.ambientNotifications ? {
+            getPatterns: () => this.ambientEngine!.getPatterns(),
+            getNotifications: () => this.ambientNotifications!.getQueue(),
+            dismissNotification: (id: string) => this.ambientNotifications!.dismiss(id),
+            getBriefing: (time: string) => {
+              return this.briefingGenerator!.generateBriefing(
+                'dashboard', time === 'evening' ? 'evening' : 'morning',
+                {
+                  patterns: this.ambientEngine!.getPatterns(),
+                  notifications: this.ambientNotifications!.getQueue(),
+                  anticipations: this.anticipationEngine!.getAnticipations(),
+                },
+              );
+            },
+            getAnticipations: () => this.anticipationEngine!.getAnticipations(),
+          } : undefined,
+          // [P15] Conversation
+          conversation: this.conversationEngine ? {
+            getState: () => this.conversationEngine!.getState(),
+            start: () => this.conversationEngine!.start(),
+            stop: () => this.conversationEngine!.stop(),
+            getTurnCount: () => this.conversationEngine!.getTurnCount(),
+          } : undefined,
         },
         config: {
           enabled: true,
@@ -354,6 +459,74 @@ export class Auxiora {
 
       console.log('Memory system enabled (living memory)');
     }
+
+    // Initialize trust engine (if enabled)
+    if (this.config.trust?.enabled !== false) {
+      this.trustEngine = new TrustEngine({
+        defaultLevel: (this.config.trust?.defaultLevel ?? 0) as 0 | 1 | 2 | 3 | 4,
+        autoPromote: this.config.trust?.autoPromote ?? true,
+        promotionThreshold: this.config.trust?.promotionThreshold ?? 10,
+        demotionThreshold: this.config.trust?.demotionThreshold ?? 3,
+        autoPromoteCeiling: (this.config.trust?.autoPromoteCeiling ?? 3) as 0 | 1 | 2 | 3 | 4,
+      });
+      await this.trustEngine.load();
+      this.trustAuditTrail = new ActionAuditTrail();
+      await this.trustAuditTrail.load();
+      this.rollbackManager = new RollbackManager(this.trustAuditTrail);
+      this.trustGate = new TrustGate(this.trustEngine);
+      console.log('Trust engine initialized');
+    }
+
+    // Initialize intent parser (if enabled)
+    if (this.config.intent?.enabled !== false) {
+      this.intentParser = new IntentParser({
+        confidenceThreshold: this.config.intent?.confidenceThreshold ?? 0.3,
+      });
+      this.actionPlanner = new ActionPlanner();
+      console.log('Intent parser initialized');
+    }
+
+    // [P14] Initialize team / social system
+    this.userManager = new UserManager();
+    this.workflowEngine = new WorkflowEngine();
+    this.approvalManager = new ApprovalManager();
+    console.log('Team/social system initialized');
+
+    // [P14] Initialize agent protocol
+    const agentKeys = MessageSigner.generateKeyPair();
+    const agentSigner = new MessageSigner(agentKeys);
+    this.agentDirectory = new AgentDirectory();
+    const agentName = this.config.agent?.name ?? 'auxiora';
+    const agentHost = `${this.config.gateway.host}:${this.config.gateway.port}`;
+    const agentId = { user: agentName.toLowerCase(), host: agentHost };
+    await this.agentDirectory.register(
+      agentId,
+      agentName,
+      agentKeys.publicKey,
+      `http://${agentHost}/api/v1/agent-protocol`,
+    );
+    this.agentProtocol = new AgentProtocol(agentId, agentSigner, this.agentDirectory);
+    console.log('Agent protocol initialized');
+
+    // [P15] Initialize ambient intelligence
+    this.ambientEngine = new AmbientPatternEngine();
+    this.ambientNotifications = new QuietNotificationManager();
+    this.briefingGenerator = new BriefingGenerator();
+    this.anticipationEngine = new AnticipationEngine();
+    console.log('Ambient intelligence initialized');
+
+    // [P15] Initialize conversation engine
+    this.conversationEngine = new ConversationEngine();
+    console.log('Conversation engine initialized');
+
+    // [P15] Initialize screen system (with mock backends — real backends injected at desktop layer)
+    const mockCaptureBackend: CaptureBackend = {
+      captureScreen: async () => ({ image: Buffer.alloc(0), timestamp: Date.now(), dimensions: { width: 0, height: 0 } }),
+      captureRegion: async () => ({ image: Buffer.alloc(0), timestamp: Date.now(), dimensions: { width: 0, height: 0 } }),
+      captureWindow: async () => ({ image: Buffer.alloc(0), timestamp: Date.now(), dimensions: { width: 0, height: 0 } }),
+    };
+    this.screenCapturer = new ScreenCapturer(mockCaptureBackend);
+    console.log('Screen system initialized (capture backend: mock)');
   }
 
   private async initializeProviders(): Promise<void> {

@@ -82,6 +82,7 @@ export class MemoryExtractor {
     userMessage: string,
     assistantResponse: string,
     _sessionContext?: { messageCount: number; sessionAge: number },
+    options?: { sourceUserId?: string; partitionId?: string },
   ): Promise<ExtractionResult> {
     const result: ExtractionResult = {
       factsExtracted: [],
@@ -107,6 +108,11 @@ export class MemoryExtractor {
       const parsed = this.parseResponse(response.content);
       if (!parsed) return result;
 
+      const extraFields = {
+        ...(options?.sourceUserId ? { sourceUserId: options.sourceUserId } : {}),
+        ...(options?.partitionId ? { partitionId: options.partitionId } : {}),
+      };
+
       // Process facts
       if (parsed.facts) {
         for (const fact of parsed.facts) {
@@ -115,7 +121,7 @@ export class MemoryExtractor {
             fact.content,
             fact.category ?? 'fact',
             'extracted',
-            { importance: clampNumber(fact.importance ?? 0.5, 0, 1) },
+            { importance: clampNumber(fact.importance ?? 0.5, 0, 1), ...extraFields },
           );
           result.factsExtracted.push(entry);
         }
@@ -129,7 +135,7 @@ export class MemoryExtractor {
             rel.content,
             'relationship',
             'extracted',
-            { importance: 0.7 },
+            { importance: 0.7, ...extraFields },
           );
           result.relationshipsFound.push(entry);
         }
@@ -143,7 +149,7 @@ export class MemoryExtractor {
             pat.pattern,
             'pattern',
             'observed',
-            { importance: 0.5, confidence: 0.4 },
+            { importance: 0.5, confidence: 0.4, ...extraFields },
           );
           result.patternsDetected.push(entry);
         }

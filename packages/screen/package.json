@@ -1,0 +1,26 @@
+{
+  "name": "@auxiora/screen",
+  "version": "1.0.0",
+  "description": "Screen capture, OCR, desktop automation, and screen analysis",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/autonomy": "workspace:*",
+    "@auxiora/core": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

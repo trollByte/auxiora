@@ -38,7 +38,20 @@ interface ScoredMemory {
 }
 
 export class MemoryRetriever {
-  retrieve(memories: MemoryEntry[], userMessage: string): string {
+  /**
+   * Retrieve relevant memories for a user message.
+   * If accessiblePartitionIds is provided, only memories from those partitions are included.
+   * This ensures private memories are never leaked to other users.
+   */
+  retrieve(memories: MemoryEntry[], userMessage: string, accessiblePartitionIds?: string[]): string {
+    if (memories.length === 0) return '';
+
+    // Filter by accessible partitions if specified
+    if (accessiblePartitionIds) {
+      const idSet = new Set(accessiblePartitionIds);
+      memories = memories.filter(m => idSet.has(m.partitionId ?? 'global'));
+    }
+
     if (memories.length === 0) return '';
 
     const now = Date.now();

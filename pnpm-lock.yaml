@@ -21,7 +21,37 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.1.0)
 
+  packages/agent-protocol:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/ambient:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+      '@auxiora/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@auxiora/personality':
+        specifier: workspace:*
+        version: link:../personality
+
   packages/audit:
+    dependencies:
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/autonomy:
     dependencies:
       '@auxiora/core':
         specifier: workspace:*
@@ -87,12 +117,39 @@ importers:
 
   packages/cli:
     dependencies:
+      '@auxiora/agent-protocol':
+        specifier: workspace:*
+        version: link:../agent-protocol
+      '@auxiora/ambient':
+        specifier: workspace:*
+        version: link:../ambient
       '@auxiora/audit':
         specifier: workspace:*
         version: link:../audit
+      '@auxiora/autonomy':
+        specifier: workspace:*
+        version: link:../autonomy
       '@auxiora/config':
         specifier: workspace:*
         version: link:../config
+      '@auxiora/connector-github':
+        specifier: workspace:*
+        version: link:../connector-github
+      '@auxiora/connector-google-workspace':
+        specifier: workspace:*
+        version: link:../connector-google-workspace
+      '@auxiora/connector-homeassistant':
+        specifier: workspace:*
+        version: link:../connector-homeassistant
+      '@auxiora/connector-linear':
+        specifier: workspace:*
+        version: link:../connector-linear
+      '@auxiora/connector-notion':
+        specifier: workspace:*
+        version: link:../connector-notion
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
@@ -126,9 +183,15 @@ importers:
       '@auxiora/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@auxiora/social':
+        specifier: workspace:*
+        version: link:../social
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
+      '@auxiora/workflows':
+        specifier: workspace:*
+        version: link:../workflows
       '@inquirer/prompts':
         specifier: ^8.2.0
         version: 8.2.0(@types/node@25.1.0)
@@ -166,6 +229,57 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
+
+  packages/connector-github:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
+  packages/connector-google-workspace:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
+  packages/connector-homeassistant:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
+  packages/connector-linear:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
+  packages/connector-notion:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
+  packages/connectors:
+    dependencies:
+      '@auxiora/autonomy':
+        specifier: workspace:*
+        version: link:../autonomy
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/conversation:
+    dependencies:
+      '@auxiora/personality':
+        specifier: workspace:*
+        version: link:../personality
+      '@auxiora/stt':
+        specifier: workspace:*
+        version: link:../stt
+      '@auxiora/tts':
+        specifier: workspace:*
+        version: link:../tts
 
   packages/core: {}
 
@@ -272,6 +386,8 @@ importers:
       '@types/ws':
         specifier: ^8.18.0
         version: 8.18.1
+
+  packages/intent: {}
 
   packages/landing: {}
 
@@ -403,9 +519,18 @@ importers:
 
   packages/runtime:
     dependencies:
+      '@auxiora/agent-protocol':
+        specifier: workspace:*
+        version: link:../agent-protocol
+      '@auxiora/ambient':
+        specifier: workspace:*
+        version: link:../ambient
       '@auxiora/audit':
         specifier: workspace:*
         version: link:../audit
+      '@auxiora/autonomy':
+        specifier: workspace:*
+        version: link:../autonomy
       '@auxiora/behaviors':
         specifier: workspace:*
         version: link:../behaviors
@@ -418,6 +543,9 @@ importers:
       '@auxiora/config':
         specifier: workspace:*
         version: link:../config
+      '@auxiora/conversation':
+        specifier: workspace:*
+        version: link:../conversation
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
@@ -427,6 +555,9 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/intent':
+        specifier: workspace:*
+        version: link:../intent
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory
@@ -442,9 +573,15 @@ importers:
       '@auxiora/router':
         specifier: workspace:*
         version: link:../router
+      '@auxiora/screen':
+        specifier: workspace:*
+        version: link:../screen
       '@auxiora/sessions':
         specifier: workspace:*
         version: link:../sessions
+      '@auxiora/social':
+        specifier: workspace:*
+        version: link:../social
       '@auxiora/stt':
         specifier: workspace:*
         version: link:../stt
@@ -463,6 +600,9 @@ importers:
       '@auxiora/webhooks':
         specifier: workspace:*
         version: link:../webhooks
+      '@auxiora/workflows':
+        specifier: workspace:*
+        version: link:../workflows
       express:
         specifier: ^5.1.0
         version: 5.2.1
@@ -470,6 +610,15 @@ importers:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
+
+  packages/screen:
+    dependencies:
+      '@auxiora/autonomy':
+        specifier: workspace:*
+        version: link:../autonomy
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/sessions:
     dependencies:
@@ -479,6 +628,18 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/social:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/stt:
     dependencies:
@@ -551,6 +712,18 @@ importers:
       '@auxiora/audit':
         specifier: workspace:*
         version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/workflows:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/core':
+        specifier: workspace:*
+        version: link:../core
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger

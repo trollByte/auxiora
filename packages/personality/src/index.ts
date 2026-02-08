@@ -4,3 +4,10 @@ export { buildSoulMd } from './builder.js';
 export { PersonalityManager } from './manager.js';
 export { SoulConversationBuilder } from './conversation-builder.js';
 export type { ConversationQuestion, ConversationStep, ConversationComplete, ConversationResult } from './conversation-builder.js';
+// [P15] Voice profiles
+export {
+  getVoiceProfile,
+  listVoiceProfiles,
+  DEFAULT_VOICE_PROFILE,
+  type VoiceProfile,
+} from './voice-profiles.js';

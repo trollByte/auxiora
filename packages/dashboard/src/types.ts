@@ -133,6 +133,25 @@ export interface DashboardDeps {
       warningThresholdReached: boolean;
     };
   };
+  // --- [P13] Connectors ---
+  connectors?: {
+    list(): Array<{ id: string; name: string; category: string; auth: { type: string } }>;
+    get(id: string): any | undefined;
+    connect(connectorId: string, credentials: Record<string, string>, label?: string): Promise<any | null>;
+    disconnect(connectorId: string): Promise<boolean>;
+    getActions(connectorId: string): any[];
+    executeAction(connectorId: string, actionId: string, params: Record<string, unknown>): Promise<{ success: boolean; data?: unknown; error?: string }>;
+  };
+  // --- Trust / Autonomy (Phase 12) ---
+  trust?: {
+    getLevels(): Record<string, number>;
+    getLevel(domain: string): number;
+    setLevel(domain: string, level: number, reason: string): Promise<void>;
+    getAuditEntries(limit?: number): any[];
+    getAuditEntry(id: string): any | undefined;
+    rollback(id: string): Promise<{ success: boolean; error?: string }>;
+    getPromotions(): any[];
+  };
   // --- [P6] Desktop ---
   desktop?: {
     getStatus(): {
@@ -154,6 +173,51 @@ export interface DashboardDeps {
   };
   // --- Cloud (Phase 7) ---
   cloud?: import('./cloud-types.js').CloudDeps;
+  // --- [P14] Team / Social ---
+  team?: {
+    listUsers(): Promise<any[]>;
+    createUser(name: string, role: string, channels?: any[]): Promise<any>;
+    deleteUser(id: string): Promise<boolean>;
+  };
+  // --- [P14] Workflows ---
+  workflows?: {
+    listActive(): Promise<any[]>;
+    listAll(): Promise<any[]>;
+    getStatus(id: string): Promise<any | undefined>;
+    createWorkflow(options: any): Promise<any>;
+    completeStep(workflowId: string, stepId: string, completedBy: string): Promise<any>;
+    cancelWorkflow(id: string): Promise<boolean>;
+    getPendingApprovals(userId?: string): Promise<any[]>;
+    approve(id: string, userId: string, reason?: string): Promise<any>;
+    reject(id: string, userId: string, reason?: string): Promise<any>;
+  };
+  // --- [P14] Agent Protocol ---
+  agentProtocol?: {
+    getIdentity(): any;
+    getInbox(limit?: number): any[];
+    discover(query: string): Promise<any[]>;
+    getDirectory(): Promise<any[]>;
+  };
+  // --- [P15] Screen ---
+  screen?: {
+    capture(): Promise<{ image: string; dimensions: { width: number; height: number } }>;
+    analyze(question?: string): Promise<string>;
+  };
+  // --- [P15] Ambient ---
+  ambient?: {
+    getPatterns(): any[];
+    getNotifications(): any[];
+    dismissNotification(id: string): boolean;
+    getBriefing(time: string): any;
+    getAnticipations(): any[];
+  };
+  // --- [P15] Conversation ---
+  conversation?: {
+    getState(): string;
+    start(): void;
+    stop(): void;
+    getTurnCount(): number;
+  };
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {
