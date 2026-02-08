@@ -15,15 +15,20 @@ async function gracefulShutdown(): Promise<void> {
 export function createStartCommand(): Command {
   return new Command('start')
     .description('Start the Auxiora gateway')
-    .option('-p, --password <password>', 'Vault password (will prompt if not provided)')
+    .option('-p, --password <password>', 'Vault password (or set AUXIORA_VAULT_PASSWORD env var)')
     .option('--no-vault', 'Start without unlocking the vault')
     .action(async (options) => {
       let vaultPassword: string | undefined;
 
       if (options.vault !== false) {
-        vaultPassword = options.password;
+        vaultPassword = options.password || process.env.AUXIORA_VAULT_PASSWORD;
 
         if (!vaultPassword) {
+          // No password from flag or env — prompt interactively if possible
+          if (!process.stdin.isTTY) {
+            console.error('No vault password provided. Set AUXIORA_VAULT_PASSWORD or use --password.');
+            process.exit(1);
+          }
           try {
             vaultPassword = await passwordPrompt({
               message: 'Enter vault password:',

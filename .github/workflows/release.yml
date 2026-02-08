@@ -297,10 +297,60 @@ jobs:
           Restart=on-failure
           RestartSec=5
           Environment=NODE_ENV=production
+          EnvironmentFile=-/etc/auxiora/env
 
           [Install]
           WantedBy=multi-user.target
           SVC
+
+          # postinst: create system user and config directory
+          cat > "${PKG_DIR}/DEBIAN/postinst" << 'POSTINST'
+          #!/bin/sh
+          set -e
+
+          # Create system user if it doesn't exist
+          if ! id -u auxiora >/dev/null 2>&1; then
+            useradd --system --shell /usr/sbin/nologin --home-dir /opt/auxiora auxiora
+          fi
+
+          # Create config directory with restricted permissions
+          mkdir -p /etc/auxiora
+          if [ ! -f /etc/auxiora/env ]; then
+            echo '# Vault password for headless/systemd operation' > /etc/auxiora/env
+            echo '# AUXIORA_VAULT_PASSWORD=your-password-here' >> /etc/auxiora/env
+          fi
+          chown -R auxiora:auxiora /etc/auxiora
+          chmod 700 /etc/auxiora
+          chmod 600 /etc/auxiora/env
+
+          # Ensure data directory ownership
+          chown -R auxiora:auxiora /opt/auxiora
+
+          echo ""
+          echo "Auxiora installed successfully."
+          echo ""
+          echo "To configure the vault password for systemd:"
+          echo "  sudo editor /etc/auxiora/env"
+          echo "  # Uncomment and set AUXIORA_VAULT_PASSWORD"
+          echo ""
+          echo "Then start the service:"
+          echo "  sudo systemctl enable --now auxiora"
+          echo ""
+          POSTINST
+          chmod 755 "${PKG_DIR}/DEBIAN/postinst"
+
+          # prerm: stop service before removal
+          cat > "${PKG_DIR}/DEBIAN/prerm" << 'PRERM'
+          #!/bin/sh
+          set -e
+          if systemctl is-active --quiet auxiora 2>/dev/null; then
+            systemctl stop auxiora
+          fi
+          if systemctl is-enabled --quiet auxiora 2>/dev/null; then
+            systemctl disable auxiora
+          fi
+          PRERM
+          chmod 755 "${PKG_DIR}/DEBIAN/prerm"
 
           dpkg-deb --build "${PKG_DIR}"
 
