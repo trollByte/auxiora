@@ -61,7 +61,18 @@ import { getAuditLogger } from '@auxiora/audit';
 import { Router } from 'express';
 import express from 'express';
 import type { Request, Response } from 'express';
-import { PersonalityManager } from '@auxiora/personality';
+import {
+  PersonalityManager,
+  ModeLoader,
+  ModeDetector,
+  PromptAssembler,
+  MODE_IDS,
+  DEFAULT_SESSION_MODE_STATE,
+  type SessionModeState,
+  type ModeId,
+  type UserPreferences,
+} from '@auxiora/personality';
+import { getModesDir } from '@auxiora/core';
 import { fileURLToPath } from 'node:url';
 
 export interface AuxioraOptions {
@@ -111,6 +122,12 @@ export class Auxiora {
   private conversationEngine?: ConversationEngine;
   private screenCapturer?: ScreenCapturer;
   private screenAnalyzer?: ScreenAnalyzer;
+  // Modes system
+  private modeLoader?: ModeLoader;
+  private modeDetector?: ModeDetector;
+  private promptAssembler?: PromptAssembler;
+  private sessionModes: Map<string, SessionModeState> = new Map();
+  private userPreferences?: UserPreferences;
   private orchestrationHistory: Array<{
     workflowId: string;
     pattern: string;
@@ -175,6 +192,9 @@ export class Auxiora {
 
     // Load personality files
     await this.loadPersonality();
+
+    // Initialize modes system
+    await this.initializeModes();
 
     // Initialize gateway
     this.gateway = new Gateway({ config: this.config });
@@ -875,6 +895,40 @@ export class Auxiora {
     }
   }
 
+  private async initializeModes(): Promise<void> {
+    if (this.config.modes?.enabled === false) return;
+
+    const builtInModesDir = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../personality/modes',
+    );
+    const userModesDir = getModesDir();
+
+    this.modeLoader = new ModeLoader(builtInModesDir, userModesDir);
+    await this.modeLoader.loadAll();
+
+    this.modeDetector = new ModeDetector(this.modeLoader.getAll());
+
+    this.promptAssembler = new PromptAssembler(
+      this.config.agent,
+      this.modeLoader,
+      this.personalityAdapter ?? undefined,
+    );
+    await this.promptAssembler.buildBase();
+
+    this.userPreferences = this.config.modes?.preferences;
+  }
+
+  private getSessionModeState(sessionId: string): SessionModeState {
+    let state = this.sessionModes.get(sessionId);
+    if (!state) {
+      const defaultMode = this.config.modes?.defaultMode ?? 'auto';
+      state = { activeMode: defaultMode, autoDetected: false };
+      this.sessionModes.set(sessionId, state);
+    }
+    return state;
+  }
+
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
     const { id: requestId, payload } = message;
     const content = (payload as { content?: string } | undefined)?.content;
@@ -929,14 +983,35 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
-      // Inject relevant memories into system prompt
+      // Build enriched prompt with modes and memories
       let enrichedPrompt = this.systemPrompt;
+      let memorySection: string | null = null;
       if (this.memoryRetriever && this.memoryStore) {
         const memories = await this.memoryStore.getAll();
-        const memorySection = this.memoryRetriever.retrieve(memories, content);
-        if (memorySection) {
-          enrichedPrompt = this.systemPrompt + memorySection;
+        memorySection = this.memoryRetriever.retrieve(memories, content);
+      }
+
+      if (this.promptAssembler && this.config.modes?.enabled !== false) {
+        const modeState = this.getSessionModeState(session.id);
+
+        // Auto-detect mode if in auto mode
+        if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
+          const detection = this.modeDetector.detect(content, { currentState: modeState });
+          if (detection) {
+            modeState.lastAutoMode = detection.mode;
+            modeState.autoDetected = true;
+            modeState.lastSwitchAt = Date.now();
+            // For auto-detection, temporarily use the detected mode
+            const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
+            enrichedPrompt = this.promptAssembler.enrichForMessage(tempState, memorySection, this.userPreferences);
+          } else {
+            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences);
+          }
+        } else {
+          enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences);
         }
+      } else if (memorySection) {
+        enrichedPrompt = this.systemPrompt + memorySection;
       }
 
       // Route to best model for this message
@@ -1085,13 +1160,81 @@ export class Auxiora {
         break;
       }
 
+      case 'mode': {
+        const session = await this.sessions.getOrCreate(client.id, {
+          channelType: client.channelType,
+          clientId: client.id,
+        });
+
+        if (this.config.modes?.enabled === false || !this.modeLoader) {
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: { role: 'assistant', content: 'Modes are disabled in configuration.' },
+          });
+          break;
+        }
+
+        const subCmd = args[0]?.toLowerCase();
+        const modeState = this.getSessionModeState(session.id);
+
+        if (!subCmd || subCmd === 'status') {
+          const modes = this.modeLoader.getAll();
+          const modeList = [...modes.values()].map(m => `- **${m.name}** (\`${m.id}\`) — ${m.description}`).join('\n');
+          const currentLabel = modeState.activeMode === 'auto' ? 'auto (auto-detect)' : modeState.activeMode === 'off' ? 'off' : modeState.activeMode;
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: {
+              role: 'assistant',
+              content: `**Current mode:** ${currentLabel}${modeState.lastAutoMode ? ` (last detected: ${modeState.lastAutoMode})` : ''}\n\n**Available modes:**\n${modeList}\n\n**Commands:** \`/mode <name>\`, \`/mode auto\`, \`/mode off\``,
+            },
+          });
+        } else if (subCmd === 'auto') {
+          modeState.activeMode = 'auto';
+          modeState.autoDetected = false;
+          modeState.lastSwitchAt = Date.now();
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: { role: 'assistant', content: 'Mode set to **auto**. I will detect the best mode from your messages.' },
+          });
+        } else if (subCmd === 'off') {
+          modeState.activeMode = 'off';
+          modeState.autoDetected = false;
+          modeState.lastSwitchAt = Date.now();
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: { role: 'assistant', content: 'Modes disabled for this session.' },
+          });
+        } else if (MODE_IDS.includes(subCmd as ModeId)) {
+          modeState.activeMode = subCmd as ModeId;
+          modeState.autoDetected = false;
+          modeState.lastSwitchAt = Date.now();
+          const mode = this.modeLoader.get(subCmd as ModeId);
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: { role: 'assistant', content: `Switched to **${mode?.name ?? subCmd}** mode.` },
+          });
+        } else {
+          this.sendToClient(client, {
+            type: 'message',
+            id: requestId,
+            payload: { role: 'assistant', content: `Unknown mode: ${subCmd}. Use \`/mode\` to see available modes.` },
+          });
+        }
+        break;
+      }
+
       case 'help': {
         this.sendToClient(client, {
           type: 'message',
           id: requestId,
           payload: {
             role: 'assistant',
-            content: `**Commands**\n- /status - Show system status\n- /new - Start a new session\n- /reset - Clear current session\n- /help - Show this help`,
+            content: `**Commands**\n- /status - Show system status\n- /new - Start a new session\n- /reset - Clear current session\n- /mode - Show/switch personality modes\n- /help - Show this help`,
           },
         });
         break;
@@ -1350,14 +1493,32 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
-      // Inject relevant memories into system prompt
+      // Build enriched prompt with modes and memories
       let enrichedPrompt = this.systemPrompt;
+      let channelMemorySection: string | null = null;
       if (this.memoryRetriever && this.memoryStore) {
         const memories = await this.memoryStore.getAll();
-        const memorySection = this.memoryRetriever.retrieve(memories, inbound.content);
-        if (memorySection) {
-          enrichedPrompt = this.systemPrompt + memorySection;
+        channelMemorySection = this.memoryRetriever.retrieve(memories, inbound.content);
+      }
+
+      if (this.promptAssembler && this.config.modes?.enabled !== false) {
+        const modeState = this.getSessionModeState(session.id);
+        if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
+          const detection = this.modeDetector.detect(inbound.content, { currentState: modeState });
+          if (detection) {
+            modeState.lastAutoMode = detection.mode;
+            modeState.autoDetected = true;
+            modeState.lastSwitchAt = Date.now();
+            const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
+            enrichedPrompt = this.promptAssembler.enrichForMessage(tempState, channelMemorySection, this.userPreferences);
+          } else {
+            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, channelMemorySection, this.userPreferences);
+          }
+        } else {
+          enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, channelMemorySection, this.userPreferences);
         }
+      } else if (channelMemorySection) {
+        enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
 
       // Get completion (non-streaming for channels)

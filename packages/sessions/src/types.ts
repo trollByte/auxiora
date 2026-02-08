@@ -17,6 +17,8 @@ export interface SessionMetadata {
   clientId?: string;
   createdAt: number;
   lastActiveAt: number;
+  activeMode?: string;
+  modeAutoDetected?: boolean;
 }
 
 export interface Session {

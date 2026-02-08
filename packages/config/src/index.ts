@@ -233,6 +233,29 @@ const OrchestrationConfigSchema = z.object({
   costMultiplierWarning: z.number().positive().default(3),
 });
 
+const UserPreferencesSchema = z.object({
+  verbosity: z.number().min(0).max(1).default(0.5),
+  formality: z.number().min(0).max(1).default(0.5),
+  proactiveness: z.number().min(0).max(1).default(0.5),
+  riskTolerance: z.number().min(0).max(1).default(0.5),
+  humor: z.number().min(0).max(1).default(0.3),
+  feedbackStyle: z.enum(['direct', 'sandwich', 'gentle']).default('direct'),
+  expertiseAssumption: z.enum(['beginner', 'intermediate', 'expert']).default('intermediate'),
+});
+
+const ModeIdSchema = z.enum([
+  'operator', 'analyst', 'advisor', 'writer',
+  'socratic', 'legal', 'roast', 'companion',
+]);
+
+const ModesConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  defaultMode: z.union([ModeIdSchema, z.literal('auto'), z.literal('off')]).default('auto'),
+  autoDetection: z.boolean().default(true),
+  confirmationThreshold: z.number().min(0).max(1).default(0.4),
+  preferences: UserPreferencesSchema.default({}),
+});
+
 const AgentIdentitySchema = z.object({
   name: z.string().default('Auxiora'),
   pronouns: z.string().default('they/them'),
@@ -277,6 +300,7 @@ export const ConfigSchema = z.object({
   memory: MemoryConfigSchema.default({}),
   orchestration: OrchestrationConfigSchema.default({}),
   agent: AgentIdentitySchema.default({}),
+  modes: ModesConfigSchema.default({}),
   // [P12] Trust / Autonomy
   trust: TrustConfigSchema.default({}),
   intent: IntentConfigSchema.default({}),
@@ -291,6 +315,7 @@ export type ModelRouting = z.infer<typeof ModelRoutingSchema>;
 export type OrchestrationConfig = z.infer<typeof OrchestrationConfigSchema>;
 export type TrustConfig = z.infer<typeof TrustConfigSchema>;
 export type IntentConfig = z.infer<typeof IntentConfigSchema>;
+export type ModesConfig = z.infer<typeof ModesConfigSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 

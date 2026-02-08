@@ -309,6 +309,67 @@ describe('Config', () => {
     });
   });
 
+  describe('modes config', () => {
+    it('should default modes to enabled with auto detection', () => {
+      const config = ConfigSchema.parse({});
+      expect(config.modes.enabled).toBe(true);
+      expect(config.modes.defaultMode).toBe('auto');
+      expect(config.modes.autoDetection).toBe(true);
+      expect(config.modes.confirmationThreshold).toBe(0.4);
+    });
+
+    it('should accept custom preferences', () => {
+      const config = ConfigSchema.parse({
+        modes: {
+          preferences: {
+            verbosity: 0.8,
+            formality: 0.2,
+            humor: 0.9,
+            feedbackStyle: 'sandwich',
+            expertiseAssumption: 'expert',
+          },
+        },
+      });
+      expect(config.modes.preferences.verbosity).toBe(0.8);
+      expect(config.modes.preferences.formality).toBe(0.2);
+      expect(config.modes.preferences.humor).toBe(0.9);
+      expect(config.modes.preferences.feedbackStyle).toBe('sandwich');
+      expect(config.modes.preferences.expertiseAssumption).toBe('expert');
+    });
+
+    it('should accept valid mode names as defaultMode', () => {
+      expect(() => ConfigSchema.parse({ modes: { defaultMode: 'operator' } })).not.toThrow();
+      expect(() => ConfigSchema.parse({ modes: { defaultMode: 'analyst' } })).not.toThrow();
+      expect(() => ConfigSchema.parse({ modes: { defaultMode: 'auto' } })).not.toThrow();
+      expect(() => ConfigSchema.parse({ modes: { defaultMode: 'off' } })).not.toThrow();
+    });
+
+    it('should reject invalid mode names', () => {
+      expect(() => ConfigSchema.parse({ modes: { defaultMode: 'invalid' } })).toThrow();
+    });
+
+    it('should reject out-of-range preference values', () => {
+      expect(() => ConfigSchema.parse({
+        modes: { preferences: { verbosity: 1.5 } },
+      })).toThrow();
+      expect(() => ConfigSchema.parse({
+        modes: { preferences: { humor: -0.1 } },
+      })).toThrow();
+    });
+
+    it('should reject invalid feedback style', () => {
+      expect(() => ConfigSchema.parse({
+        modes: { preferences: { feedbackStyle: 'harsh' } },
+      })).toThrow();
+    });
+
+    it('should reject invalid expertise assumption', () => {
+      expect(() => ConfigSchema.parse({
+        modes: { preferences: { expertiseAssumption: 'guru' } },
+      })).toThrow();
+    });
+  });
+
   describe('memory config', () => {
     it('should default memory to enabled with auto-extract', () => {
       const config = ConfigSchema.parse({});

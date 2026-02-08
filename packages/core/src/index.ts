@@ -131,6 +131,14 @@ export function getPluginsDir(): string {
   return path.join(getDataDir(), 'plugins');
 }
 
+export function getCorePath(): string {
+  return path.join(getWorkspaceDir(), 'CORE.md');
+}
+
+export function getModesDir(): string {
+  return path.join(getWorkspaceDir(), 'modes');
+}
+
 export const paths = {
   base: getBaseDir,
   data: getDataDir,
@@ -149,6 +157,8 @@ export const paths = {
   webhooks: getWebhooksPath,
   screenshots: getScreenshotsDir,
   plugins: getPluginsDir,
+  core: getCorePath,
+  modes: getModesDir,
 };
 
 /**
