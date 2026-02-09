@@ -64,7 +64,7 @@ export class AnthropicProvider implements Provider {
         strengths: ['reasoning', 'code', 'long-context', 'creative'],
         isLocal: false,
       },
-      'claude-haiku-3-5-20241022': {
+      'claude-3-5-haiku-20241022': {
         maxContextTokens: 200000,
         supportsVision: true,
         supportsTools: true,
