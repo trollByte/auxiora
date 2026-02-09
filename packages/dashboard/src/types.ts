@@ -39,6 +39,7 @@ export interface DashboardDeps {
     unlock(password: string): Promise<void>;
     changePassword(newPassword: string): Promise<void>;
   };
+  onVaultUnlocked?: () => Promise<void>;
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;
     update(id: string, updates: Record<string, unknown>): Promise<any>;

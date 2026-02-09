@@ -313,6 +313,23 @@ export class Auxiora {
       const { router } = createDashboardRouter({
         deps: {
           vault: this.vault,
+          onVaultUnlocked: async () => {
+            // Re-initialize providers and channels after vault unlock on restart
+            await this.initializeProviders();
+            if (this.providers) {
+              this.initializeRouter();
+              setProviderFactory(this.providers);
+            }
+            const channels = this.channels;
+            if (!channels) {
+              await this.initializeChannels();
+              const ch = this.channels;
+              if (ch) {
+                await ch.connectAll();
+                console.log('Channels connected after vault unlock');
+              }
+            }
+          },
           behaviors: this.behaviors,
           webhooks: this.webhookManager,
           getConfiguredChannels: () => {
@@ -462,6 +479,13 @@ export class Auxiora {
                 this.initializeRouter();
                 setProviderFactory(this.providers);
                 console.log('Providers re-initialized after setup');
+              }
+              // Connect channels now that vault is unlocked with credentials
+              await this.initializeChannels();
+              const channels = this.channels;
+              if (channels) {
+                await channels.connectAll();
+                console.log('Channels connected after setup');
               }
             },
           },

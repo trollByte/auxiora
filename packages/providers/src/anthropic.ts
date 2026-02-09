@@ -19,10 +19,10 @@ const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
 
 // Claude Code version to mimic (must match real Claude CLI)
-const CLAUDE_CODE_VERSION = '2.1.29';
+const CLAUDE_CODE_VERSION = '2.1.37';
 
 // Git SHA for version tracking (shortened from real value)
-const CLAUDE_CODE_GIT_SHA = '6fe';
+const CLAUDE_CODE_GIT_SHA = 'a8f';
 
 // Required system prompt for OAuth tokens
 const CLAUDE_CODE_SYSTEM_PROMPT = 'You are Claude Code, Anthropic\'s official CLI for Claude.';
@@ -221,13 +221,12 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
-    // Add tools if provided
-    if (options?.tools && options.tools.length > 0) {
-      params.tools = options.tools as Anthropic.Tool[];
-    }
-
-    // For OAuth tokens, include Claude Code identity
+    // For OAuth tokens, include Claude Code emulation (tools + system prompt)
     if (this.requiresClaudeCodeEmulation()) {
+      // Claude Code tools MUST be included for the API to accept OAuth tokens
+      const callerTools = (options?.tools ?? []) as Anthropic.Tool[];
+      params.tools = [...(CLAUDE_CODE_TOOLS as unknown as Anthropic.Tool[]), ...callerTools];
+
       // Claude Code identity MUST be first in system prompt (array format with cache_control)
       const systemBlocks: Array<{ type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }> = [
         {
@@ -245,12 +244,16 @@ export class AnthropicProvider implements Provider {
       }
       params.system = systemBlocks as Anthropic.TextBlockParam[];
     } else {
+      if (options?.tools && options.tools.length > 0) {
+        params.tools = options.tools as Anthropic.Tool[];
+      }
       params.system = systemPrompt;
     }
 
     const response = await this.client.messages.create(params);
 
-    // Extract text content, filtering out tool calls
+    // Extract text content, filtering out tool calls for Claude Code tools
+    const ccToolNames = new Set(CLAUDE_CODE_TOOLS.map(t => t.name));
     const content = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
@@ -283,14 +286,11 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
-    // Add tools if provided
-    if (options?.tools && options.tools.length > 0) {
-      params.tools = options.tools as Anthropic.Tool[];
-    }
-
-    // For OAuth tokens, include Claude Code identity
+    // For OAuth tokens, include Claude Code emulation (tools + system prompt)
     if (this.requiresClaudeCodeEmulation()) {
-      // Claude Code identity MUST be first in system prompt (array format with cache_control)
+      const callerTools = (options?.tools ?? []) as Anthropic.Tool[];
+      params.tools = [...(CLAUDE_CODE_TOOLS as unknown as Anthropic.Tool[]), ...callerTools];
+
       const systemBlocks: Array<{ type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }> = [
         {
           type: 'text',
@@ -307,8 +307,14 @@ export class AnthropicProvider implements Provider {
       }
       params.system = systemBlocks as Anthropic.TextBlockParam[];
     } else {
+      if (options?.tools && options.tools.length > 0) {
+        params.tools = options.tools as Anthropic.Tool[];
+      }
       params.system = systemPrompt;
     }
+
+    // Track Claude Code tool names to filter them from output
+    const ccToolNames = new Set(CLAUDE_CODE_TOOLS.map(t => t.name));
 
     try {
       const stream = this.client.messages.stream(params);
@@ -334,24 +340,29 @@ export class AnthropicProvider implements Provider {
             currentToolUse.input += delta.partial_json;
           }
         } else if (event.type === 'content_block_stop' && currentToolUse) {
-          // Tool use complete - parse and yield
-          try {
-            const input = JSON.parse(currentToolUse.input);
-            yield {
-              type: 'tool_use',
-              toolUse: {
-                id: currentToolUse.id,
-                name: currentToolUse.name,
-                input,
-              },
-            };
-          } catch (error) {
-            yield {
-              type: 'error',
-              error: `Failed to parse tool input: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            };
+          // Skip Claude Code emulation tools — they're only present for API compatibility
+          if (ccToolNames.has(currentToolUse.name)) {
+            currentToolUse = null;
+          } else {
+            // Tool use complete - parse and yield
+            try {
+              const input = JSON.parse(currentToolUse.input);
+              yield {
+                type: 'tool_use',
+                toolUse: {
+                  id: currentToolUse.id,
+                  name: currentToolUse.name,
+                  input,
+                },
+              };
+            } catch (error) {
+              yield {
+                type: 'error',
+                error: `Failed to parse tool input: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              };
+            }
+            currentToolUse = null;
           }
-          currentToolUse = null;
         } else if (event.type === 'message_stop') {
           const finalMessage = await stream.finalMessage();
           yield {

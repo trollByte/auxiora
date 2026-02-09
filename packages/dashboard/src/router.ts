@@ -158,6 +158,10 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     try {
       await deps.vault.unlock(password);
       void audit('setup.vault', {});
+      // Initialize channels/providers that need vault access
+      if (deps.onVaultUnlocked) {
+        await deps.onVaultUnlocked();
+      }
       res.json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to initialize vault';
