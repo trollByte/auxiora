@@ -59,6 +59,63 @@ function friendlyModelName(id: string): string {
   return id;
 }
 
+/**
+ * Lightweight markdown-to-HTML renderer.
+ * Security: HTML-escapes all input FIRST, then applies markdown patterns.
+ * Only our own markdown transforms produce HTML tags, so XSS is prevented.
+ */
+function renderMarkdown(text: string): string {
+  // Step 1: HTML-escape ALL input to prevent XSS
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Step 2: Apply markdown patterns (only our safe transforms produce HTML)
+  html = html
+    // Code blocks (``` ... ```)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Headings
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    // Bold + italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Horizontal rule
+    .replace(/^---$/gm, '<hr/>')
+    // Unordered lists
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+  // Paragraphs: double newline = paragraph break
+  html = html.replace(/\n\n+/g, '</p><p>');
+  // Single newlines = line break
+  html = html.replace(/\n/g, '<br/>');
+
+  // Wrap in paragraph, clean up empty/misplaced tags
+  html = `<p>${html}</p>`;
+  html = html
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<h[234]>)/g, '$1')
+    .replace(/(<\/h[234]>)<\/p>/g, '$1')
+    .replace(/<p>(<pre>)/g, '$1')
+    .replace(/(<\/pre>)<\/p>/g, '$1')
+    .replace(/<p>(<ul>)/g, '$1')
+    .replace(/(<\/ul>)<\/p>/g, '$1')
+    .replace(/<p>(<hr\/>)/g, '$1')
+    .replace(/(<hr\/>)<\/p>/g, '$1');
+
+  return html;
+}
+
 export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -66,8 +123,10 @@ export function Chat() {
   const [streaming, setStreaming] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
   const [lastModel, setLastModel] = useState('');
+  const [activeMode, setActiveMode] = useState('auto');
   const [acIndex, setAcIndex] = useState(0);
   const [acOpen, setAcOpen] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentResponseRef = useRef('');
@@ -76,6 +135,41 @@ export function Chat() {
   const acRef = useRef<HTMLDivElement>(null);
   const { data: status } = useApi(() => api.getStatus(), []);
   const { data: modelsData } = useApi(() => api.getModels(), []);
+
+  // Load chat history from server on mount
+  useEffect(() => {
+    api.getSessionMessages().then(res => {
+      if (res.data && res.data.length > 0) {
+        setMessages(res.data.map(m => ({
+          id: m.id,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })));
+      }
+      setHistoryLoaded(true);
+    }).catch(() => {
+      setHistoryLoaded(true);
+    });
+  }, []);
+
+  // Detect mode changes from assistant messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.role !== 'assistant') return;
+    const modeMatch = last.content.match(/Switched to \*\*(\w+)\*\* mode/);
+    if (modeMatch) {
+      setActiveMode(modeMatch[1].toLowerCase());
+      return;
+    }
+    if (last.content.includes('Mode set to **auto**')) {
+      setActiveMode('auto');
+      return;
+    }
+    if (last.content.includes('Modes disabled')) {
+      setActiveMode('off');
+    }
+  }, [messages]);
 
   // Slash command autocomplete filtering
   const acMatches = useMemo(() => {
@@ -151,7 +245,6 @@ export function Chat() {
                 ? `${routing.provider}/${routing.model}`
                 : routing.provider;
               setLastModel(modelLabel);
-              // Annotate last assistant message with model info
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.role === 'assistant') {
@@ -229,12 +322,19 @@ export function Chat() {
     }));
   };
 
+  const modeLabel = activeMode === 'auto' ? 'Auto' : activeMode === 'off' ? 'Off' : activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
+
   return (
     <div className="page">
       <h2>Chat</h2>
       <div className="chat-container">
         <div className="chat-status">
-          <span>{connected ? 'Connected' : 'Disconnected'}</span>
+          <span>
+            {connected ? 'Connected' : 'Disconnected'}
+            <span className="chat-mode-badge" title="Current personality mode">
+              {modeLabel}
+            </span>
+          </span>
           <div className="model-selector">
             <select
               value={selectedModel ? `${selectedModel.provider}/${selectedModel.model}` : ''}
@@ -254,14 +354,26 @@ export function Chat() {
           </div>
         </div>
         <div className="chat-messages">
-          {messages.length === 0 && (
+          {!historyLoaded && (
+            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+              Loading...
+            </div>
+          )}
+          {historyLoaded && messages.length === 0 && (
             <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
               Send a message to start chatting
             </div>
           )}
           {messages.map(msg => (
             <div key={msg.id} className={`chat-message ${msg.role}`}>
-              {msg.content}
+              {msg.role === 'assistant'
+                ? <div className="chat-markdown" dangerouslySetInnerHTML={{
+                    // Safe: renderMarkdown HTML-escapes all input before applying
+                    // markdown transforms — only our transforms produce HTML tags
+                    __html: renderMarkdown(msg.content),
+                  }} />
+                : msg.content
+              }
               {msg.model && (
                 <div className="model-label">{msg.model}</div>
               )}

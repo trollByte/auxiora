@@ -419,6 +419,17 @@ export class Auxiora {
             exportAll: async () => this.memoryStore ? this.memoryStore.exportAll() : { version: '1.0', memories: [], exportedAt: Date.now() },
             importAll: async (data: { memories: any[] }) => this.memoryStore ? this.memoryStore.importAll(data) : { imported: 0, skipped: 0 },
           },
+          sessions: {
+            getWebchatMessages: () => {
+              // Find the webchat session (senderId undefined, channelType webchat)
+              const all = this.sessions.getActiveSessions();
+              const webchat = all.find(s => s.metadata.channelType === 'webchat');
+              if (!webchat) return [];
+              return webchat.messages
+                .filter(m => m.role === 'user' || m.role === 'assistant')
+                .map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+            },
+          },
           trust: this.trustEngine && this.trustAuditTrail && this.rollbackManager ? {
             getLevels: () => this.trustEngine!.getAllLevels(),
             getLevel: (domain: string) => this.trustEngine!.getTrustLevel(domain as any),

@@ -455,6 +455,16 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: connections });
   });
 
+  // Chat history for the webchat session
+  router.get('/session/messages', (req: Request, res: Response) => {
+    if (!deps.sessions) {
+      res.json({ data: [] });
+      return;
+    }
+    const messages = deps.sessions.getWebchatMessages();
+    res.json({ data: messages });
+  });
+
   // Audit
   router.get('/audit', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 100;

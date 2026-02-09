@@ -234,6 +234,10 @@ export interface DashboardDeps {
     stop(): void;
     getTurnCount(): number;
   };
+  // --- Chat session history ---
+  sessions?: {
+    getWebchatMessages(): Array<{ id: string; role: string; content: string; timestamp: number }>;
+  };
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

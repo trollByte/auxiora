@@ -107,6 +107,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ provider, model }),
     }),
+  getSessionMessages: () =>
+    fetchApi<{ data: Array<{ id: string; role: string; content: string; timestamp: number }> }>('/session/messages'),
   getChannels: () => fetchApi<{ data: { connected: string[]; configured: Array<{ type: string; enabled: boolean }> } }>('/channels'),
   updateChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>
     fetchApi<{ success: boolean }>('/channels', {
