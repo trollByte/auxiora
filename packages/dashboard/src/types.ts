@@ -44,11 +44,13 @@ export interface DashboardDeps {
   getActiveModel?: () => { provider: string; model: string };
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;
+    create(input: Record<string, unknown>): Promise<any>;
     update(id: string, updates: Record<string, unknown>): Promise<any>;
     remove(id: string): Promise<boolean>;
   };
   webhooks?: {
     list(): Promise<any[]>;
+    create(options: Record<string, unknown>): Promise<any>;
     update?(id: string, updates: Record<string, unknown>): Promise<any>;
     delete(id: string): Promise<boolean>;
   };

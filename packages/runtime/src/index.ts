@@ -336,8 +336,18 @@ export class Auxiora {
               }
             }
           },
-          behaviors: this.behaviors,
-          webhooks: this.webhookManager,
+          behaviors: this.behaviors ? {
+            list: (filter?: { type?: string; status?: string }) => this.behaviors!.list(filter as any),
+            create: (input: Record<string, unknown>) => this.behaviors!.create(input as any),
+            update: (id: string, updates: Record<string, unknown>) => this.behaviors!.update(id, updates),
+            remove: (id: string) => this.behaviors!.remove(id),
+          } : undefined,
+          webhooks: this.webhookManager ? {
+            list: () => this.webhookManager!.list(),
+            create: (options: Record<string, unknown>) => this.webhookManager!.create(options as any),
+            update: (id: string, updates: Record<string, unknown>) => this.webhookManager!.update(id, updates),
+            delete: (id: string) => this.webhookManager!.delete(id),
+          } : undefined,
           getConfiguredChannels: () => {
             const ch = this.config.channels;
             return Object.entries(ch)

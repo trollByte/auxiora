@@ -383,6 +383,71 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: behaviors });
   });
 
+  router.post('/behaviors', async (req: Request, res: Response) => {
+    if (!deps.behaviors) {
+      res.status(503).json({ error: 'Behaviors not available' });
+      return;
+    }
+    const { type, action, cron, timezone, intervalMinutes, condition, runAt } = req.body as {
+      type?: string;
+      action?: string;
+      cron?: string;
+      timezone?: string;
+      intervalMinutes?: number;
+      condition?: string;
+      runAt?: string;
+    };
+    if (!type || !action) {
+      res.status(400).json({ error: 'type and action are required' });
+      return;
+    }
+    if (!['scheduled', 'monitor', 'one-shot'].includes(type)) {
+      res.status(400).json({ error: 'type must be "scheduled", "monitor", or "one-shot"' });
+      return;
+    }
+
+    const input: Record<string, unknown> = {
+      type,
+      action,
+      channel: { type: 'webchat', id: 'dashboard', overridden: false },
+      createdBy: 'dashboard',
+    };
+
+    if (type === 'scheduled') {
+      if (!cron) {
+        res.status(400).json({ error: 'cron is required for scheduled behaviors' });
+        return;
+      }
+      input.schedule = { cron, timezone: timezone || 'UTC' };
+    } else if (type === 'monitor') {
+      if (!intervalMinutes || !condition) {
+        res.status(400).json({ error: 'intervalMinutes and condition are required for monitor behaviors' });
+        return;
+      }
+      input.polling = { intervalMs: intervalMinutes * 60_000, condition };
+    } else if (type === 'one-shot') {
+      if (!runAt) {
+        res.status(400).json({ error: 'runAt is required for one-shot behaviors' });
+        return;
+      }
+      const ts = new Date(runAt).getTime();
+      if (isNaN(ts) || ts <= Date.now()) {
+        res.status(400).json({ error: 'runAt must be a valid future timestamp' });
+        return;
+      }
+      input.delay = { runAt: ts };
+    }
+
+    try {
+      const behavior = await deps.behaviors.create(input);
+      void audit('behavior.created', { id: behavior.id, type });
+      res.status(201).json({ data: behavior });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to create behavior';
+      res.status(400).json({ error: msg });
+    }
+  });
+
   router.patch('/behaviors/:id', async (req: Request, res: Response) => {
     if (!deps.behaviors) {
       res.status(503).json({ error: 'Behaviors not available' });
@@ -421,6 +486,41 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     // Redact secrets
     const redacted = webhooks.map((w: any) => ({ ...w, secret: '***' }));
     res.json({ data: redacted });
+  });
+
+  router.post('/webhooks', async (req: Request, res: Response) => {
+    if (!deps.webhooks) {
+      res.status(503).json({ error: 'Webhooks not available' });
+      return;
+    }
+    const { name, secret, behaviorId } = req.body as {
+      name?: string;
+      secret?: string;
+      behaviorId?: string;
+    };
+    if (!name || !secret) {
+      res.status(400).json({ error: 'name and secret are required' });
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      res.status(400).json({ error: 'name must be URL-safe (letters, numbers, hyphens, underscores)' });
+      return;
+    }
+
+    try {
+      const webhook = await deps.webhooks.create({
+        name,
+        secret,
+        type: 'generic',
+        enabled: true,
+        ...(behaviorId ? { behaviorId } : {}),
+      });
+      void audit('webhook.created', { id: webhook.id, name });
+      res.status(201).json({ data: { ...webhook, secret: '***' } });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to create webhook';
+      res.status(400).json({ error: msg });
+    }
   });
 
   router.patch('/webhooks/:id', async (req: Request, res: Response) => {

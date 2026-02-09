@@ -873,6 +873,97 @@ body {
 .settings-btn:active { transform: scale(0.98); }
 .settings-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
+/* ── Create Forms ─────────────────────────────── */
+
+.create-form-toggle {
+  margin-bottom: 1rem;
+}
+
+.create-form {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 560px;
+  animation: cardEnter 0.25s ease both;
+}
+
+.create-form label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+}
+
+.create-form input,
+.create-form select,
+.create-form textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast);
+}
+
+.create-form input:focus,
+.create-form select:focus,
+.create-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.create-form input::placeholder,
+.create-form textarea::placeholder { color: var(--text-secondary); }
+
+.create-form textarea {
+  resize: vertical;
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+.create-form-group {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--bg-hover);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.create-form-group label {
+  margin-top: 0.5rem;
+}
+
+.create-form-group label:first-child {
+  margin-top: 0;
+}
+
+.create-form-success {
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--success);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.create-form-success code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
 /* ── Provider Grid ─────────────────────────────── */
 
 .provider-grid {

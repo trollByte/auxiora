@@ -36,6 +36,11 @@ export const api = {
     }),
   deleteBehavior: (id: string) =>
     fetchApi<{ data: any }>(`/behaviors/${id}`, { method: 'DELETE' }),
+  createBehavior: (input: Record<string, unknown>) =>
+    fetchApi<{ data: any }>('/behaviors', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   getWebhooks: () => fetchApi<{ data: any[] }>('/webhooks'),
   patchWebhook: (id: string, updates: Record<string, unknown>) =>
     fetchApi<{ data: any }>(`/webhooks/${id}`, {
@@ -44,6 +49,11 @@ export const api = {
     }),
   deleteWebhook: (id: string) =>
     fetchApi<{ data: any }>(`/webhooks/${id}`, { method: 'DELETE' }),
+  createWebhook: (input: Record<string, unknown>) =>
+    fetchApi<{ data: any }>('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   getSessions: () => fetchApi<{ data: any[] }>('/sessions'),
   getAudit: (params?: { type?: string; limit?: number }) => {
     const query = new URLSearchParams();

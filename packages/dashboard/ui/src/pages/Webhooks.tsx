@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
@@ -6,9 +7,19 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export function Webhooks() {
   const { data, refresh } = useApi(() => api.getWebhooks(), []);
+  const { data: behaviorsData } = useApi(() => api.getBehaviors(), []);
   usePolling(refresh);
 
   const webhooks = data?.data ?? [];
+  const behaviors = behaviorsData?.data ?? [];
+
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [secret, setSecret] = useState('');
+  const [behaviorId, setBehaviorId] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [createdUrl, setCreatedUrl] = useState('');
 
   const columns = [
     { key: 'name', label: 'Name' },
@@ -37,9 +48,98 @@ export function Webhooks() {
     }
   };
 
+  const resetForm = () => {
+    setName('');
+    setSecret('');
+    setBehaviorId('');
+    setError('');
+    setCreatedUrl('');
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setCreatedUrl('');
+    setCreating(true);
+
+    try {
+      const input: Record<string, unknown> = { name, secret };
+      if (behaviorId) input.behaviorId = behaviorId;
+
+      await api.createWebhook(input);
+      const webhookUrl = `${window.location.origin}/api/v1/webhooks/custom/${name}`;
+      setCreatedUrl(webhookUrl);
+      resetForm();
+      setShowForm(false);
+      refresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create webhook');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="page">
       <h2>Webhooks</h2>
+
+      <div className="create-form-toggle">
+        <button
+          className="btn-sm"
+          onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); }}
+        >
+          {showForm ? 'Cancel' : 'New Webhook'}
+        </button>
+      </div>
+
+      {createdUrl && (
+        <div className="create-form-success">
+          Webhook created. URL: <code>{createdUrl}</code>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="create-form">
+          <form onSubmit={handleCreate}>
+            <label>Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="my-webhook"
+              pattern="[a-zA-Z0-9_-]+"
+              title="URL-safe: letters, numbers, hyphens, underscores"
+              required
+            />
+
+            <label>Secret</label>
+            <input
+              type="password"
+              value={secret}
+              onChange={e => setSecret(e.target.value)}
+              placeholder="HMAC signing key"
+              required
+            />
+
+            <label>Behavior (optional)</label>
+            <select value={behaviorId} onChange={e => setBehaviorId(e.target.value)}>
+              <option value="">None</option>
+              {behaviors.map((b: any) => (
+                <option key={b.id} value={b.id}>
+                  {b.action?.slice(0, 50) || b.id}
+                </option>
+              ))}
+            </select>
+
+            {error && <div className="error">{error}</div>}
+
+            <button type="submit" className="settings-btn" disabled={creating || !name || !secret}>
+              {creating ? 'Creating...' : 'Create Webhook'}
+            </button>
+          </form>
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         rows={webhooks}
