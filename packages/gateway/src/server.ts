@@ -618,12 +618,24 @@ export class Gateway {
     }
     #send:hover { background: #2563eb; }
     #send:disabled { background: #444; cursor: not-allowed; }
+    .dashboard-link {
+      margin-left: auto;
+      color: #888;
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.75rem;
+      border: 1px solid #2a2a3a;
+      border-radius: 1rem;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .dashboard-link:hover { color: #3b82f6; border-color: #3b82f6; }
   </style>
 </head>
 <body>
   <header>
     <div class="status" id="status"></div>
     <h1>Auxiora</h1>
+    <a href="/dashboard" class="dashboard-link">Dashboard</a>
   </header>
   <div id="messages"></div>
   <div id="input-area">
