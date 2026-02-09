@@ -440,6 +440,14 @@ export class Auxiora {
               }
             },
             vaultExists: () => vaultExists(),
+            onSetupComplete: async () => {
+              await this.initializeProviders();
+              if (this.providers) {
+                this.initializeRouter();
+                setProviderFactory(this.providers);
+                console.log('Providers re-initialized after setup');
+              }
+            },
           },
         },
         config: {

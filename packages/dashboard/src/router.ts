@@ -344,6 +344,11 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     setupComplete = true;
     void audit('setup.complete', {});
 
+    // Re-initialize providers now that vault has API keys
+    if (setup?.onSetupComplete) {
+      await setup.onSetupComplete();
+    }
+
     const agentName = setup?.getAgentName?.() ?? 'Auxiora';
     res.json({
       success: true,

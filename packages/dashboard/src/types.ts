@@ -27,6 +27,7 @@ export interface SetupDeps {
   getAgentName?: () => string;
   hasSoulFile?: () => Promise<boolean>;
   vaultExists?: () => Promise<boolean>;
+  onSetupComplete?: () => Promise<void>;
 }
 
 export interface DashboardDeps {
