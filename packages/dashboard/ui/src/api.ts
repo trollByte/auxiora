@@ -73,7 +73,7 @@ export const api = {
     fetchApi<{ success: boolean }>('/setup/complete', { method: 'POST' }),
 
   // Settings API
-  getModels: () => fetchApi<{ providers: any[] }>('/models'),
+  getModels: () => fetchApi<{ providers: any[]; routing: any; cost: any }>('/models'),
   getIdentity: () => fetchApi<{ data: { name: string; pronouns: string } }>('/identity'),
   updateIdentity: (name: string, pronouns: string) =>
     fetchApi<{ success: boolean }>('/identity', {
@@ -91,6 +91,21 @@ export const api = {
     fetchApi<{ success: boolean }>('/provider', {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, endpoint }),
+    }),
+  configureProvider: (provider: string, apiKey?: string, endpoint?: string) =>
+    fetchApi<{ success: boolean }>('/provider/configure', {
+      method: 'POST',
+      body: JSON.stringify({ provider, apiKey, endpoint }),
+    }),
+  updateRouting: (primary: string, fallback?: string) =>
+    fetchApi<{ success: boolean }>('/provider/routing', {
+      method: 'POST',
+      body: JSON.stringify({ primary, fallback }),
+    }),
+  setProviderModel: (provider: string, model: string) =>
+    fetchApi<{ success: boolean }>('/provider/model', {
+      method: 'POST',
+      body: JSON.stringify({ provider, model }),
     }),
   getChannels: () => fetchApi<{ data: { connected: string[]; configured: Array<{ type: string; enabled: boolean }> } }>('/channels'),
   updateChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>

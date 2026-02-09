@@ -315,8 +315,9 @@ export class Auxiora {
           vault: this.vault,
           getActiveModel: () => {
             const primary = this.config.provider.primary;
+            const fallback = this.config.provider.fallback;
             const providerConfig = (this.config.provider as Record<string, any>)[primary];
-            return { provider: primary, model: providerConfig?.model ?? 'default' };
+            return { provider: primary, fallback, model: providerConfig?.model ?? 'default' };
           },
           onVaultUnlocked: async () => {
             // Re-initialize providers and channels after vault unlock on restart
@@ -350,6 +351,33 @@ export class Auxiora {
           },
           getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
           getMemories: async () => this.memoryStore?.getAll() ?? [],
+          models: this.providers ? {
+            listProviders: () => {
+              const result = [];
+              for (const name of this.providers.listAvailable()) {
+                const p = this.providers.getProvider(name);
+                result.push({
+                  name,
+                  displayName: p.metadata.displayName,
+                  available: true,
+                  models: p.metadata.models,
+                });
+              }
+              return result;
+            },
+            getRoutingConfig: () => ({
+              enabled: this.config.routing?.enabled !== false,
+              primary: this.config.provider.primary,
+              fallback: this.config.provider.fallback,
+              defaultModel: this.config.routing?.defaultModel,
+              rules: this.config.routing?.rules ?? [],
+              preferences: this.config.routing?.preferences ?? {},
+              costLimits: this.config.routing?.costLimits ?? {},
+            }),
+            getCostSummary: () => this.modelRouter?.getCostSummary() ?? {
+              today: 0, thisMonth: 0, isOverBudget: false, warningThresholdReached: false,
+            },
+          } : undefined,
           orchestration: this.orchestrationEngine ? {
             getConfig: () => ({
               enabled: this.config.orchestration?.enabled !== false,
@@ -1007,7 +1035,10 @@ export class Auxiora {
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
     const { id: requestId, payload } = message;
-    const content = (payload as { content?: string } | undefined)?.content;
+    const msgPayload = payload as { content?: string; model?: string; provider?: string } | undefined;
+    const content = msgPayload?.content;
+    const modelOverride = msgPayload?.model;
+    const providerOverride = msgPayload?.provider;
 
     if (!content || typeof content !== 'string') {
       this.sendToClient(client, {
@@ -1098,7 +1129,10 @@ export class Auxiora {
       let provider;
       let routingResult: RoutingResult | undefined;
 
-      if (this.modelRouter && this.config.routing?.enabled !== false) {
+      if (providerOverride || modelOverride) {
+        // Manual override — skip router
+        provider = this.providers.getProvider(providerOverride || this.config.provider.primary);
+      } else if (this.modelRouter && this.config.routing?.enabled !== false) {
         try {
           routingResult = this.modelRouter.route(content, { hasImages: false });
           provider = this.providers.getProvider(routingResult.selection.provider);
@@ -1115,7 +1149,7 @@ export class Auxiora {
 
       for await (const chunk of provider.stream(chatMessages, {
         systemPrompt: enrichedPrompt,
-        model: routingResult?.selection.model,
+        model: modelOverride || routingResult?.selection.model,
         tools: tools.length > 0 ? tools : undefined,
       })) {
         if (chunk.type === 'text' && chunk.content) {
@@ -1176,6 +1210,10 @@ export class Auxiora {
               provider: routingResult.selection.provider,
               isLocal: routingResult.selection.isLocal,
               taskType: routingResult.classification.type,
+            } : (providerOverride || modelOverride) ? {
+              model: modelOverride,
+              provider: providerOverride || this.config.provider.primary,
+              override: true,
             } : undefined,
           },
         });

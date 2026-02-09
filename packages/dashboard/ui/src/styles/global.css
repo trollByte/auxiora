@@ -674,3 +674,226 @@ body {
 }
 .settings-btn:hover { background: var(--accent-hover); }
 .settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Provider grid */
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.provider-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.provider-card:hover { border-color: var(--accent); }
+.provider-card.configured { border-color: var(--success); }
+.provider-card.expanded { border-color: var(--accent); }
+
+.provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.provider-card-header h3 {
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.provider-card .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.provider-card .status-dot.active { background: var(--success); }
+.provider-card .status-dot.inactive { background: var(--text-secondary); opacity: 0.4; }
+
+.provider-card .provider-badges {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.provider-card .badge-pill {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-primary { background: rgba(74, 158, 255, 0.15); color: var(--accent); }
+.badge-fallback { background: rgba(255, 200, 74, 0.15); color: var(--warning); }
+
+.provider-card .provider-model {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.provider-expand {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.provider-expand label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.2rem;
+}
+
+.provider-expand input,
+.provider-expand select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+.provider-expand .provider-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.provider-expand .provider-actions button {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+}
+
+.provider-expand .btn-save {
+  background: var(--accent);
+  color: white;
+}
+.provider-expand .btn-save:hover { background: var(--accent-hover); }
+.provider-expand .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.provider-expand .btn-remove {
+  background: none;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+.provider-expand .btn-remove:hover { background: rgba(255, 74, 74, 0.1); }
+
+/* Routing config */
+.routing-config {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.routing-config .routing-field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.routing-config label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.routing-config select {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+}
+
+.routing-config button {
+  padding: 0.5rem 1.25rem;
+  background: var(--accent);
+  border: none;
+  color: white;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  align-self: flex-end;
+}
+.routing-config button:hover { background: var(--accent-hover); }
+.routing-config button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Cost summary */
+.cost-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.cost-summary .cost-box {
+  flex: 1;
+  min-width: 140px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.cost-summary .cost-box h4 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.cost-summary .cost-box .cost-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.cost-summary .cost-box.over-budget { border-color: var(--danger); }
+.cost-summary .cost-box.over-budget .cost-value { color: var(--danger); }
+
+/* Model selector in chat */
+.model-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.model-selector select {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+}
+
+.model-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  text-align: right;
+}

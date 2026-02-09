@@ -6,6 +6,12 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'error';
   content: string;
+  model?: string;
+}
+
+interface ModelSelection {
+  provider: string;
+  model: string;
 }
 
 export function Chat() {
@@ -13,11 +19,14 @@ export function Chat() {
   const [input, setInput] = useState('');
   const [connected, setConnected] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
+  const [lastModel, setLastModel] = useState('');
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
   const { data: status } = useApi(() => api.getStatus(), []);
+  const { data: modelsData } = useApi(() => api.getModels(), []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,10 +74,26 @@ export function Chat() {
               }]);
             }
             break;
-          case 'done':
+          case 'done': {
             setStreaming(false);
+            const routing = msg.payload?.routing;
+            if (routing) {
+              const modelLabel = routing.model
+                ? `${routing.provider}/${routing.model}`
+                : routing.provider;
+              setLastModel(modelLabel);
+              // Annotate last assistant message with model info
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return [...prev.slice(0, -1), { ...last, model: modelLabel }];
+                }
+                return prev;
+              });
+            }
             currentResponseRef.current = '';
             break;
+          }
           case 'error':
             setStreaming(false);
             currentResponseRef.current = '';
@@ -89,6 +114,29 @@ export function Chat() {
     };
   }, []);
 
+  // Build model options from providers data
+  const providerGroups: Array<{ provider: string; displayName: string; models: string[] }> = [];
+  if (modelsData?.providers) {
+    for (const p of modelsData.providers) {
+      if (p.available && p.models) {
+        providerGroups.push({
+          provider: p.name,
+          displayName: p.displayName || p.name,
+          models: Object.keys(p.models),
+        });
+      }
+    }
+  }
+
+  const handleModelChange = (value: string) => {
+    if (!value) {
+      setSelectedModel(null);
+      return;
+    }
+    const [provider, ...rest] = value.split('/');
+    setSelectedModel({ provider, model: rest.join('/') });
+  };
+
   const sendMessage = () => {
     if (!input.trim() || !wsRef.current || !connected || streaming) return;
     const content = input.trim();
@@ -99,10 +147,16 @@ export function Chat() {
     setStreaming(true);
     currentResponseRef.current = '';
 
+    const payload: Record<string, string> = { content };
+    if (selectedModel) {
+      payload.provider = selectedModel.provider;
+      payload.model = selectedModel.model;
+    }
+
     wsRef.current.send(JSON.stringify({
       type: 'message',
       id: String(id),
-      payload: { content },
+      payload,
     }));
   };
 
@@ -112,11 +166,23 @@ export function Chat() {
       <div className="chat-container">
         <div className="chat-status">
           <span>{connected ? 'Connected' : 'Disconnected'}</span>
-          {status?.data?.activeModel && (
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-              {status.data.activeModel.model}
-            </span>
-          )}
+          <div className="model-selector">
+            <select
+              value={selectedModel ? `${selectedModel.provider}/${selectedModel.model}` : ''}
+              onChange={e => handleModelChange(e.target.value)}
+            >
+              <option value="">Auto (router)</option>
+              {providerGroups.map(g => (
+                <optgroup key={g.provider} label={g.displayName}>
+                  {g.models.map(m => (
+                    <option key={`${g.provider}/${m}`} value={`${g.provider}/${m}`}>
+                      {m}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="chat-messages">
           {messages.length === 0 && (
@@ -127,6 +193,9 @@ export function Chat() {
           {messages.map(msg => (
             <div key={msg.id} className={`chat-message ${msg.role}`}>
               {msg.content}
+              {msg.model && (
+                <div className="model-label">{msg.model}</div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />

@@ -589,6 +589,141 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ success: true });
   });
 
+  // Provider: configure a specific provider's credentials (does NOT change primary/fallback)
+  const PROVIDER_VAULT_KEYS: Record<string, string> = {
+    anthropic: 'ANTHROPIC_API_KEY',
+    openai: 'OPENAI_API_KEY',
+    google: 'GOOGLE_API_KEY',
+    groq: 'GROQ_API_KEY',
+    deepseek: 'DEEPSEEK_API_KEY',
+    cohere: 'COHERE_API_KEY',
+    xai: 'XAI_API_KEY',
+    replicate: 'REPLICATE_API_TOKEN',
+  };
+
+  const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible'];
+
+  router.post('/provider/configure', async (req: Request, res: Response) => {
+    const { provider, apiKey, endpoint } = req.body as { provider?: string; apiKey?: string; endpoint?: string };
+    if (!provider || !VALID_PROVIDERS.includes(provider)) {
+      res.status(400).json({ error: `Provider must be one of: ${VALID_PROVIDERS.join(', ')}` });
+      return;
+    }
+
+    // For local providers (ollama), save config only
+    if (provider === 'ollama') {
+      if (setup?.saveConfig) {
+        await setup.saveConfig({
+          provider: { ollama: { baseUrl: endpoint || 'http://localhost:11434' } },
+        });
+      }
+      void audit('settings.provider', { provider, action: 'configure' });
+      res.json({ success: true, provider });
+      return;
+    }
+
+    if (provider === 'openaiCompatible') {
+      if (!endpoint) {
+        res.status(400).json({ error: 'Endpoint URL is required for OpenAI-compatible providers' });
+        return;
+      }
+      if (apiKey) {
+        try {
+          await deps.vault.add('OPENAI_COMPATIBLE_API_KEY', apiKey);
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Failed to store API key';
+          res.status(400).json({ error: msg });
+          return;
+        }
+      }
+      if (setup?.saveConfig) {
+        await setup.saveConfig({
+          provider: { openaiCompatible: { baseUrl: endpoint } },
+        });
+      }
+      void audit('settings.provider', { provider, action: 'configure' });
+      res.json({ success: true, provider });
+      return;
+    }
+
+    // Cloud providers: store API key in vault
+    if (!apiKey) {
+      res.status(400).json({ error: 'API key is required for this provider' });
+      return;
+    }
+
+    const vaultKey = PROVIDER_VAULT_KEYS[provider];
+    if (!vaultKey) {
+      res.status(400).json({ error: `Unknown vault key for provider: ${provider}` });
+      return;
+    }
+
+    try {
+      await deps.vault.add(vaultKey, apiKey);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to store API key';
+      res.status(400).json({ error: msg });
+      return;
+    }
+
+    // Re-initialize providers to pick up the new key
+    if (setup?.onSetupComplete) {
+      await setup.onSetupComplete();
+    }
+
+    void audit('settings.provider', { provider, action: 'configure' });
+    res.json({ success: true, provider });
+  });
+
+  // Provider: update primary/fallback routing
+  router.post('/provider/routing', async (req: Request, res: Response) => {
+    const { primary, fallback } = req.body as { primary?: string; fallback?: string };
+    if (!primary || !VALID_PROVIDERS.includes(primary)) {
+      res.status(400).json({ error: 'Valid primary provider is required' });
+      return;
+    }
+    if (fallback && !VALID_PROVIDERS.includes(fallback)) {
+      res.status(400).json({ error: `Invalid fallback provider: ${fallback}` });
+      return;
+    }
+
+    if (setup?.saveConfig) {
+      await setup.saveConfig({
+        provider: { primary, ...(fallback ? { fallback } : {}) },
+      });
+    }
+
+    // Re-initialize to apply routing change
+    if (setup?.onSetupComplete) {
+      await setup.onSetupComplete();
+    }
+
+    void audit('settings.provider', { primary, fallback, action: 'routing' });
+    res.json({ success: true, primary, fallback });
+  });
+
+  // Provider: set default model for a provider
+  router.post('/provider/model', async (req: Request, res: Response) => {
+    const { provider, model } = req.body as { provider?: string; model?: string };
+    if (!provider || !VALID_PROVIDERS.includes(provider)) {
+      res.status(400).json({ error: 'Valid provider is required' });
+      return;
+    }
+    if (!model || typeof model !== 'string') {
+      res.status(400).json({ error: 'Model name is required' });
+      return;
+    }
+
+    if (setup?.saveConfig) {
+      await setup.saveConfig({
+        provider: { [provider]: { model } },
+      });
+    }
+
+    void audit('settings.provider', { provider, model, action: 'model' });
+    res.json({ success: true, provider, model });
+  });
+
   // Channels
   router.get('/channels', (req: Request, res: Response) => {
     const connections = deps.getConnections();
@@ -939,11 +1074,13 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   // Models
   router.get('/models', (req: Request, res: Response) => {
     if (!deps.models) {
-      res.json({ providers: [] });
+      res.json({ providers: [], routing: {}, cost: {} });
       return;
     }
     const providers = deps.models.listProviders();
-    res.json({ providers });
+    const routing = deps.models.getRoutingConfig();
+    const cost = deps.models.getCostSummary();
+    res.json({ providers, routing, cost });
   });
 
   router.get('/models/routing', (req: Request, res: Response) => {

@@ -132,7 +132,15 @@ export interface DashboardDeps {
       available: boolean;
       models: Record<string, unknown>;
     }>;
-    getRoutingConfig(): Record<string, unknown>;
+    getRoutingConfig(): {
+      enabled: boolean;
+      primary: string;
+      fallback?: string;
+      defaultModel?: string;
+      rules: unknown[];
+      preferences: Record<string, unknown>;
+      costLimits: Record<string, unknown>;
+    };
     getCostSummary(): {
       today: number;
       thisMonth: number;
