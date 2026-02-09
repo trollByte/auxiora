@@ -526,6 +526,16 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ success: true });
   });
 
+  // Current personality (match SOUL.md against templates)
+  router.get('/personality', async (req: Request, res: Response) => {
+    if (!setup?.personality?.getActiveTemplate) {
+      res.json({ data: { template: null } });
+      return;
+    }
+    const template = await setup.personality.getActiveTemplate();
+    res.json({ data: { template } });
+  });
+
   // Personality templates
   router.get('/personality/templates', async (req: Request, res: Response) => {
     if (!setup?.personality) {

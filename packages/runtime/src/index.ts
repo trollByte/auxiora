@@ -517,6 +517,14 @@ export class Auxiora {
                 applyTemplate: (id: string) => mgr.applyTemplate(id),
                 buildCustom: (config: Record<string, unknown>) =>
                   mgr.buildCustom(config as unknown as import('@auxiora/personality').SoulConfig),
+                getActiveTemplate: async () => {
+                  const soulPath = path.join(getWorkspacePath(), 'SOUL.md');
+                  let current: string;
+                  try { current = await fs.readFile(soulPath, 'utf-8'); } catch { return null; }
+                  const templates = await mgr.listTemplates();
+                  const matched = templates.find(t => t.soulContent.trim() === current.trim());
+                  return matched ? { id: matched.id, name: matched.name } : null;
+                },
               };
             })(),
             saveConfig: async (updates: Record<string, unknown>) => {
@@ -1637,6 +1645,11 @@ export class Auxiora {
       content: m.content,
     }));
 
+    // Show typing indicator while generating response
+    const stopTyping = this.channels
+      ? await this.channels.startTyping(inbound.channelType, inbound.channelId)
+      : () => {};
+
     try {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
@@ -1679,6 +1692,8 @@ export class Auxiora {
         tools: tools.length > 0 ? tools : undefined,
       });
 
+      stopTyping();
+
       // Save assistant message
       await this.sessions.addMessage(session.id, 'assistant', result.content, {
         input: result.usage.inputTokens,
@@ -1705,6 +1720,8 @@ export class Auxiora {
         outputTokens: result.usage.outputTokens,
       });
     } catch (error) {
+      stopTyping();
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       audit('channel.error', { sessionId: session.id, error: errorMessage });
 

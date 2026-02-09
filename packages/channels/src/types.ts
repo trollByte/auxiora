@@ -41,15 +41,18 @@ export interface SendResult {
 export interface ChannelAdapter {
   readonly type: ChannelType;
   readonly name: string;
-  
+
   // Lifecycle
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   isConnected(): boolean;
-  
+
   // Messaging
   send(channelId: string, message: OutboundMessage): Promise<SendResult>;
-  
+
+  // Typing indicator — returns a cleanup function to stop the indicator
+  startTyping?(channelId: string): Promise<() => void>;
+
   // Events
   onMessage(handler: (message: InboundMessage) => Promise<void>): void;
   onError(handler: (error: Error) => void): void;

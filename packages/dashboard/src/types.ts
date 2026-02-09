@@ -22,6 +22,7 @@ export interface SetupDeps {
     listTemplates(): Promise<PersonalityTemplateSummary[]>;
     applyTemplate(id: string): Promise<void>;
     buildCustom(config: Record<string, unknown>): Promise<string>;
+    getActiveTemplate?(): Promise<{ id: string; name: string } | null>;
   };
   saveConfig?: (updates: Record<string, unknown>) => Promise<void>;
   getAgentName?: () => string;

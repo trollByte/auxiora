@@ -80,6 +80,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ name, pronouns }),
     }),
+  getPersonality: () =>
+    fetchApi<{ data: { template: { id: string; name: string } | null } }>('/personality'),
   getTemplates: () =>
     fetchApi<{ data: Array<{ id: string; name: string; description: string; preview: string }> }>('/personality/templates'),
   updatePersonality: (template: string) =>

@@ -277,6 +277,31 @@ export class TeamsAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  async startTyping(channelId: string): Promise<() => void> {
+    try {
+      const token = await this.getAccessToken();
+      const serviceUrl = 'https://smba.trafficmanager.net/teams/';
+      const url = `${serviceUrl}v3/conversations/${encodeURIComponent(channelId)}/activities`;
+
+      // Send typing activity immediately, repeat every 3s
+      const sendTyping = () =>
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ type: 'typing' }),
+        }).catch(() => {});
+
+      await sendTyping();
+      const interval = setInterval(sendTyping, 3000);
+      return () => clearInterval(interval);
+    } catch {
+      return () => {};
+    }
+  }
+
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {
     this.messageHandler = handler;
   }

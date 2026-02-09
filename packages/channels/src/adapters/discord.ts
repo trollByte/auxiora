@@ -222,6 +222,23 @@ export class DiscordAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  async startTyping(channelId: string): Promise<() => void> {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased() || !('sendTyping' in channel)) {
+        return () => {};
+      }
+      // Send immediately, then repeat every 8s (Discord typing expires after ~10s)
+      await channel.sendTyping();
+      const interval = setInterval(() => {
+        channel.sendTyping().catch(() => {});
+      }, 8000);
+      return () => clearInterval(interval);
+    } catch {
+      return () => {};
+    }
+  }
+
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {
     this.messageHandler = handler;
   }

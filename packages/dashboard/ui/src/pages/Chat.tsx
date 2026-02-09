@@ -142,6 +142,8 @@ export function Chat() {
   const acRef = useRef<HTMLDivElement>(null);
   const { data: status } = useApi(() => api.getStatus(), []);
   const { data: modelsData } = useApi(() => api.getModels(), []);
+  const { data: identityData } = useApi(() => api.getIdentity(), []);
+  const { data: personalityData } = useApi(() => api.getPersonality(), []);
 
   // Load chat history from server on mount
   useEffect(() => {
@@ -334,14 +336,22 @@ export function Chat() {
   };
 
   const modeLabel = activeMode === 'auto' ? 'Auto' : activeMode === 'off' ? 'Off' : activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
+  const agentName = identityData?.data?.name ?? 'Auxiora';
+  const templateName = personalityData?.data?.template?.name ?? null;
 
   return (
     <div className="page">
       <h2>Chat</h2>
       <div className="chat-container">
         <div className="chat-status">
-          <span>
-            {connected ? 'Connected' : 'Disconnected'}
+          <span className="chat-status-left">
+            <span className="chat-status-dot" data-connected={connected} />
+            <span className="chat-agent-name">{agentName}</span>
+            {templateName && (
+              <span className="chat-personality-badge" title="Active personality template">
+                {templateName}
+              </span>
+            )}
             <span className="chat-mode-badge" title="Current personality mode">
               {modeLabel}
             </span>

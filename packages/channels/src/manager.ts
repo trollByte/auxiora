@@ -127,6 +127,14 @@ export class ChannelManager {
     return adapter.send(channelId, message);
   }
 
+  async startTyping(channelType: ChannelType, channelId: string): Promise<() => void> {
+    const adapter = this.adapters.get(channelType);
+    if (!adapter?.startTyping || !adapter.isConnected()) {
+      return () => {};
+    }
+    return adapter.startTyping(channelId);
+  }
+
   getAdapter<T extends ChannelAdapter>(type: ChannelType): T | undefined {
     return this.adapters.get(type) as T | undefined;
   }

@@ -335,6 +335,34 @@ export class MatrixAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  async startTyping(channelId: string): Promise<() => void> {
+    const userId = this.config.userId;
+    const path = `/rooms/${encodeURIComponent(channelId)}/typing/${encodeURIComponent(userId)}`;
+
+    try {
+      // Send typing with 30s timeout, repeat every 25s
+      const sendTyping = () =>
+        this.matrixFetch(path, {
+          method: 'PUT',
+          body: JSON.stringify({ typing: true, timeout: 30000 }),
+        }).catch(() => {});
+
+      await sendTyping();
+      const interval = setInterval(sendTyping, 25000);
+
+      return () => {
+        clearInterval(interval);
+        // Send stop-typing signal
+        this.matrixFetch(path, {
+          method: 'PUT',
+          body: JSON.stringify({ typing: false }),
+        }).catch(() => {});
+      };
+    } catch {
+      return () => {};
+    }
+  }
+
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {
     this.messageHandler = handler;
   }
