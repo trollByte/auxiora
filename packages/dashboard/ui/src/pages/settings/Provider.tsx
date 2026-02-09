@@ -37,12 +37,15 @@ const KNOWN_PROVIDERS = [
 
 /** Turn a raw model ID into a friendly display name */
 function friendlyModelName(id: string): string {
-  // Anthropic
-  if (id.startsWith('claude-opus-4'))   return 'Claude Opus 4';
-  if (id.startsWith('claude-sonnet-4')) return 'Claude Sonnet 4';
-  if (id.startsWith('claude-3-5-haiku'))return 'Claude Haiku 3.5';
-  if (id.startsWith('claude-3-5-sonnet'))return 'Claude Sonnet 3.5';
-  if (id.startsWith('claude-3-opus'))   return 'Claude Opus 3';
+  // Anthropic — order matters: more specific prefixes first
+  if (id.startsWith('claude-opus-4-6'))      return 'Claude Opus 4.6';
+  if (id.startsWith('claude-sonnet-4-5'))    return 'Claude Sonnet 4.5';
+  if (id.startsWith('claude-haiku-4-5'))     return 'Claude Haiku 4.5';
+  if (id.startsWith('claude-opus-4'))        return 'Claude Opus 4';
+  if (id.startsWith('claude-sonnet-4'))      return 'Claude Sonnet 4';
+  if (id.startsWith('claude-3-5-haiku'))     return 'Claude Haiku 3.5';
+  if (id.startsWith('claude-3-5-sonnet'))    return 'Claude Sonnet 3.5';
+  if (id.startsWith('claude-3-opus'))        return 'Claude Opus 3';
   // OpenAI
   if (id === 'gpt-4o')        return 'GPT-4o';
   if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
@@ -50,8 +53,7 @@ function friendlyModelName(id: string): string {
   if (id.startsWith('o1'))    return id.toUpperCase();
   if (id.startsWith('o3'))    return id.toUpperCase();
   // Google
-  if (id.startsWith('gemini-2'))  return id.replace('gemini-', 'Gemini ');
-  if (id.startsWith('gemini-1'))  return id.replace('gemini-', 'Gemini ');
+  if (id.startsWith('gemini-'))return id.replace('gemini-', 'Gemini ');
   // Fallback: just show the ID
   return id;
 }
