@@ -106,6 +106,8 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   async function checkNeedsSetup(): Promise<boolean> {
     if (setupComplete) return false;
     if (!setup) return false;
+    // Vault must exist for the app to function
+    if (setup.vaultExists && !(await setup.vaultExists())) return true;
     const agentName = setup.getAgentName?.() ?? 'Auxiora';
     const hasSoul = setup.hasSoulFile ? await setup.hasSoulFile() : false;
     return agentName === 'Auxiora' && !hasSoul;

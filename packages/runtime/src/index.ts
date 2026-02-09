@@ -4,7 +4,7 @@ import { ProviderFactory, type StreamChunk, type ProviderMetadata, readClaudeCli
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
-import { Vault } from '@auxiora/vault';
+import { Vault, vaultExists } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 import {
   getWorkspacePath,
@@ -439,6 +439,7 @@ export class Auxiora {
                 return false;
               }
             },
+            vaultExists: () => vaultExists(),
           },
         },
         config: {
