@@ -585,8 +585,9 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   // Channels
   router.get('/channels', (req: Request, res: Response) => {
     const connections = deps.getConnections();
-    const channelTypes = [...new Set(connections.map(c => c.channelType))];
-    res.json({ data: { connected: channelTypes } });
+    const connectedTypes = [...new Set(connections.map(c => c.channelType))];
+    const configured = deps.getConfiguredChannels?.() ?? [];
+    res.json({ data: { connected: connectedTypes, configured } });
   });
 
   router.post('/channels', async (req: Request, res: Response) => {

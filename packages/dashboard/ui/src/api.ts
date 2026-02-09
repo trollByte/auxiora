@@ -92,7 +92,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, endpoint }),
     }),
-  getChannels: () => fetchApi<{ data: { connected: string[] } }>('/channels'),
+  getChannels: () => fetchApi<{ data: { connected: string[]; configured: Array<{ type: string; enabled: boolean }> } }>('/channels'),
   updateChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>
     fetchApi<{ success: boolean }>('/channels', {
       method: 'POST',

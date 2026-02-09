@@ -49,6 +49,7 @@ export interface DashboardDeps {
     update?(id: string, updates: Record<string, unknown>): Promise<any>;
     delete(id: string): Promise<boolean>;
   };
+  getConfiguredChannels?: () => Array<{ type: string; enabled: boolean }>;
   getConnections: () => Array<{
     id: string;
     authenticated: boolean;

@@ -203,7 +203,16 @@ export class Auxiora {
     await this.initializeModes();
 
     // Initialize gateway
-    this.gateway = new Gateway({ config: this.config });
+    this.gateway = new Gateway({
+      config: this.config,
+      needsSetup: async () => {
+        if (!(await vaultExists())) return true;
+        const name = this.config.agent?.name ?? 'Auxiora';
+        let hasSoul = false;
+        try { await fs.access(getSoulPath()); hasSoul = true; } catch {}
+        return name === 'Auxiora' && !hasSoul;
+      },
+    });
     this.gateway.onMessage(this.handleMessage.bind(this));
 
     // Initialize behavior system
@@ -306,6 +315,12 @@ export class Auxiora {
           vault: this.vault,
           behaviors: this.behaviors,
           webhooks: this.webhookManager,
+          getConfiguredChannels: () => {
+            const ch = this.config.channels;
+            return Object.entries(ch)
+              .filter(([, v]) => typeof v === 'object' && v !== null)
+              .map(([type, v]) => ({ type, enabled: !!(v as any).enabled }));
+          },
           getConnections: () => this.gateway.getConnections(),
           getAuditEntries: async (limit?: number) => {
             const auditLogger = getAuditLogger();

@@ -19,14 +19,18 @@ interface ChannelState {
 export function SettingsChannels() {
   const { data } = useApi(() => api.getChannels(), []);
   const connected = data?.data?.connected ?? [];
+  const configured = data?.data?.configured ?? [];
 
   const [channelStates, setChannelStates] = useState<Record<string, ChannelState>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const getState = (type: string): ChannelState =>
-    channelStates[type] ?? { enabled: connected.includes(type), credentials: {} };
+  const getState = (type: string): ChannelState => {
+    if (channelStates[type]) return channelStates[type];
+    const conf = configured.find(c => c.type === type);
+    return { enabled: conf?.enabled ?? false, credentials: {} };
+  };
 
   const toggleChannel = (type: string) => {
     const current = getState(type);
@@ -84,7 +88,10 @@ export function SettingsChannels() {
               <div className="channel-card-header">
                 <h3>{ch.label}</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {isConnected && <span className="badge badge-green">Connected</span>}
+                  {isConnected
+                    ? <span className="badge badge-green">Connected</span>
+                    : state.enabled && <span className="badge badge-yellow">Configured</span>
+                  }
                   <div
                     className={`toggle${state.enabled ? ' active' : ''}`}
                     onClick={() => toggleChannel(ch.type)}

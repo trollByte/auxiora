@@ -20,6 +20,7 @@ export type { ClientConnection, WsMessage };
 
 export interface GatewayOptions {
   config: Config;
+  needsSetup?: () => Promise<boolean>;
 }
 
 export class Gateway {
@@ -33,9 +34,11 @@ export class Gateway {
   private messageHandler?: (client: ClientConnection, message: WsMessage) => Promise<void>;
   private voiceHandler?: (client: ClientConnection, type: string, payload: unknown, audioBuffer?: Buffer) => Promise<void>;
   private audioBuffers = new Map<string, { frames: Buffer[]; size: number }>();
+  private needsSetup?: () => Promise<boolean>;
 
   constructor(options: GatewayOptions) {
     this.config = options.config;
+    this.needsSetup = options.needsSetup;
     this.app = express();
     this.server = createServer(this.app);
     this.wss = new WebSocketServer({ server: this.server });
@@ -173,9 +176,9 @@ export class Gateway {
       res.json({ allowed });
     });
 
-    // Serve WebChat static files (placeholder - will be implemented)
+    // Root redirects to dashboard
     this.app.get('/', (req: Request, res: Response) => {
-      res.send(this.getWebChatHtml());
+      res.redirect('/dashboard');
     });
   }
 
@@ -644,12 +647,6 @@ export class Gateway {
   </div>
 
   <script>
-    // Redirect to setup wizard if first-time setup is needed
-    fetch('/api/v1/dashboard/setup/status')
-      .then(r => r.json())
-      .then(s => { if (s.needsSetup) location.href = '/dashboard/setup'; })
-      .catch(() => {});
-
     const messages = document.getElementById('messages');
     const input = document.getElementById('input');
     const send = document.getElementById('send');

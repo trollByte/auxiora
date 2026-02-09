@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import { UnlockVault } from './pages/UnlockVault';
 import { Overview } from './pages/Overview';
 import { Chat } from './pages/Chat';
 import { Behaviors } from './pages/Behaviors';
@@ -24,6 +25,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/unlock" element={<UnlockVault />} />
       <Route path="/setup" element={<SetupWelcome />} />
       <Route path="/setup/vault" element={<SetupVault />} />
       <Route path="/setup/dashboard-password" element={<SetupDashboardPassword />} />

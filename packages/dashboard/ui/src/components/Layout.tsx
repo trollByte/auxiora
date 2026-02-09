@@ -13,7 +13,11 @@ export function Layout() {
   useEffect(() => {
     api.getSetupStatus()
       .then(status => {
-        if (status.needsSetup) navigate('/setup', { replace: true });
+        if (status.needsSetup) {
+          navigate('/setup', { replace: true });
+        } else if (!status.vaultUnlocked) {
+          navigate('/unlock', { replace: true });
+        }
       })
       .catch(() => {})
       .finally(() => setChecking(false));
