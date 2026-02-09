@@ -519,11 +519,14 @@ export class Auxiora {
                   mgr.buildCustom(config as unknown as import('@auxiora/personality').SoulConfig),
                 getActiveTemplate: async () => {
                   const soulPath = path.join(getWorkspacePath(), 'SOUL.md');
-                  let current: string;
-                  try { current = await fs.readFile(soulPath, 'utf-8'); } catch { return null; }
-                  const templates = await mgr.listTemplates();
-                  const matched = templates.find(t => t.soulContent.trim() === current.trim());
-                  return matched ? { id: matched.id, name: matched.name } : null;
+                  let content: string;
+                  try { content = await fs.readFile(soulPath, 'utf-8'); } catch { return null; }
+                  // Read template ID from frontmatter
+                  const match = content.match(/^---\n[\s\S]*?template:\s*(\S+)/);
+                  if (!match) return null;
+                  const templateId = match[1];
+                  const template = await mgr.getTemplate(templateId);
+                  return template ? { id: template.id, name: template.name } : null;
                 },
               };
             })(),

@@ -49,9 +49,12 @@ export class PersonalityManager {
     if (!template) {
       throw new Error(`Template not found: ${id}`);
     }
+    // Inject template ID into frontmatter so we can identify it later
+    let content = template.soulContent;
+    content = content.replace(/^---\n/, `---\ntemplate: ${id}\n`);
     const soulPath = path.join(this.workspaceDir, 'SOUL.md');
     await fs.mkdir(this.workspaceDir, { recursive: true });
-    await fs.writeFile(soulPath, template.soulContent, 'utf-8');
+    await fs.writeFile(soulPath, content, 'utf-8');
   }
 
   /**

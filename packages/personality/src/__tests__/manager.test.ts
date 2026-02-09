@@ -78,7 +78,8 @@ describe('PersonalityManager', () => {
     await manager.applyTemplate('test');
 
     const written = await fs.readFile(path.join(workspaceDir, 'SOUL.md'), 'utf-8');
-    expect(written).toBe(soulContent);
+    // applyTemplate injects a template ID into the frontmatter
+    expect(written).toBe(`---\ntemplate: test\nname: TestBot\npronouns: they/them\n---\n`);
   });
 
   it('should throw when applying nonexistent template', async () => {
