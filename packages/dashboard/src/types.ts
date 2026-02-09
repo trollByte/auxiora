@@ -236,7 +236,7 @@ export interface DashboardDeps {
   };
   // --- Chat session history ---
   sessions?: {
-    getWebchatMessages(): Array<{ id: string; role: string; content: string; timestamp: number }>;
+    getWebchatMessages(): Promise<Array<{ id: string; role: string; content: string; timestamp: number }>>;
   };
 }
 

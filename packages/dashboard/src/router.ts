@@ -456,12 +456,12 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   });
 
   // Chat history for the webchat session
-  router.get('/session/messages', (req: Request, res: Response) => {
+  router.get('/session/messages', async (req: Request, res: Response) => {
     if (!deps.sessions) {
       res.json({ data: [] });
       return;
     }
-    const messages = deps.sessions.getWebchatMessages();
+    const messages = await deps.sessions.getWebchatMessages();
     res.json({ data: messages });
   });
 

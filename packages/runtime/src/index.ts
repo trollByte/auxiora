@@ -420,11 +420,11 @@ export class Auxiora {
             importAll: async (data: { memories: any[] }) => this.memoryStore ? this.memoryStore.importAll(data) : { imported: 0, skipped: 0 },
           },
           sessions: {
-            getWebchatMessages: () => {
-              // Find the webchat session (senderId undefined, channelType webchat)
-              const all = this.sessions.getActiveSessions();
-              const webchat = all.find(s => s.metadata.channelType === 'webchat');
-              if (!webchat) return [];
+            getWebchatMessages: async () => {
+              // Use getOrCreate so the session is loaded from disk if not yet in memory
+              const webchat = await this.sessions.getOrCreate('webchat', {
+                channelType: 'webchat',
+              });
               return webchat.messages
                 .filter(m => m.role === 'user' || m.role === 'assistant')
                 .map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
