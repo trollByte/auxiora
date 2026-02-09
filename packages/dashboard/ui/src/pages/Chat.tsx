@@ -347,14 +347,14 @@ export function Chat() {
           <span className="chat-status-left">
             <span className="chat-status-dot" data-connected={connected} />
             <span className="chat-agent-name">{agentName}</span>
+            <span className="chat-status-sep" />
+            <span className="chat-status-label">Mode: <strong>{modeLabel}</strong></span>
             {templateName && (
-              <span className="chat-personality-badge" title="Active personality template">
-                {templateName}
-              </span>
+              <>
+                <span className="chat-status-sep" />
+                <span className="chat-status-label">Personality: <strong>{templateName}</strong></span>
+              </>
             )}
-            <span className="chat-mode-badge" title="Current personality mode">
-              {modeLabel}
-            </span>
           </span>
           <div className="model-selector">
             <select
