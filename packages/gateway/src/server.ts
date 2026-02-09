@@ -632,6 +632,12 @@ export class Gateway {
   </div>
 
   <script>
+    // Redirect to setup wizard if first-time setup is needed
+    fetch('/api/v1/dashboard/setup/status')
+      .then(r => r.json())
+      .then(s => { if (s.needsSetup) location.href = '/dashboard/setup'; })
+      .catch(() => {});
+
     const messages = document.getElementById('messages');
     const input = document.getElementById('input');
     const send = document.getElementById('send');
