@@ -29,7 +29,7 @@ body {
 }
 
 .sidebar {
-  width: 220px;
+  width: 240px;
   background: var(--bg-secondary);
   padding: 1.5rem 1rem;
   display: flex;
@@ -472,3 +472,204 @@ body {
 .setup-complete-buttons button {
   flex: 1;
 }
+
+/* Grouped sidebar navigation */
+.nav-group { margin-bottom: 1.25rem; }
+.nav-group-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  padding: 0 0.75rem;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Channel status dots */
+.channel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.channel-dot.connected { background: var(--success); }
+.channel-dot.disconnected { background: var(--text-secondary); opacity: 0.4; }
+
+/* Status grid (overview page) */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.status-card {
+  background: var(--bg-card);
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.status-card h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.status-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.status-card .sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Chat container */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 4rem);
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0;
+}
+
+.chat-message {
+  margin-bottom: 1rem;
+  max-width: 80%;
+}
+
+.chat-message.user {
+  margin-left: auto;
+  background: var(--accent);
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius) var(--radius) 0 var(--radius);
+}
+
+.chat-message.assistant {
+  background: var(--bg-card);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius) var(--radius) var(--radius) 0;
+  border: 1px solid var(--border);
+}
+
+.chat-message.error {
+  background: rgba(255, 74, 74, 0.1);
+  color: var(--danger);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input-area input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+}
+
+.chat-input-area button {
+  padding: 0.6rem 1.25rem;
+  background: var(--accent);
+  border: none;
+  color: white;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+}
+.chat-input-area button:hover { background: var(--accent-hover); }
+.chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.chat-status {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 0.5rem;
+}
+
+/* Settings forms */
+.settings-form {
+  max-width: 560px;
+}
+
+.settings-form label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.settings-form input, .settings-form select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+}
+
+.settings-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child { border-bottom: none; }
+
+.settings-section h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.masked-key {
+  font-family: monospace;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.settings-success {
+  color: var(--success);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.settings-btn {
+  padding: 0.6rem 1.5rem;
+  background: var(--accent);
+  border: none;
+  color: white;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+}
+.settings-btn:hover { background: var(--accent-hover); }
+.settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }

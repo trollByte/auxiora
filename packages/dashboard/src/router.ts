@@ -483,6 +483,205 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     });
   });
 
+  // --- Settings routes (authenticated) ---
+
+  // Identity
+  router.get('/identity', (req: Request, res: Response) => {
+    const name = setup?.getAgentName?.() ?? 'Auxiora';
+    const pronouns = setup?.getAgentPronouns?.() ?? 'they/them';
+    res.json({ data: { name, pronouns } });
+  });
+
+  router.post('/identity', async (req: Request, res: Response) => {
+    if (!setup?.saveConfig) {
+      res.status(503).json({ error: 'Setup not available' });
+      return;
+    }
+    const { name, pronouns } = req.body as { name?: string; pronouns?: string };
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'Agent name is required' });
+      return;
+    }
+    await setup.saveConfig({
+      agent: { name, ...(pronouns ? { pronouns } : {}) },
+    });
+    void audit('settings.identity', { name, pronouns });
+    res.json({ success: true });
+  });
+
+  // Personality templates
+  router.get('/personality/templates', async (req: Request, res: Response) => {
+    if (!setup?.personality) {
+      res.json({ data: [] });
+      return;
+    }
+    const templates = await setup.personality.listTemplates();
+    res.json({ data: templates });
+  });
+
+  router.post('/personality', async (req: Request, res: Response) => {
+    if (!setup?.personality) {
+      res.status(503).json({ error: 'Personality not available' });
+      return;
+    }
+    const { template } = req.body as { template?: string };
+    if (!template) {
+      res.status(400).json({ error: 'Template is required' });
+      return;
+    }
+    try {
+      await setup.personality.applyTemplate(template);
+      void audit('settings.personality', { template });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      res.status(404).json({ error: msg });
+    }
+  });
+
+  // Provider
+  router.post('/provider', async (req: Request, res: Response) => {
+    const { provider, apiKey, endpoint } = req.body as { provider?: string; apiKey?: string; endpoint?: string };
+    if (!provider) {
+      res.status(400).json({ error: 'Provider is required' });
+      return;
+    }
+    if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'ollama') {
+      res.status(400).json({ error: 'Provider must be "anthropic", "openai", or "ollama"' });
+      return;
+    }
+    if (provider === 'ollama') {
+      if (setup?.saveConfig) {
+        await setup.saveConfig({
+          provider: { primary: 'ollama', ollama: { baseUrl: endpoint || 'http://localhost:11434' } },
+        });
+      }
+      void audit('settings.provider', { provider });
+      res.json({ success: true });
+      return;
+    }
+    if (!apiKey) {
+      res.status(400).json({ error: 'API key is required for this provider' });
+      return;
+    }
+    const vaultKey = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+    try {
+      await deps.vault.add(vaultKey, apiKey);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to store API key';
+      res.status(400).json({ error: msg });
+      return;
+    }
+    if (setup?.saveConfig) {
+      await setup.saveConfig({ provider: { primary: provider } });
+    }
+    if (setup?.onSetupComplete) {
+      await setup.onSetupComplete();
+    }
+    void audit('settings.provider', { provider });
+    res.json({ success: true });
+  });
+
+  // Channels
+  router.get('/channels', (req: Request, res: Response) => {
+    const connections = deps.getConnections();
+    const channelTypes = [...new Set(connections.map(c => c.channelType))];
+    res.json({ data: { connected: channelTypes } });
+  });
+
+  router.post('/channels', async (req: Request, res: Response) => {
+    if (!setup?.saveConfig) {
+      res.status(503).json({ error: 'Setup not available' });
+      return;
+    }
+
+    const CREDENTIAL_VAULT_KEYS: Record<string, Record<string, string>> = {
+      discord: { botToken: 'DISCORD_BOT_TOKEN' },
+      telegram: { botToken: 'TELEGRAM_BOT_TOKEN' },
+      slack: { botToken: 'SLACK_BOT_TOKEN', appToken: 'SLACK_APP_TOKEN' },
+      matrix: { accessToken: 'MATRIX_ACCESS_TOKEN' },
+      signal: {},
+      teams: { appPassword: 'TEAMS_APP_PASSWORD' },
+      whatsapp: { accessToken: 'WHATSAPP_ACCESS_TOKEN', verifyToken: 'WHATSAPP_VERIFY_TOKEN' },
+      twilio: { accountSid: 'TWILIO_ACCOUNT_SID', authToken: 'TWILIO_AUTH_TOKEN' },
+      email: { password: 'EMAIL_PASSWORD' },
+    };
+
+    const { channels } = req.body as { channels?: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }> };
+    if (!Array.isArray(channels)) {
+      res.status(400).json({ error: 'Channels must be an array' });
+      return;
+    }
+
+    const channelConfig: Record<string, { enabled: boolean }> = {};
+    for (const ch of channels) {
+      channelConfig[ch.type] = { enabled: ch.enabled };
+      if (ch.credentials) {
+        const keyMap = CREDENTIAL_VAULT_KEYS[ch.type];
+        if (keyMap) {
+          for (const [credKey, credValue] of Object.entries(ch.credentials)) {
+            const vk = keyMap[credKey];
+            if (vk && credValue && typeof credValue === 'string') {
+              try {
+                await deps.vault.add(vk, credValue);
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Failed to store credential';
+                res.status(400).json({ error: msg });
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    await setup.saveConfig({ channels: channelConfig });
+    void audit('settings.channels', { channels: channels.map(c => c.type) });
+    res.json({ success: true });
+  });
+
+  // Security: Change dashboard password
+  router.post('/security/dashboard-password', async (req: Request, res: Response) => {
+    const { oldPassword, newPassword } = req.body as { oldPassword?: string; newPassword?: string };
+    if (!oldPassword || !newPassword) {
+      res.status(400).json({ error: 'Both oldPassword and newPassword are required' });
+      return;
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      res.status(400).json({ error: 'New password must be at least 8 characters' });
+      return;
+    }
+    if (!verifyPassword(oldPassword)) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+    try {
+      await deps.vault.add('DASHBOARD_PASSWORD', newPassword);
+      void audit('settings.dashboard_password_changed', {});
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to update password';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // Security: Change vault password
+  router.post('/security/vault-password', async (req: Request, res: Response) => {
+    const { newPassword } = req.body as { newPassword?: string };
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      res.status(400).json({ error: 'New password must be at least 8 characters' });
+      return;
+    }
+    try {
+      await deps.vault.changePassword(newPassword);
+      void audit('settings.vault_password_changed', {});
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to change vault password';
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Plugins
   router.get('/plugins', (req: Request, res: Response) => {
     const plugins = deps.getPlugins ? deps.getPlugins() : [];

@@ -25,6 +25,7 @@ export interface SetupDeps {
   };
   saveConfig?: (updates: Record<string, unknown>) => Promise<void>;
   getAgentName?: () => string;
+  getAgentPronouns?: () => string;
   hasSoulFile?: () => Promise<boolean>;
   vaultExists?: () => Promise<boolean>;
   onSetupComplete?: () => Promise<void>;
@@ -36,6 +37,7 @@ export interface DashboardDeps {
     has(name: string): boolean;
     add(name: string, value: string): Promise<void>;
     unlock(password: string): Promise<void>;
+    changePassword(newPassword: string): Promise<void>;
   };
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;

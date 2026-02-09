@@ -79,6 +79,13 @@ export type AuditEventType =
   | 'setup.provider'
   | 'setup.channels'
   | 'setup.complete'
+  // Settings (post-setup configuration)
+  | 'settings.identity'
+  | 'settings.personality'
+  | 'settings.provider'
+  | 'settings.channels'
+  | 'settings.dashboard_password_changed'
+  | 'settings.vault_password_changed'
   | 'system.error'
   // Trust / Autonomy (Phase 12)
   | 'trust.level_changed'

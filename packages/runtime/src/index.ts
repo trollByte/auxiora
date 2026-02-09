@@ -431,6 +431,7 @@ export class Auxiora {
               this.config = await loadConfig();
             },
             getAgentName: () => this.config.agent?.name ?? 'Auxiora',
+            getAgentPronouns: () => this.config.agent?.pronouns ?? 'they/them',
             hasSoulFile: async () => {
               try {
                 await fs.access(getSoulPath());

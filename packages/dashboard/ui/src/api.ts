@@ -71,4 +71,41 @@ export const api = {
     fetchApi<{ success: boolean }>('/setup/channels', { method: 'POST', body: JSON.stringify({ channels }) }),
   completeSetup: () =>
     fetchApi<{ success: boolean }>('/setup/complete', { method: 'POST' }),
+
+  // Settings API
+  getModels: () => fetchApi<{ providers: any[] }>('/models'),
+  getIdentity: () => fetchApi<{ data: { name: string; pronouns: string } }>('/identity'),
+  updateIdentity: (name: string, pronouns: string) =>
+    fetchApi<{ success: boolean }>('/identity', {
+      method: 'POST',
+      body: JSON.stringify({ name, pronouns }),
+    }),
+  getTemplates: () =>
+    fetchApi<{ data: Array<{ id: string; name: string; description: string; preview: string }> }>('/personality/templates'),
+  updatePersonality: (template: string) =>
+    fetchApi<{ success: boolean }>('/personality', {
+      method: 'POST',
+      body: JSON.stringify({ template }),
+    }),
+  updateProvider: (provider: string, apiKey?: string, endpoint?: string) =>
+    fetchApi<{ success: boolean }>('/provider', {
+      method: 'POST',
+      body: JSON.stringify({ provider, apiKey, endpoint }),
+    }),
+  getChannels: () => fetchApi<{ data: { connected: string[] } }>('/channels'),
+  updateChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>
+    fetchApi<{ success: boolean }>('/channels', {
+      method: 'POST',
+      body: JSON.stringify({ channels }),
+    }),
+  changeDashboardPassword: (oldPassword: string, newPassword: string) =>
+    fetchApi<{ success: boolean }>('/security/dashboard-password', {
+      method: 'POST',
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }),
+  changeVaultPassword: (newPassword: string) =>
+    fetchApi<{ success: boolean }>('/security/vault-password', {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    }),
 };

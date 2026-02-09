@@ -1,10 +1,16 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import { Overview } from './pages/Overview';
+import { Chat } from './pages/Chat';
 import { Behaviors } from './pages/Behaviors';
 import { Webhooks } from './pages/Webhooks';
-import { Sessions } from './pages/Sessions';
 import { AuditLog } from './pages/AuditLog';
+import { SettingsIdentity } from './pages/settings/Identity';
+import { SettingsPersonality } from './pages/settings/Personality';
+import { SettingsProvider } from './pages/settings/Provider';
+import { SettingsChannels } from './pages/settings/Channels';
+import { SettingsSecurity } from './pages/settings/Security';
 import { SetupWelcome } from './pages/SetupWelcome';
 import { SetupVault } from './pages/SetupVault';
 import { SetupDashboardPassword } from './pages/SetupDashboardPassword';
@@ -27,10 +33,16 @@ export function App() {
       <Route path="/setup/channels" element={<SetupChannels />} />
       <Route path="/setup/complete" element={<SetupComplete />} />
       <Route element={<Layout />}>
-        <Route index element={<Behaviors />} />
+        <Route index element={<Overview />} />
+        <Route path="chat" element={<Chat />} />
+        <Route path="behaviors" element={<Behaviors />} />
         <Route path="webhooks" element={<Webhooks />} />
-        <Route path="sessions" element={<Sessions />} />
-        <Route path="audit" element={<AuditLog />} />
+        <Route path="settings/identity" element={<SettingsIdentity />} />
+        <Route path="settings/personality" element={<SettingsPersonality />} />
+        <Route path="settings/provider" element={<SettingsProvider />} />
+        <Route path="settings/channels" element={<SettingsChannels />} />
+        <Route path="settings/security" element={<SettingsSecurity />} />
+        <Route path="settings/audit" element={<AuditLog />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

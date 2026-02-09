@@ -4,6 +4,8 @@ import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
 
+const CHANNEL_TYPES = ['webchat', 'discord', 'telegram', 'slack', 'twilio', 'matrix', 'signal', 'teams', 'whatsapp', 'email'] as const;
+
 export function Layout() {
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
@@ -18,16 +20,23 @@ export function Layout() {
   }, []);
 
   const { data: status, refresh } = useApi(() => api.getStatus(), []);
-  usePolling(refresh);
+  const { data: sessions, refresh: refreshSessions } = useApi(() => api.getSessions(), []);
+  usePolling(() => { refresh(); refreshSessions(); });
 
   if (checking) return null;
 
-  const navItems = [
-    { to: '/', label: 'Behaviors' },
-    { to: '/webhooks', label: 'Webhooks' },
-    { to: '/sessions', label: 'Sessions' },
-    { to: '/audit', label: 'Audit Log' },
-  ];
+  // Derive connected channel types from active sessions
+  const connectedChannels = new Set<string>();
+  if (sessions?.data) {
+    for (const s of sessions.data) {
+      if (s.channelType) connectedChannels.add(s.channelType);
+    }
+  }
+
+  // Only show channels that have connections or are commonly configured
+  const visibleChannels = CHANNEL_TYPES.filter(ch =>
+    connectedChannels.has(ch) || ch === 'webchat'
+  );
 
   return (
     <div className="layout">
@@ -36,21 +45,84 @@ export function Layout() {
           <h1>Auxiora</h1>
         </div>
         <ul className="nav-list">
-          {navItems.map((item) => (
-            <li key={item.to}>
-              <NavLink to={item.to} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
-                {item.label}
+          {/* MAIN */}
+          <div className="nav-group">
+            <div className="nav-group-label">Main</div>
+            <li>
+              <NavLink to="/chat" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Chat
               </NavLink>
             </li>
-          ))}
-        </ul>
-        {status?.data && (
-          <div className="status-bar">
-            <div className="status-item">Connections: {status.data.connections}</div>
-            <div className="status-item">Behaviors: {status.data.activeBehaviors}/{status.data.totalBehaviors}</div>
-            <div className="status-item">Webhooks: {status.data.webhooks}</div>
+            <li>
+              <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
+                Dashboard
+              </NavLink>
+            </li>
           </div>
-        )}
+
+          {/* CHANNELS */}
+          <div className="nav-group">
+            <div className="nav-group-label">Channels</div>
+            {visibleChannels.map(ch => (
+              <li key={ch}>
+                <NavLink to="/settings/channels" className="nav-link">
+                  {ch.charAt(0).toUpperCase() + ch.slice(1)}
+                  <span className={`channel-dot ${connectedChannels.has(ch) ? 'connected' : 'disconnected'}`} />
+                </NavLink>
+              </li>
+            ))}
+          </div>
+
+          {/* MANAGEMENT */}
+          <div className="nav-group">
+            <div className="nav-group-label">Management</div>
+            <li>
+              <NavLink to="/behaviors" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Behaviors
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/webhooks" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Webhooks
+              </NavLink>
+            </li>
+          </div>
+
+          {/* SETTINGS */}
+          <div className="nav-group">
+            <div className="nav-group-label">Settings</div>
+            <li>
+              <NavLink to="/settings/identity" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Identity
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/personality" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Personality
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/provider" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Provider
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/channels" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Channels
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/security" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Security
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/audit" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Audit Log
+              </NavLink>
+            </li>
+          </div>
+        </ul>
         <button className="logout-btn" onClick={() => api.logout().then(() => { window.location.href = '/dashboard/login'; })}>
           Logout
         </button>
