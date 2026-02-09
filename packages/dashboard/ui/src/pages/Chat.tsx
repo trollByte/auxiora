@@ -154,6 +154,10 @@ export function Chat() {
         })));
       }
       setHistoryLoaded(true);
+      // Jump to bottom instantly after history loads (no smooth animation)
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView();
+      });
     }).catch(() => {
       setHistoryLoaded(true);
     });
