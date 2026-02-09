@@ -278,28 +278,36 @@ export class TeamsAdapter implements ChannelAdapter {
   }
 
   async startTyping(channelId: string): Promise<() => void> {
+    let token: string;
     try {
-      const token = await this.getAccessToken();
-      const serviceUrl = 'https://smba.trafficmanager.net/teams/';
-      const url = `${serviceUrl}v3/conversations/${encodeURIComponent(channelId)}/activities`;
-
-      // Send typing activity immediately, repeat every 3s
-      const sendTyping = () =>
-        fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ type: 'typing' }),
-        }).catch(() => {});
-
-      await sendTyping();
-      const interval = setInterval(sendTyping, 3000);
-      return () => clearInterval(interval);
+      token = await this.getAccessToken();
     } catch {
       return () => {};
     }
+    const serviceUrl = 'https://smba.trafficmanager.net/teams/';
+    const url = `${serviceUrl}v3/conversations/${encodeURIComponent(channelId)}/activities`;
+
+    // Send typing activity immediately, repeat every 3s
+    let stopped = false;
+    const sendTyping = () =>
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'typing' }),
+      }).catch(() => {});
+
+    sendTyping();
+    const interval = setInterval(() => {
+      if (stopped) return;
+      sendTyping();
+    }, 3000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
   }
 
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {

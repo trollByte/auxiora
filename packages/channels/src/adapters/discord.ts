@@ -223,20 +223,24 @@ export class DiscordAdapter implements ChannelAdapter {
   }
 
   async startTyping(channelId: string): Promise<() => void> {
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      if (!channel || !channel.isTextBased() || !('sendTyping' in channel)) {
-        return () => {};
-      }
-      // Send immediately, then repeat every 8s (Discord typing expires after ~10s)
-      await channel.sendTyping();
-      const interval = setInterval(() => {
-        channel.sendTyping().catch(() => {});
-      }, 8000);
-      return () => clearInterval(interval);
-    } catch {
+    // Use cache (populated by messageCreate) to avoid extra API call
+    const channel = this.client.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased() || !('sendTyping' in channel)) {
       return () => {};
     }
+    // Send immediately, then repeat every 8s (Discord typing expires after ~10s)
+    let stopped = false;
+    channel.sendTyping().catch((e: Error) => {
+      audit('channel.error', { channelType: 'discord', action: 'typing', error: e.message });
+    });
+    const interval = setInterval(() => {
+      if (stopped) return;
+      channel.sendTyping().catch(() => {});
+    }, 8000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
   }
 
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {

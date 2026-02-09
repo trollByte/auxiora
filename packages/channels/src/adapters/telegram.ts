@@ -178,16 +178,19 @@ export class TelegramAdapter implements ChannelAdapter {
 
   async startTyping(channelId: string): Promise<() => void> {
     const chatId = parseInt(channelId, 10);
-    try {
-      // Send immediately, then repeat every 4s (Telegram typing expires after ~5s)
-      await this.bot.api.sendChatAction(chatId, 'typing');
-      const interval = setInterval(() => {
-        this.bot.api.sendChatAction(chatId, 'typing').catch(() => {});
-      }, 4000);
-      return () => clearInterval(interval);
-    } catch {
-      return () => {};
-    }
+    // Send immediately, then repeat every 4s (Telegram typing expires after ~5s)
+    let stopped = false;
+    this.bot.api.sendChatAction(chatId, 'typing').catch((e: Error) => {
+      audit('channel.error', { channelType: 'telegram', action: 'typing', error: e.message });
+    });
+    const interval = setInterval(() => {
+      if (stopped) return;
+      this.bot.api.sendChatAction(chatId, 'typing').catch(() => {});
+    }, 4000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
   }
 
   // Webhook handler for serverless deployments

@@ -337,30 +337,33 @@ export class MatrixAdapter implements ChannelAdapter {
 
   async startTyping(channelId: string): Promise<() => void> {
     const userId = this.config.userId;
-    const path = `/rooms/${encodeURIComponent(channelId)}/typing/${encodeURIComponent(userId)}`;
+    const typingPath = `/rooms/${encodeURIComponent(channelId)}/typing/${encodeURIComponent(userId)}`;
 
-    try {
-      // Send typing with 30s timeout, repeat every 25s
-      const sendTyping = () =>
-        this.matrixFetch(path, {
-          method: 'PUT',
-          body: JSON.stringify({ typing: true, timeout: 30000 }),
-        }).catch(() => {});
+    // Send typing with 30s timeout, repeat every 25s
+    let stopped = false;
+    const sendTyping = () =>
+      this.matrixFetch(typingPath, {
+        method: 'PUT',
+        body: JSON.stringify({ typing: true, timeout: 30000 }),
+      }).catch((e: Error) => {
+        audit('channel.error', { channelType: 'matrix', action: 'typing', error: e.message });
+      });
 
-      await sendTyping();
-      const interval = setInterval(sendTyping, 25000);
+    sendTyping();
+    const interval = setInterval(() => {
+      if (stopped) return;
+      sendTyping();
+    }, 25000);
 
-      return () => {
-        clearInterval(interval);
-        // Send stop-typing signal
-        this.matrixFetch(path, {
-          method: 'PUT',
-          body: JSON.stringify({ typing: false }),
-        }).catch(() => {});
-      };
-    } catch {
-      return () => {};
-    }
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      // Send stop-typing signal
+      this.matrixFetch(typingPath, {
+        method: 'PUT',
+        body: JSON.stringify({ typing: false }),
+      }).catch(() => {});
+    };
   }
 
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {
