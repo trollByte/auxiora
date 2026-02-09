@@ -8,6 +8,7 @@ const CHANNEL_TYPES = ['webchat', 'discord', 'telegram', 'slack', 'twilio', 'mat
 
 export function Layout() {
   const [checking, setChecking] = useState(true);
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,15 +18,18 @@ export function Layout() {
           navigate('/setup', { replace: true });
         } else if (!status.vaultUnlocked) {
           navigate('/unlock', { replace: true });
+        } else {
+          setReady(true);
         }
       })
       .catch(() => {})
       .finally(() => setChecking(false));
   }, []);
 
-  const { data: status, refresh } = useApi(() => api.getStatus(), []);
-  const { data: sessions, refresh: refreshSessions } = useApi(() => api.getSessions(), []);
-  usePolling(() => { refresh(); refreshSessions(); });
+  // Only make authenticated calls once vault/setup check passes
+  const { data: status, refresh } = useApi(() => ready ? api.getStatus() : Promise.resolve(null), [ready]);
+  const { data: sessions, refresh: refreshSessions } = useApi(() => ready ? api.getSessions() : Promise.resolve(null), [ready]);
+  usePolling(() => { if (ready) { refresh(); refreshSessions(); } });
 
   if (checking) return null;
 

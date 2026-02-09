@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 
@@ -6,7 +6,22 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
+
+  // Check if vault needs unlocking before allowing login
+  useEffect(() => {
+    api.getSetupStatus()
+      .then(status => {
+        if (status.needsSetup) {
+          navigate('/setup', { replace: true });
+        } else if (!status.vaultUnlocked) {
+          navigate('/unlock', { replace: true });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +36,8 @@ export function Login() {
       setLoading(false);
     }
   };
+
+  if (checking) return null;
 
   return (
     <div className="login-page">
