@@ -73,8 +73,13 @@ function renderMarkdown(text: string): string {
 
   // Step 2: Apply markdown patterns (only our safe transforms produce HTML)
   html = html
-    // Code blocks (``` ... ```)
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // Code blocks (``` ... ```) — with optional language label header
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang: string, code: string) => {
+      const header = lang
+        ? `<div class="code-header"><span class="code-lang">${lang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent)">Copy</button></div>`
+        : `<div class="code-header"><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent)">Copy</button></div>`;
+      return `<div class="code-block">${header}<pre><code>${code}</code></pre></div>`;
+    })
     // Inline code
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     // Headings
@@ -108,6 +113,8 @@ function renderMarkdown(text: string): string {
     .replace(/(<\/h[234]>)<\/p>/g, '$1')
     .replace(/<p>(<pre>)/g, '$1')
     .replace(/(<\/pre>)<\/p>/g, '$1')
+    .replace(/<p>(<div class="code-block">)/g, '$1')
+    .replace(/(<\/div>)<\/p>/g, '$1')
     .replace(/<p>(<ul>)/g, '$1')
     .replace(/(<\/ul>)<\/p>/g, '$1')
     .replace(/<p>(<hr\/>)/g, '$1')
