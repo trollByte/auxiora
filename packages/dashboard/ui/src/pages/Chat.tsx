@@ -14,6 +14,22 @@ interface ModelSelection {
   model: string;
 }
 
+/** Turn a raw model ID into a friendly display name */
+function friendlyModelName(id: string): string {
+  if (id.startsWith('claude-opus-4'))   return 'Claude Opus 4';
+  if (id.startsWith('claude-sonnet-4')) return 'Claude Sonnet 4';
+  if (id.startsWith('claude-3-5-haiku'))return 'Claude Haiku 3.5';
+  if (id.startsWith('claude-3-5-sonnet'))return 'Claude Sonnet 3.5';
+  if (id.startsWith('claude-3-opus'))   return 'Claude Opus 3';
+  if (id === 'gpt-4o')        return 'GPT-4o';
+  if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
+  if (id === 'gpt-4-turbo')   return 'GPT-4 Turbo';
+  if (id.startsWith('o1'))    return id.toUpperCase();
+  if (id.startsWith('o3'))    return id.toUpperCase();
+  if (id.startsWith('gemini-'))return id.replace('gemini-', 'Gemini ');
+  return id;
+}
+
 export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -176,7 +192,7 @@ export function Chat() {
                 <optgroup key={g.provider} label={g.displayName}>
                   {g.models.map(m => (
                     <option key={`${g.provider}/${m}`} value={`${g.provider}/${m}`}>
-                      {m}
+                      {friendlyModelName(m)}
                     </option>
                   ))}
                 </optgroup>

@@ -7,6 +7,7 @@ interface ProviderInfo {
   displayName: string;
   available: boolean;
   models: Record<string, unknown>;
+  credentialSource?: string;
 }
 
 interface RoutingInfo {
@@ -34,6 +35,27 @@ const KNOWN_PROVIDERS = [
   { id: 'openaiCompatible', label: 'OpenAI-Compatible', needsKey: true, needsEndpoint: true },
 ];
 
+/** Turn a raw model ID into a friendly display name */
+function friendlyModelName(id: string): string {
+  // Anthropic
+  if (id.startsWith('claude-opus-4'))   return 'Claude Opus 4';
+  if (id.startsWith('claude-sonnet-4')) return 'Claude Sonnet 4';
+  if (id.startsWith('claude-3-5-haiku'))return 'Claude Haiku 3.5';
+  if (id.startsWith('claude-3-5-sonnet'))return 'Claude Sonnet 3.5';
+  if (id.startsWith('claude-3-opus'))   return 'Claude Opus 3';
+  // OpenAI
+  if (id === 'gpt-4o')        return 'GPT-4o';
+  if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
+  if (id === 'gpt-4-turbo')   return 'GPT-4 Turbo';
+  if (id.startsWith('o1'))    return id.toUpperCase();
+  if (id.startsWith('o3'))    return id.toUpperCase();
+  // Google
+  if (id.startsWith('gemini-2'))  return id.replace('gemini-', 'Gemini ');
+  if (id.startsWith('gemini-1'))  return id.replace('gemini-', 'Gemini ');
+  // Fallback: just show the ID
+  return id;
+}
+
 export function SettingsProvider() {
   const { data, refresh } = useApi(() => api.getModels(), []);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -50,6 +72,9 @@ export function SettingsProvider() {
   const [cardApiKey, setCardApiKey] = useState('');
   const [cardEndpoint, setCardEndpoint] = useState('');
   const [cardModel, setCardModel] = useState('');
+
+  // Active model change state
+  const [activeModelSaving, setActiveModelSaving] = useState(false);
 
   const providers: ProviderInfo[] = data?.providers ?? [];
   const routing: RoutingInfo = data?.routing ?? { enabled: false, primary: '', fallback: '' };
@@ -68,6 +93,20 @@ export function SettingsProvider() {
     if (!p?.models) return [];
     return Object.keys(p.models);
   };
+
+  // Build a flat list of all available models across all providers
+  const allModels: Array<{ provider: string; providerLabel: string; model: string }> = [];
+  for (const p of providers) {
+    if (!p.available || !p.models) continue;
+    const spec = KNOWN_PROVIDERS.find(k => k.id === p.name);
+    for (const modelId of Object.keys(p.models)) {
+      allModels.push({
+        provider: p.name,
+        providerLabel: spec?.label ?? p.displayName ?? p.name,
+        model: modelId,
+      });
+    }
+  }
 
   const handleExpand = (id: string) => {
     if (expanded === id) {
@@ -121,39 +160,105 @@ export function SettingsProvider() {
     }
   };
 
+  const handleActiveModelChange = async (value: string) => {
+    if (!value) return;
+    const [provider, ...rest] = value.split('/');
+    const model = rest.join('/');
+    setActiveModelSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      // Set this as the default model for the provider
+      await api.setProviderModel(provider, model);
+      // If a different provider is selected, also make it primary
+      if (provider !== routing.primary) {
+        await api.updateRouting(provider, routing.primary || undefined);
+      }
+      setSuccess(`Switched to ${friendlyModelName(model)}`);
+      await refresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActiveModelSaving(false);
+    }
+  };
+
   const configuredProviderOptions = providers.filter(p => p.available);
 
   return (
     <div className="page">
       <h2>Providers</h2>
 
-      {/* Routing Configuration */}
-      <div className="settings-section">
-        <h3>Routing</h3>
-        <div className="routing-config">
-          <div className="routing-field">
-            <label>Primary Provider</label>
-            <select value={primary} onChange={e => setPrimary(e.target.value)}>
-              <option value="">Select...</option>
-              {configuredProviderOptions.map(p => (
-                <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
-              ))}
-            </select>
+      {/* Active Model Selector — the main thing people want */}
+      {allModels.length > 0 && (
+        <div className="settings-section">
+          <h3>Active Model</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+            Choose which AI model to use. This changes the default for all new messages.
+          </p>
+          <div className="routing-config">
+            <div className="routing-field" style={{ flex: 2 }}>
+              <label>Model</label>
+              <select
+                onChange={e => handleActiveModelChange(e.target.value)}
+                disabled={activeModelSaving}
+                defaultValue=""
+              >
+                <option value="" disabled>Select a model...</option>
+                {configuredProviderOptions.map(p => {
+                  const models = getProviderModels(p.name);
+                  if (models.length === 0) return null;
+                  const spec = KNOWN_PROVIDERS.find(k => k.id === p.name);
+                  return (
+                    <optgroup key={p.name} label={spec?.label ?? p.displayName ?? p.name}>
+                      {models.map(m => (
+                        <option key={`${p.name}/${m}`} value={`${p.name}/${m}`}>
+                          {friendlyModelName(m)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+              </select>
+            </div>
           </div>
-          <div className="routing-field">
-            <label>Fallback Provider</label>
-            <select value={fallback} onChange={e => setFallback(e.target.value)}>
-              <option value="">None</option>
-              {configuredProviderOptions.filter(p => p.name !== primary).map(p => (
-                <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
-              ))}
-            </select>
-          </div>
-          <button onClick={handleSaveRouting} disabled={routingSaving || !primary}>
-            {routingSaving ? 'Saving...' : 'Save Routing'}
-          </button>
+          {success && <div className="settings-success">{success}</div>}
+          {error && <div className="error">{error}</div>}
         </div>
-      </div>
+      )}
+
+      {/* Routing Configuration */}
+      {configuredProviderOptions.length > 1 && (
+        <div className="settings-section">
+          <h3>Provider Routing</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+            Set primary and fallback providers. Fallback is used when the primary is unavailable.
+          </p>
+          <div className="routing-config">
+            <div className="routing-field">
+              <label>Primary Provider</label>
+              <select value={primary} onChange={e => setPrimary(e.target.value)}>
+                <option value="">Select...</option>
+                {configuredProviderOptions.map(p => (
+                  <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="routing-field">
+              <label>Fallback Provider</label>
+              <select value={fallback} onChange={e => setFallback(e.target.value)}>
+                <option value="">None</option>
+                {configuredProviderOptions.filter(p => p.name !== primary).map(p => (
+                  <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleSaveRouting} disabled={routingSaving || !primary}>
+              {routingSaving ? 'Saving...' : 'Save Routing'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cost Summary */}
       <div className="settings-section">
@@ -178,9 +283,13 @@ export function SettingsProvider() {
 
       {/* Provider Cards */}
       <div className="settings-section">
-        <h3>Configured Providers</h3>
+        <h3>Manage Providers</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Click a card to configure API keys and endpoints.
+        </p>
         <div className="provider-grid">
           {KNOWN_PROVIDERS.map(spec => {
+            const providerData = providers.find(p => p.name === spec.id);
             const isConfigured = configuredNames.has(spec.id);
             const isPrimary = routing.primary === spec.id;
             const isFallback = routing.fallback === spec.id;
@@ -196,7 +305,7 @@ export function SettingsProvider() {
                 <div className="provider-card-header">
                   <h3>
                     <span className={`status-dot ${isConfigured ? 'active' : 'inactive'}`} />
-                    {spec.label}
+                    {isConfigured && providerData?.displayName ? providerData.displayName : spec.label}
                   </h3>
                   <div className="provider-badges">
                     {isPrimary && <span className="badge-pill badge-primary">Primary</span>}
@@ -204,7 +313,17 @@ export function SettingsProvider() {
                   </div>
                 </div>
                 <div className="provider-model">
-                  {isConfigured ? (models.length > 0 ? `${models.length} model(s) available` : 'Active') : 'Not configured'}
+                  {isConfigured
+                    ? (models.length > 0
+                      ? models.map(m => friendlyModelName(m)).join(', ')
+                      : 'Active')
+                    : 'Not configured'}
+                  {providerData?.credentialSource === 'claude-cli' && (
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--accent)' }}>(Claude Code CLI)</span>
+                  )}
+                  {providerData?.credentialSource === 'oauth' && (
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--accent)' }}>(OAuth)</span>
+                  )}
                 </div>
 
                 {isExpanded && (
@@ -237,7 +356,7 @@ export function SettingsProvider() {
                         <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
                           <option value="">Keep current</option>
                           {models.map(m => (
-                            <option key={m} value={m}>{m}</option>
+                            <option key={m} value={m}>{friendlyModelName(m)}</option>
                           ))}
                         </select>
                       </>
@@ -251,8 +370,6 @@ export function SettingsProvider() {
                         {saving ? 'Saving...' : 'Save'}
                       </button>
                     </div>
-                    {success && <div className="settings-success" style={{ marginTop: '0.5rem' }}>{success}</div>}
-                    {error && <div className="error" style={{ marginTop: '0.5rem' }}>{error}</div>}
                   </div>
                 )}
               </div>

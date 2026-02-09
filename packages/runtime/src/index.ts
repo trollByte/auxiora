@@ -356,11 +356,30 @@ export class Auxiora {
               const result = [];
               for (const name of this.providers.listAvailable()) {
                 const p = this.providers.getProvider(name);
+                // Detect credential source for Anthropic
+                let credentialSource: string | undefined;
+                if (name === 'anthropic') {
+                  try {
+                    if (this.vault.get('ANTHROPIC_OAUTH_TOKEN') || (this.vault.get('ANTHROPIC_API_KEY') && isSetupToken(this.vault.get('ANTHROPIC_API_KEY')!))) {
+                      credentialSource = 'oauth';
+                    } else if (this.vault.get('ANTHROPIC_API_KEY')) {
+                      credentialSource = 'api-key';
+                    } else if (readClaudeCliCredentials() !== null) {
+                      credentialSource = 'claude-cli';
+                    }
+                  } catch {
+                    // vault locked — check CLI as last resort
+                    if (readClaudeCliCredentials() !== null) {
+                      credentialSource = 'claude-cli';
+                    }
+                  }
+                }
                 result.push({
                   name,
-                  displayName: p.metadata.displayName,
+                  displayName: credentialSource === 'claude-cli' ? 'Anthropic Claude (via Claude Code)' : p.metadata.displayName,
                   available: true,
                   models: p.metadata.models,
+                  credentialSource,
                 });
               }
               return result;
