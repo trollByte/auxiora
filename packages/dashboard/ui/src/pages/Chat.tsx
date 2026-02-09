@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
 
@@ -13,6 +13,29 @@ interface ModelSelection {
   provider: string;
   model: string;
 }
+
+interface SlashCommand {
+  command: string;
+  description: string;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  { command: '/help', description: 'Show available commands' },
+  { command: '/status', description: 'Show system status' },
+  { command: '/new', description: 'Start a new session' },
+  { command: '/reset', description: 'Clear current session' },
+  { command: '/mode', description: 'Show current mode' },
+  { command: '/mode auto', description: 'Auto-detect mode from messages' },
+  { command: '/mode off', description: 'Disable modes for this session' },
+  { command: '/mode operator', description: 'Fast, action-oriented execution' },
+  { command: '/mode analyst', description: 'Deep reasoning and analysis' },
+  { command: '/mode advisor', description: 'Strategic guidance and decisions' },
+  { command: '/mode writer', description: 'Creative and polished writing' },
+  { command: '/mode socratic', description: 'Question-based learning' },
+  { command: '/mode legal', description: 'Legal research and analysis' },
+  { command: '/mode roast', description: 'Playful, witty critique' },
+  { command: '/mode companion', description: 'Warm, supportive conversation' },
+];
 
 /** Turn a raw model ID into a friendly display name */
 function friendlyModelName(id: string): string {
@@ -43,12 +66,36 @@ export function Chat() {
   const [streaming, setStreaming] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
   const [lastModel, setLastModel] = useState('');
+  const [acIndex, setAcIndex] = useState(0);
+  const [acOpen, setAcOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const acRef = useRef<HTMLDivElement>(null);
   const { data: status } = useApi(() => api.getStatus(), []);
   const { data: modelsData } = useApi(() => api.getModels(), []);
+
+  // Slash command autocomplete filtering
+  const acMatches = useMemo(() => {
+    if (!input.startsWith('/')) return [];
+    const q = input.toLowerCase();
+    return SLASH_COMMANDS.filter(c => c.command.startsWith(q));
+  }, [input]);
+
+  // Open/close autocomplete based on matches
+  useEffect(() => {
+    setAcOpen(acMatches.length > 0 && input.startsWith('/'));
+    setAcIndex(0);
+  }, [acMatches, input]);
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (!acOpen || !acRef.current) return;
+    const item = acRef.current.children[acIndex] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [acIndex, acOpen]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -223,14 +270,62 @@ export function Chat() {
           <div ref={messagesEndRef} />
         </div>
         <div className="chat-input-area">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
-            placeholder={connected ? 'Type a message...' : 'Connecting...'}
-            disabled={!connected || streaming}
-          />
+          <div className="chat-input-wrapper">
+            {acOpen && acMatches.length > 0 && (
+              <div className="slash-autocomplete" ref={acRef}>
+                {acMatches.map((cmd, i) => (
+                  <div
+                    key={cmd.command}
+                    className={`slash-ac-item${i === acIndex ? ' selected' : ''}`}
+                    onMouseEnter={() => setAcIndex(i)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setInput(cmd.command);
+                      setAcOpen(false);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <span className="slash-ac-cmd">{cmd.command}</span>
+                    <span className="slash-ac-desc">{cmd.description}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (acOpen && acMatches.length > 0) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setAcIndex(i => (i + 1) % acMatches.length);
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setAcIndex(i => (i - 1 + acMatches.length) % acMatches.length);
+                    return;
+                  }
+                  if (e.key === 'Tab' || (e.key === 'Enter' && acMatches.length > 1)) {
+                    e.preventDefault();
+                    setInput(acMatches[acIndex].command);
+                    setAcOpen(false);
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setAcOpen(false);
+                    return;
+                  }
+                }
+                if (e.key === 'Enter') sendMessage();
+              }}
+              placeholder={connected ? 'Type / for commands...' : 'Connecting...'}
+              disabled={!connected || streaming}
+            />
+          </div>
           <button onClick={sendMessage} disabled={!connected || streaming || !input.trim()}>
             Send
           </button>
