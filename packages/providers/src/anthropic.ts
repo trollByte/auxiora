@@ -14,6 +14,7 @@ import {
   getValidAccessToken,
 } from './claude-oauth.js';
 import { CLAUDE_CODE_TOOLS } from './claude-code-tools.js';
+import { getAnthropicThinkingBudget } from './thinking-levels.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -265,6 +266,14 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
+    // Add thinking budget if requested
+    const thinkingBudget = options?.thinkingLevel
+      ? getAnthropicThinkingBudget(options.thinkingLevel)
+      : undefined;
+    if (thinkingBudget) {
+      (params as any).thinking = { type: 'enabled', budget_tokens: thinkingBudget };
+    }
+
     // For OAuth tokens, include Claude Code emulation (tools + system prompt)
     if (this.requiresClaudeCodeEmulation()) {
       // Claude Code tools MUST be included for the API to accept OAuth tokens
@@ -330,6 +339,14 @@ export class AnthropicProvider implements Provider {
       messages: anthropicMessages,
     };
 
+    // Add thinking budget if requested
+    const thinkingBudget = options?.thinkingLevel
+      ? getAnthropicThinkingBudget(options.thinkingLevel)
+      : undefined;
+    if (thinkingBudget) {
+      (params as any).thinking = { type: 'enabled', budget_tokens: thinkingBudget };
+    }
+
     // For OAuth tokens, include Claude Code emulation (tools + system prompt)
     if (this.requiresClaudeCodeEmulation()) {
       const callerTools = (options?.tools ?? []) as Anthropic.Tool[];
@@ -363,6 +380,7 @@ export class AnthropicProvider implements Provider {
     try {
       const stream = this.client.messages.stream(params);
       let currentToolUse: { id: string; name: string; input: string } | null = null;
+      let inThinkingBlock = false;
 
       for await (const event of stream) {
         if (event.type === 'content_block_start') {
@@ -374,11 +392,18 @@ export class AnthropicProvider implements Provider {
               name: block.name,
               input: '',
             };
+            inThinkingBlock = false;
+          } else if ((block as any).type === 'thinking') {
+            inThinkingBlock = true;
+          } else {
+            inThinkingBlock = false;
           }
         } else if (event.type === 'content_block_delta') {
           const delta = event.delta;
           if ('text' in delta) {
             yield { type: 'text', content: delta.text };
+          } else if ((delta as any).thinking && inThinkingBlock) {
+            yield { type: 'thinking', content: (delta as any).thinking };
           } else if ('partial_json' in delta && currentToolUse) {
             // Accumulate tool input
             currentToolUse.input += delta.partial_json;

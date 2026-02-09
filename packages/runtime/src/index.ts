@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, type ProviderMetadata, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -1086,10 +1086,11 @@ export class Auxiora {
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
     const { id: requestId, payload } = message;
-    const msgPayload = payload as { content?: string; model?: string; provider?: string } | undefined;
+    const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel } | undefined;
     const content = msgPayload?.content;
     const modelOverride = msgPayload?.model;
     const providerOverride = msgPayload?.provider;
+    const thinkingLevel = msgPayload?.thinkingLevel;
 
     if (!content || typeof content !== 'string') {
       this.sendToClient(client, {
@@ -1202,11 +1203,18 @@ export class Auxiora {
         systemPrompt: enrichedPrompt,
         model: modelOverride || routingResult?.selection.model,
         tools: tools.length > 0 ? tools : undefined,
+        thinkingLevel,
       })) {
         if (chunk.type === 'text' && chunk.content) {
           fullResponse += chunk.content;
           this.sendToClient(client, {
             type: 'chunk',
+            id: requestId,
+            payload: { content: chunk.content },
+          });
+        } else if (chunk.type === 'thinking' && chunk.content) {
+          this.sendToClient(client, {
+            type: 'thinking',
             id: requestId,
             payload: { content: chunk.content },
           });
@@ -1978,6 +1986,23 @@ function deepMerge(target: Record<string, unknown>, source: Record<string, unkno
   }
   return result;
 }
+
+export {
+  AgentRouter,
+  AgentInstance,
+  type AgentRoutingConfig,
+  type AgentRoutingRule,
+  type AgentConfig,
+} from './agent-router.js';
+
+export {
+  BlockStream,
+  ToolOutputStream,
+  type BlockType,
+  type ContentBlock,
+  type BlockStreamEvent,
+  type BlockStreamSender,
+} from './block-stream.js';
 
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();

@@ -1,4 +1,6 @@
 import * as crypto from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 
 interface PairingCode {
   code: string;
@@ -11,6 +13,12 @@ interface PairingCode {
 export interface PairingConfig {
   codeLength: number;
   expiryMinutes: number;
+  autoApproveChannels?: string[];
+  persistPath?: string;
+}
+
+interface PersistedData {
+  allowlist: string[];
 }
 
 export class PairingManager {
@@ -18,14 +26,62 @@ export class PairingManager {
   private allowedSenders: Set<string> = new Set();
   private codeLength: number;
   private expiryMs: number;
+  private autoApproveChannels: Set<string>;
+  private persistPath: string | undefined;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  private saveQueued: boolean = false;
 
   constructor(config: PairingConfig) {
     this.codeLength = config.codeLength;
     this.expiryMs = config.expiryMinutes * 60 * 1000;
+    this.autoApproveChannels = new Set(config.autoApproveChannels ?? []);
+    this.persistPath = config.persistPath;
 
     // Cleanup expired codes every minute
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+  }
+
+  async loadFromDisk(): Promise<void> {
+    if (!this.persistPath) return;
+    try {
+      const content = await fs.readFile(this.persistPath, 'utf-8');
+      const data = JSON.parse(content) as PersistedData;
+      if (Array.isArray(data.allowlist)) {
+        for (const key of data.allowlist) {
+          this.allowedSenders.add(key);
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+      // File doesn't exist yet, start fresh
+    }
+  }
+
+  private async saveToDisk(): Promise<void> {
+    if (!this.persistPath) return;
+    if (this.saveQueued) return;
+    this.saveQueued = true;
+
+    // Batch writes with microtask
+    queueMicrotask(async () => {
+      this.saveQueued = false;
+      try {
+        const dir = path.dirname(this.persistPath!);
+        await fs.mkdir(dir, { recursive: true });
+        const data: PersistedData = {
+          allowlist: Array.from(this.allowedSenders),
+        };
+        await fs.writeFile(this.persistPath!, JSON.stringify(data, null, 2), 'utf-8');
+      } catch {
+        // Best-effort persistence; log in production but don't crash
+      }
+    });
+  }
+
+  isAutoApproved(channelType: string): boolean {
+    return this.autoApproveChannels.has(channelType);
   }
 
   generateCode(senderId: string, channelType: string): string {
@@ -72,6 +128,7 @@ export class PairingManager {
 
     this.allowedSenders.add(this.makeSenderKey(pending.senderId, pending.channelType));
     this.pendingCodes.delete(code.toUpperCase().trim());
+    this.saveToDisk();
     return true;
   }
 
@@ -85,6 +142,9 @@ export class PairingManager {
   }
 
   isAllowed(senderId: string, channelType: string): boolean {
+    if (this.autoApproveChannels.has(channelType)) {
+      return true;
+    }
     return this.allowedSenders.has(this.makeSenderKey(senderId, channelType));
   }
 
@@ -92,6 +152,7 @@ export class PairingManager {
     const key = this.makeSenderKey(senderId, channelType);
     if (this.allowedSenders.has(key)) {
       this.allowedSenders.delete(key);
+      this.saveToDisk();
       return true;
     }
     return false;
@@ -133,6 +194,7 @@ export class PairingManager {
     for (const key of list) {
       this.allowedSenders.add(key);
     }
+    this.saveToDisk();
   }
 
   destroy(): void {

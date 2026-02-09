@@ -17,3 +17,24 @@ export { OllamaBundleManager, type OllamaStatus } from './ollama.js';
 export { ScreenPermissionManager, type ScreenPermissionState } from './screen-permission.js';
 export { AmbientTrayIndicator, type AmbientTrayState } from './ambient-tray.js';
 export { VoiceActivation } from './voice-activation.js';
+export {
+  PttOverlay,
+  DEFAULT_PTT_CONFIG,
+  type PttOverlayConfig,
+  type PttState,
+  type PttCallbacks,
+} from './ptt-overlay.js';
+// [P17] Bridge integration and menu bar
+export {
+  DesktopNode,
+  DEFAULT_DESKTOP_NODE_CONFIG,
+  type DesktopNodeConfig,
+  type DesktopNodeState,
+  type DesktopTransport,
+} from './desktop-node.js';
+export {
+  MenuBarApp,
+  DEFAULT_MENU_BAR_CONFIG,
+  type MenuBarConfig,
+  type QuickAction,
+} from './menu-bar.js';

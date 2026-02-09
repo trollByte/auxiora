@@ -11,12 +11,18 @@ import { DiscordAdapter, type DiscordAdapterConfig } from './adapters/discord.js
 import { TelegramAdapter, type TelegramAdapterConfig } from './adapters/telegram.js';
 import { SlackAdapter, type SlackAdapterConfig } from './adapters/slack.js';
 import { TwilioAdapter, type TwilioAdapterConfig } from './adapters/twilio.js';
+import { GoogleChatAdapter, type GoogleChatAdapterConfig } from './adapters/googlechat.js';
+import { BlueBubblesAdapter, type BlueBubblesAdapterConfig } from './adapters/bluebubbles.js';
+import { ZaloAdapter, type ZaloAdapterConfig } from './adapters/zalo.js';
 
 export interface ChannelManagerConfig {
   discord?: DiscordAdapterConfig;
   telegram?: TelegramAdapterConfig;
   slack?: SlackAdapterConfig;
   twilio?: TwilioAdapterConfig;
+  googlechat?: GoogleChatAdapterConfig;
+  bluebubbles?: BlueBubblesAdapterConfig;
+  zalo?: ZaloAdapterConfig;
 }
 
 export class ChannelManager {
@@ -40,6 +46,18 @@ export class ChannelManager {
 
     if (config.twilio?.accountSid && config.twilio?.authToken) {
       this.adapters.set('twilio', new TwilioAdapter(config.twilio));
+    }
+
+    if (config.googlechat?.serviceAccountKey) {
+      this.adapters.set('googlechat', new GoogleChatAdapter(config.googlechat));
+    }
+
+    if (config.bluebubbles?.serverUrl && config.bluebubbles?.password) {
+      this.adapters.set('bluebubbles', new BlueBubblesAdapter(config.bluebubbles));
+    }
+
+    if (config.zalo?.oaAccessToken && config.zalo?.oaSecretKey) {
+      this.adapters.set('zalo', new ZaloAdapter(config.zalo));
     }
   }
 

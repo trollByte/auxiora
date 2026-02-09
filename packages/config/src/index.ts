@@ -29,6 +29,8 @@ const PairingConfigSchema = z.object({
   enabled: z.boolean().default(true),
   codeLength: z.number().int().min(4).max(12).default(6),
   expiryMinutes: z.number().int().positive().default(15),
+  autoApproveChannels: z.array(z.string()).default(['webchat']),
+  persistPath: z.string().optional(),
 });
 
 const ModelRoutingSchema = z.object({

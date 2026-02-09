@@ -51,6 +51,8 @@ export class Gateway {
     this.pairingManager = new PairingManager({
       codeLength: this.config.pairing.codeLength,
       expiryMinutes: this.config.pairing.expiryMinutes,
+      autoApproveChannels: this.config.pairing.autoApproveChannels,
+      persistPath: this.config.pairing.persistPath,
     });
 
     this.setupMiddleware();

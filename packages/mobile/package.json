@@ -1,0 +1,26 @@
+{
+  "name": "@auxiora/mobile",
+  "version": "1.0.0",
+  "description": "Mobile node stubs (iOS/Android) — device capability interfaces and Bridge protocol contract",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/bridge": "workspace:*",
+    "@auxiora/logger": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

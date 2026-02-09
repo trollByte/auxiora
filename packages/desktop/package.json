@@ -23,6 +23,7 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@auxiora/bridge": "workspace:*",
     "@auxiora/logger": "workspace:*",
     "@auxiora/config": "workspace:*"
   }

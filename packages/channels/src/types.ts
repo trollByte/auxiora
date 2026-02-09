@@ -1,4 +1,4 @@
-export type ChannelType = 'discord' | 'telegram' | 'slack' | 'twilio' | 'webchat' | 'matrix' | 'signal' | 'email' | 'teams' | 'whatsapp';
+export type ChannelType = 'discord' | 'telegram' | 'slack' | 'twilio' | 'webchat' | 'matrix' | 'signal' | 'email' | 'teams' | 'whatsapp' | 'googlechat' | 'bluebubbles' | 'zalo';
 
 export interface InboundMessage {
   id: string;

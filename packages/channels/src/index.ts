@@ -56,6 +56,21 @@ export {
   type WhatsAppAdapterConfig,
 } from './adapters/whatsapp.js';
 
+export {
+  GoogleChatAdapter,
+  type GoogleChatAdapterConfig,
+} from './adapters/googlechat.js';
+
+export {
+  BlueBubblesAdapter,
+  type BlueBubblesAdapterConfig,
+} from './adapters/bluebubbles.js';
+
+export {
+  ZaloAdapter,
+  type ZaloAdapterConfig,
+} from './adapters/zalo.js';
+
 // Manager
 export {
   ChannelManager,

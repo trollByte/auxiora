@@ -1,0 +1,27 @@
+{
+  "name": "@auxiora/canvas",
+  "version": "1.0.0",
+  "description": "Live Canvas / A2UI - shared visual workspace for agent-driven UI interactions",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/audit": "workspace:*",
+    "nanoid": "^5.1.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

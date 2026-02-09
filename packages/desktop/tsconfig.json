@@ -6,6 +6,7 @@
   },
   "include": ["src/**/*"],
   "references": [
+    { "path": "../bridge" },
     { "path": "../logger" },
     { "path": "../config" }
   ]

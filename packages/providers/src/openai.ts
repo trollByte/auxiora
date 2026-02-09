@@ -7,6 +7,7 @@ import type {
   CompletionResult,
   StreamChunk,
 } from './types.js';
+import { getOpenAIReasoningEffort, isOpenAIReasoningModel } from './thinking-levels.js';
 
 const DEFAULT_MODEL = 'gpt-4o';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -85,11 +86,22 @@ export class OpenAIProvider implements Provider {
   ): Promise<CompletionResult> {
     const openaiMessages = this.prepareMessages(messages, options);
 
-    const response = await this.client.chat.completions.create({
-      model: options?.model || this.defaultModel,
+    const model = options?.model || this.defaultModel;
+    const createParams: OpenAI.ChatCompletionCreateParams = {
+      model,
       max_tokens: options?.maxTokens || this.defaultMaxTokens,
       messages: openaiMessages,
-    });
+    };
+
+    // Add reasoning_effort for o-series models
+    if (options?.thinkingLevel && isOpenAIReasoningModel(model)) {
+      const effort = getOpenAIReasoningEffort(options.thinkingLevel);
+      if (effort) {
+        (createParams as any).reasoning_effort = effort;
+      }
+    }
+
+    const response = await this.client.chat.completions.create(createParams);
 
     const choice = response.choices[0];
     const content = choice?.message?.content || '';
@@ -112,13 +124,24 @@ export class OpenAIProvider implements Provider {
     const openaiMessages = this.prepareMessages(messages, options);
 
     try {
-      const stream = await this.client.chat.completions.create({
-        model: options?.model || this.defaultModel,
+      const model = options?.model || this.defaultModel;
+      const createParams: OpenAI.ChatCompletionCreateParams = {
+        model,
         max_tokens: options?.maxTokens || this.defaultMaxTokens,
         messages: openaiMessages,
         stream: true,
         stream_options: { include_usage: true },
-      });
+      };
+
+      // Add reasoning_effort for o-series models
+      if (options?.thinkingLevel && isOpenAIReasoningModel(model)) {
+        const effort = getOpenAIReasoningEffort(options.thinkingLevel);
+        if (effort) {
+          (createParams as any).reasoning_effort = effort;
+        }
+      }
+
+      const stream = await this.client.chat.completions.create(createParams);
 
       let inputTokens = 0;
       let outputTokens = 0;

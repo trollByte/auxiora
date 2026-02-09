@@ -1,3 +1,11 @@
+/**
+ * Thinking/reasoning budget levels.
+ * Maps to provider-specific parameters:
+ * - Anthropic: thinking budget_tokens
+ * - OpenAI: reasoning_effort (for o-series models)
+ */
+export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh';
+
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export interface ChatMessage {
@@ -37,7 +45,7 @@ export interface ToolResultMessage {
 }
 
 export interface StreamChunk {
-  type: 'text' | 'tool_use' | 'done' | 'error';
+  type: 'text' | 'thinking' | 'tool_use' | 'done' | 'error';
   content?: string;
   toolUse?: ToolUse;
   error?: string;
@@ -54,6 +62,8 @@ export interface CompletionOptions {
   systemPrompt?: string;
   stream?: boolean;
   tools?: ToolDefinition[];
+  /** Thinking/reasoning budget level. Default: 'off'. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 export interface CompletionResult {

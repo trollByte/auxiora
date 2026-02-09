@@ -14,3 +14,10 @@ export {
   type ContinuousEvent,
   type BidirectionalStreamConfig,
 } from './continuous.js';
+export {
+  WakeDetector,
+  DEFAULT_WAKE_DETECTOR_CONFIG,
+  type WakeDetectorConfig,
+  type WakeDetectorState,
+  type WakeEvent,
+} from './wake-detector.js';

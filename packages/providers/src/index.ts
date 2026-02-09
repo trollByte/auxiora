@@ -10,6 +10,11 @@ export { CohereProvider, type CohereProviderOptions } from './cohere.js';
 export { XAIProvider, type XAIProviderOptions } from './xai.js';
 export { ProviderFactory, type ProviderFactoryOptions, type ProviderName } from './factory.js';
 export {
+  getAnthropicThinkingBudget,
+  getOpenAIReasoningEffort,
+  isOpenAIReasoningModel,
+} from './thinking-levels.js';
+export {
   isSetupToken,
   validateSetupToken,
   readClaudeCliCredentials,
@@ -26,6 +31,7 @@ export type {
   CompletionResult,
   StreamChunk,
   MessageRole,
+  ThinkingLevel,
   ToolDefinition,
   ToolUse,
   ToolResultMessage,
