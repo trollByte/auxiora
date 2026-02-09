@@ -610,8 +610,9 @@ body {
 .chat-status {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  text-align: center;
-  padding: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
 }
 
 /* Settings forms */

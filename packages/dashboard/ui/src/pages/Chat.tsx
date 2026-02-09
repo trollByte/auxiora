@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useApi } from '../hooks/useApi';
+import { api } from '../api';
 
 interface ChatMessage {
   id: string;
@@ -15,6 +17,7 @@ export function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
+  const { data: status } = useApi(() => api.getStatus(), []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -108,7 +111,12 @@ export function Chat() {
       <h2>Chat</h2>
       <div className="chat-container">
         <div className="chat-status">
-          {connected ? 'Connected' : 'Disconnected'}
+          <span>{connected ? 'Connected' : 'Disconnected'}</span>
+          {status?.data?.activeModel && (
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+              {status.data.activeModel.model}
+            </span>
+          )}
         </div>
         <div className="chat-messages">
           {messages.length === 0 && (

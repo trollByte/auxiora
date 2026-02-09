@@ -40,6 +40,7 @@ export interface DashboardDeps {
     changePassword(newPassword: string): Promise<void>;
   };
   onVaultUnlocked?: () => Promise<void>;
+  getActiveModel?: () => { provider: string; model: string };
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;
     update(id: string, updates: Record<string, unknown>): Promise<any>;

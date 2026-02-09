@@ -23,7 +23,7 @@ export function Overview() {
         <div className="status-card">
           <h3>Provider</h3>
           <div className="value">{primaryProvider}</div>
-          <div className="sub">{providerCount} provider{providerCount !== 1 ? 's' : ''} available</div>
+          <div className="sub">{s?.activeModel?.model ?? 'unknown'}</div>
         </div>
         <div className="status-card">
           <h3>Behaviors</h3>

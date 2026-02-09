@@ -313,6 +313,11 @@ export class Auxiora {
       const { router } = createDashboardRouter({
         deps: {
           vault: this.vault,
+          getActiveModel: () => {
+            const primary = this.config.provider.primary;
+            const providerConfig = (this.config.provider as Record<string, any>)[primary];
+            return { provider: primary, model: providerConfig?.model ?? 'default' };
+          },
           onVaultUnlocked: async () => {
             // Re-initialize providers and channels after vault unlock on restart
             await this.initializeProviders();

@@ -476,6 +476,8 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     const webhooks = deps.webhooks ? await deps.webhooks.list() : [];
     const activeBehaviors = behaviors.filter((b: any) => b.status === 'active');
 
+    const activeModel = deps.getActiveModel?.() ?? { provider: 'unknown', model: 'unknown' };
+
     res.json({
       data: {
         uptime: process.uptime(),
@@ -483,6 +485,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
         activeBehaviors: activeBehaviors.length,
         totalBehaviors: behaviors.length,
         webhooks: webhooks.length,
+        activeModel,
       },
     });
   });
