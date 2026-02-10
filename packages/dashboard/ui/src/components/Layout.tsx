@@ -127,6 +127,11 @@ export function Layout() {
               </NavLink>
             </li>
             <li>
+              <NavLink to="/settings/notifications" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Notifications
+              </NavLink>
+            </li>
+            <li>
               <NavLink to="/settings/security" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 Security
               </NavLink>

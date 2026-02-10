@@ -18,3 +18,9 @@ export {
   type AmbientSchedulerConfig,
   type AmbientSchedulerDeps,
 } from './scheduler.js';
+export {
+  NotificationOrchestrator,
+  type OrchestratorConfig,
+  type OrchestratorNotification,
+  type DeliveryChannelFn,
+} from './orchestrator.js';

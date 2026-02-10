@@ -161,4 +161,19 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(config),
     }),
+
+  // Notifications
+  getNotifications: () =>
+    fetchApi<{ data: any[] }>('/notifications'),
+  dismissNotification: (id: string) =>
+    fetchApi<{ data: { dismissed: boolean } }>(`/notifications/${id}/dismiss`, {
+      method: 'POST',
+    }),
+  getNotificationPreferences: () =>
+    fetchApi<{ data: any }>('/notifications/preferences'),
+  updateNotificationPreferences: (prefs: Record<string, unknown>) =>
+    fetchApi<{ success: boolean }>('/notifications/preferences', {
+      method: 'POST',
+      body: JSON.stringify(prefs),
+    }),
 };

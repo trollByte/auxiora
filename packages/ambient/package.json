@@ -20,6 +20,7 @@
     "@auxiora/behaviors": "workspace:*",
     "@auxiora/memory": "workspace:*",
     "@auxiora/connectors": "workspace:*",
+    "@auxiora/notification-hub": "workspace:*",
     "@auxiora/personality": "workspace:*"
   },
   "engines": {

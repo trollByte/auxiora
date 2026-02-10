@@ -2019,6 +2019,65 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
   });
 
+  // --- Notification routes ---
+  router.get('/notifications', (_req: Request, res: Response) => {
+    const raw = deps.vault.get('notifications.recent');
+    if (!raw) {
+      res.json({ data: [] });
+      return;
+    }
+    try {
+      res.json({ data: JSON.parse(raw) });
+    } catch {
+      res.json({ data: [] });
+    }
+  });
+
+  router.post('/notifications/:id/dismiss', async (req: Request, res: Response) => {
+    const id = String(req.params.id);
+    const raw = deps.vault.get('notifications.recent');
+    if (!raw) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+    try {
+      const notifications = JSON.parse(raw) as Array<{ id: string }>;
+      const filtered = notifications.filter(n => n.id !== id);
+      if (filtered.length === notifications.length) {
+        res.status(404).json({ error: 'Notification not found' });
+        return;
+      }
+      await deps.vault.add('notifications.recent', JSON.stringify(filtered));
+      res.json({ data: { dismissed: true } });
+    } catch {
+      res.status(500).json({ error: 'Failed to dismiss notification' });
+    }
+  });
+
+  router.get('/notifications/preferences', (_req: Request, res: Response) => {
+    const raw = deps.vault.get('notifications.preferences');
+    if (!raw) {
+      res.json({ data: {} });
+      return;
+    }
+    try {
+      res.json({ data: JSON.parse(raw) });
+    } catch {
+      res.json({ data: {} });
+    }
+  });
+
+  router.post('/notifications/preferences', async (req: Request, res: Response) => {
+    try {
+      const prefs = req.body as Record<string, unknown>;
+      await deps.vault.add('notifications.preferences', JSON.stringify(prefs));
+      void audit('settings.notification_preferences', {});
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to save notification preferences' });
+    }
+  });
+
   // --- [P15] Conversation routes ---
   router.get('/conversation/state', (req: Request, res: Response) => {
     if (!deps.conversation) {

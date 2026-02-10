@@ -9,6 +9,7 @@
     { "path": "../behaviors" },
     { "path": "../memory" },
     { "path": "../connectors" },
+    { "path": "../notification-hub" },
     { "path": "../personality" }
   ]
 }

@@ -52,7 +52,8 @@ import { IntentParser, ActionPlanner } from '@auxiora/intent';
 import { UserManager } from '@auxiora/social';
 import { WorkflowEngine, ApprovalManager } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
-import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG } from '@auxiora/ambient';
+import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator } from '@auxiora/ambient';
+import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
 import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
 import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
 import { ConversationEngine } from '@auxiora/conversation';
@@ -139,6 +140,9 @@ export class Auxiora {
   private connectorAuthManager?: ConnectorAuthManager;
   private triggerManager?: TriggerManager;
   private ambientScheduler?: AmbientScheduler;
+  private notificationHub?: NotificationHub;
+  private dndManager?: DoNotDisturbManager;
+  private notificationOrchestrator?: NotificationOrchestrator;
   // Security floor
   private securityFloor?: SecurityFloor;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
@@ -716,6 +720,30 @@ export class Auxiora {
     this.anticipationEngine = new AnticipationEngine();
     console.log('Ambient intelligence initialized');
 
+    // Initialize notification orchestrator
+    this.notificationHub = new NotificationHub();
+    this.dndManager = new DoNotDisturbManager();
+    this.notificationOrchestrator = new NotificationOrchestrator(
+      this.notificationHub,
+      this.dndManager,
+      (notification) => {
+        this.gateway.broadcast({
+          type: 'notification',
+          payload: { content: notification.message, system: true },
+        });
+        if (this.channels) {
+          for (const channelType of this.channels.getConnectedChannels()) {
+            try {
+              void this.channels.send(channelType as any, 'system', { content: notification.message });
+            } catch {
+              // Channel delivery failure is non-fatal
+            }
+          }
+        }
+      },
+    );
+    console.log('Notification orchestrator initialized');
+
     // Initialize connector registry and wire ambient scheduler
     this.connectorRegistry = new ConnectorRegistry();
     this.connectorAuthManager = new ConnectorAuthManager();
@@ -746,6 +774,7 @@ export class Auxiora {
         connectorRegistry: this.connectorRegistry,
         triggerManager: this.triggerManager,
         briefingGenerator: this.briefingGenerator,
+        notificationOrchestrator: this.notificationOrchestrator,
         deliveryChannel: async (msg: string) => {
           // Broadcast to all webchat connections
           this.gateway.broadcast({

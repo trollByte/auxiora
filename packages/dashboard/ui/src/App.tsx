@@ -22,6 +22,7 @@ import { SetupChannels } from './pages/SetupChannels';
 import { SetupConnections } from './pages/SetupConnections';
 import { SetupComplete } from './pages/SetupComplete';
 import { SettingsAmbient } from './pages/SettingsAmbient';
+import { SettingsNotifications } from './pages/SettingsNotifications';
 
 export function App() {
   return (
@@ -47,6 +48,7 @@ export function App() {
         <Route path="settings/provider" element={<SettingsProvider />} />
         <Route path="settings/channels" element={<SettingsChannels />} />
         <Route path="settings/ambient" element={<SettingsAmbient />} />
+        <Route path="settings/notifications" element={<SettingsNotifications />} />
         <Route path="settings/security" element={<SettingsSecurity />} />
         <Route path="settings/audit" element={<AuditLog />} />
       </Route>

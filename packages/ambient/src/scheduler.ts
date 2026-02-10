@@ -1,6 +1,7 @@
 import type { Scheduler } from '@auxiora/behaviors';
 import type { ConnectorRegistry, TriggerManager } from '@auxiora/connectors';
 import type { BriefingGenerator } from './briefing.js';
+import type { NotificationOrchestrator } from './orchestrator.js';
 import type { QuietNotification } from './types.js';
 import { formatBriefingAsText } from './briefing.js';
 
@@ -14,6 +15,10 @@ export interface AmbientSchedulerConfig {
   emailPollCron: string;
   /** Cron expression for calendar polling. */
   calendarPollCron: string;
+  /** Cron expression for notification polling. */
+  notificationPollCron: string;
+  /** Calendar alert window in minutes. */
+  calendarAlertMinutes: number;
   /** Whether the scheduler is enabled. */
   enabled: boolean;
   /** Categories to include in briefings. */
@@ -25,6 +30,8 @@ export const DEFAULT_AMBIENT_SCHEDULER_CONFIG: AmbientSchedulerConfig = {
   eveningCron: '0 18 * * *',
   emailPollCron: '*/2 * * * *',
   calendarPollCron: '*/5 * * * *',
+  notificationPollCron: '*/1 * * * *',
+  calendarAlertMinutes: 15,
   enabled: true,
   categories: ['calendar', 'email', 'tasks'],
 };
@@ -37,6 +44,7 @@ export interface AmbientSchedulerDeps {
   briefingGenerator: BriefingGenerator;
   emailIntelligence?: { triage?: { getTriageSummary(opts: { maxResults: number }): Promise<{ items: Array<{ subject: string; priority: string }> }> } };
   calendarIntelligence?: { analyzeDay(date: string): Promise<{ events: Array<{ title: string; time: string }> }> };
+  notificationOrchestrator?: NotificationOrchestrator;
   deliveryChannel: (message: string) => Promise<void>;
   userId: string;
   config?: Partial<AmbientSchedulerConfig>;
@@ -47,6 +55,7 @@ const JOB_IDS = {
   calendarPoll: 'ambient:calendar-poll',
   morningBriefing: 'ambient:morning-briefing',
   eveningSummary: 'ambient:evening-summary',
+  notificationPoll: 'ambient:notification-poll',
 } as const;
 
 /**
@@ -59,6 +68,7 @@ export class AmbientScheduler {
   private readonly briefingGenerator: BriefingGenerator;
   private readonly emailIntelligence: AmbientSchedulerDeps['emailIntelligence'];
   private readonly calendarIntelligence: AmbientSchedulerDeps['calendarIntelligence'];
+  private readonly notificationOrchestrator: NotificationOrchestrator | undefined;
   private readonly deliveryChannel: (message: string) => Promise<void>;
   private readonly userId: string;
   private readonly config: AmbientSchedulerConfig;
@@ -71,6 +81,7 @@ export class AmbientScheduler {
     this.briefingGenerator = deps.briefingGenerator;
     this.emailIntelligence = deps.emailIntelligence;
     this.calendarIntelligence = deps.calendarIntelligence;
+    this.notificationOrchestrator = deps.notificationOrchestrator;
     this.deliveryChannel = deps.deliveryChannel;
     this.userId = deps.userId;
     this.config = { ...DEFAULT_AMBIENT_SCHEDULER_CONFIG, ...deps.config };
@@ -96,6 +107,10 @@ export class AmbientScheduler {
       void this.generateAndDeliverBriefing('evening');
     });
 
+    this.scheduler.schedule(JOB_IDS.notificationPoll, this.config.notificationPollCron, () => {
+      void this.pollAndNotify();
+    });
+
     this.running = true;
   }
 
@@ -105,6 +120,7 @@ export class AmbientScheduler {
     this.scheduler.stop(JOB_IDS.calendarPoll);
     this.scheduler.stop(JOB_IDS.morningBriefing);
     this.scheduler.stop(JOB_IDS.eveningSummary);
+    this.scheduler.stop(JOB_IDS.notificationPoll);
     this.running = false;
   }
 
@@ -134,6 +150,48 @@ export class AmbientScheduler {
 
     const formatted = formatBriefingAsText(briefing);
     await this.deliveryChannel(formatted);
+  }
+
+  private async pollAndNotify(): Promise<void> {
+    if (!this.notificationOrchestrator) return;
+
+    const events = await this.triggerManager.pollAll();
+    if (events.length > 0) {
+      this.notificationOrchestrator.processTriggerEvents(events);
+    }
+
+    // Check for upcoming calendar events
+    if (this.calendarIntelligence) {
+      try {
+        const today = new Date().toISOString().split('T')[0]!;
+        const result = await this.calendarIntelligence.analyzeDay(today);
+        const now = Date.now();
+        const alertWindowMs = this.config.calendarAlertMinutes * 60_000;
+
+        const upcomingEvents = (result.events ?? [])
+          .map((e) => ({
+            title: e.title,
+            startTime: this.parseTimeToTimestamp(e.time),
+          }))
+          .filter((e) => {
+            const timeUntil = e.startTime - now;
+            return timeUntil > 0 && timeUntil <= alertWindowMs;
+          });
+
+        if (upcomingEvents.length > 0) {
+          this.notificationOrchestrator.processCalendarCheck(upcomingEvents, now);
+        }
+      } catch {
+        // Calendar fetch errors are silently ignored
+      }
+    }
+  }
+
+  private parseTimeToTimestamp(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    const d = new Date();
+    d.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+    return d.getTime();
   }
 
   private async pollCalendar(): Promise<void> {

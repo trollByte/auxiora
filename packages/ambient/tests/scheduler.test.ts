@@ -47,9 +47,9 @@ describe('AmbientScheduler', () => {
     expect(scheduler.isRunning()).toBe(false);
   });
 
-  it('should schedule 4 cron jobs on start', () => {
+  it('should schedule 5 cron jobs on start', () => {
     scheduler.start();
-    expect(deps._scheduler.schedule).toHaveBeenCalledTimes(4);
+    expect(deps._scheduler.schedule).toHaveBeenCalledTimes(5);
     expect(scheduler.isRunning()).toBe(true);
   });
 
@@ -61,6 +61,7 @@ describe('AmbientScheduler', () => {
     expect(jobMap.get('ambient:calendar-poll')).toBe('*/5 * * * *');
     expect(jobMap.get('ambient:morning-briefing')).toBe('0 7 * * *');
     expect(jobMap.get('ambient:evening-summary')).toBe('0 18 * * *');
+    expect(jobMap.get('ambient:notification-poll')).toBe('*/1 * * * *');
   });
 
   it('should use custom cron expressions from config', () => {
@@ -86,13 +87,13 @@ describe('AmbientScheduler', () => {
   it('should not start twice', () => {
     scheduler.start();
     scheduler.start();
-    expect(deps._scheduler.schedule).toHaveBeenCalledTimes(4);
+    expect(deps._scheduler.schedule).toHaveBeenCalledTimes(5);
   });
 
   it('should stop all jobs', () => {
     scheduler.start();
     scheduler.stop();
-    expect(deps._scheduler.stop).toHaveBeenCalledTimes(4);
+    expect(deps._scheduler.stop).toHaveBeenCalledTimes(5);
     expect(scheduler.isRunning()).toBe(false);
   });
 
@@ -177,6 +178,79 @@ describe('AmbientScheduler', () => {
     const s = new AmbientScheduler(errorDeps);
     await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
     expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+  });
+
+  it('should schedule notification poll job on start', () => {
+    scheduler.start();
+    const jobs = Array.from(deps._scheduler._jobs.keys());
+    expect(jobs).toContain('ambient:notification-poll');
+  });
+
+  it('should stop notification poll job on stop', () => {
+    scheduler.start();
+    scheduler.stop();
+    expect(deps._scheduler.stop).toHaveBeenCalledWith('ambient:notification-poll');
+  });
+
+  it('should call triggerManager.pollAll and orchestrator when notification poll fires', async () => {
+    const mockOrchestrator = {
+      processTriggerEvents: vi.fn(),
+      processCalendarCheck: vi.fn(),
+      getPending: vi.fn(() => []),
+      dismiss: vi.fn(),
+    };
+    const orchDeps = createMockDeps({
+      notificationOrchestrator: mockOrchestrator as any,
+    });
+    (orchDeps.triggerManager.pollAll as any).mockResolvedValue([
+      { triggerId: 'new-email', connectorId: 'email', data: { subject: 'Test' }, timestamp: Date.now() },
+    ]);
+    const s = new AmbientScheduler(orchDeps);
+    s.start();
+
+    const pollJob = orchDeps._scheduler._jobs.get('ambient:notification-poll');
+    pollJob!.callback();
+
+    // Wait for async pollAndNotify to complete
+    await vi.waitFor(() => {
+      expect(orchDeps.triggerManager.pollAll).toHaveBeenCalled();
+      expect(mockOrchestrator.processTriggerEvents).toHaveBeenCalledWith([
+        expect.objectContaining({ triggerId: 'new-email' }),
+      ]);
+    });
+  });
+
+  it('should not call orchestrator when no events are returned', async () => {
+    const mockOrchestrator = {
+      processTriggerEvents: vi.fn(),
+      processCalendarCheck: vi.fn(),
+      getPending: vi.fn(() => []),
+      dismiss: vi.fn(),
+    };
+    const orchDeps = createMockDeps({
+      notificationOrchestrator: mockOrchestrator as any,
+    });
+    (orchDeps.triggerManager.pollAll as any).mockResolvedValue([]);
+    const s = new AmbientScheduler(orchDeps);
+    s.start();
+
+    const pollJob = orchDeps._scheduler._jobs.get('ambient:notification-poll');
+    pollJob!.callback();
+
+    await vi.waitFor(() => {
+      expect(orchDeps.triggerManager.pollAll).toHaveBeenCalled();
+    });
+    expect(mockOrchestrator.processTriggerEvents).not.toHaveBeenCalled();
+  });
+
+  it('should skip notification polling when orchestrator is not provided', async () => {
+    scheduler.start();
+    const pollJob = deps._scheduler._jobs.get('ambient:notification-poll');
+    pollJob!.callback();
+    // Should not throw; pollAll should not be called since orchestrator is absent
+    await vi.waitFor(() => {
+      expect(deps.triggerManager.pollAll).not.toHaveBeenCalled();
+    });
   });
 });
 

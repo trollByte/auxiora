@@ -86,6 +86,7 @@ export type AuditEventType =
   | 'settings.channels'
   | 'settings.dashboard_password_changed'
   | 'settings.vault_password_changed'
+  | 'settings.notification_preferences'
   | 'system.error'
   // Trust / Autonomy (Phase 12)
   | 'trust.level_changed'

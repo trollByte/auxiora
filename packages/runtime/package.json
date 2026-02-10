@@ -47,6 +47,7 @@
     "@auxiora/connectors": "workspace:*",
     "@auxiora/connector-google-workspace": "workspace:*",
     "@auxiora/conversation": "workspace:*",
+    "@auxiora/notification-hub": "workspace:*",
     "@auxiora/screen": "workspace:*",
     "express": "^5.1.0"
   },
