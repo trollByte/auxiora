@@ -69,8 +69,8 @@ export const api = {
     fetchApi<{ success: boolean }>('/setup/vault', { method: 'POST', body: JSON.stringify({ password }) }),
   setupDashboardPassword: (password: string) =>
     fetchApi<{ success: boolean }>('/setup/dashboard-password', { method: 'POST', body: JSON.stringify({ password }) }),
-  setupIdentity: (name: string, pronouns: string) =>
-    fetchApi<{ success: boolean }>('/setup/identity', { method: 'POST', body: JSON.stringify({ name, pronouns }) }),
+  setupIdentity: (name: string, pronouns: string, vibe?: string) =>
+    fetchApi<{ success: boolean }>('/setup/identity', { method: 'POST', body: JSON.stringify({ name, pronouns, vibe }) }),
   getSetupTemplates: () =>
     fetchApi<{ data: Array<{ id: string; name: string; description: string; preview: string }> }>('/setup/templates'),
   setupPersonality: (template: string) =>

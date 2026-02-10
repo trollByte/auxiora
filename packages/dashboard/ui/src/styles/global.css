@@ -510,7 +510,8 @@ body {
 }
 
 .setup-card input,
-.setup-card select {
+.setup-card select,
+.setup-card textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
   margin-bottom: 1rem;
@@ -524,13 +525,20 @@ body {
 }
 
 .setup-card input:focus,
-.setup-card select:focus {
+.setup-card select:focus,
+.setup-card textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-.setup-card input::placeholder { color: var(--text-secondary); }
+.setup-card input::placeholder,
+.setup-card textarea::placeholder { color: var(--text-secondary); }
+
+.setup-card textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
 
 .setup-btn-primary,
 .setup-card button[type="submit"] {
@@ -665,6 +673,11 @@ body {
 .template-card.selected {
   border-color: var(--accent);
   background: var(--accent-glow);
+}
+
+.template-card.recommended {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
 .template-card h3 {
@@ -1193,6 +1206,9 @@ body {
 }
 
 .cost-summary .cost-box.over-budget .cost-value { color: var(--danger); }
+
+/* ── Chat scroll fix — chat manages its own scrolling ── */
+.content:has(.chat-container) { overflow: hidden; max-height: none; }
 
 /* ── Chat Interface ────────────────────────────── */
 

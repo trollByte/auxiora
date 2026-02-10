@@ -192,7 +192,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
 
-    const { name, pronouns } = req.body as { name?: string; pronouns?: string };
+    const { name, pronouns, vibe } = req.body as { name?: string; pronouns?: string; vibe?: string };
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'Agent name is required' });
       return;
@@ -202,10 +202,11 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       agent: {
         name,
         ...(pronouns ? { pronouns } : {}),
+        ...(vibe && typeof vibe === 'string' ? { vibe } : {}),
       },
     });
 
-    void audit('setup.identity', { name, pronouns });
+    void audit('setup.identity', { name, pronouns, vibe });
     res.json({ success: true, name });
   });
 
