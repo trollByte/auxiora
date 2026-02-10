@@ -86,7 +86,7 @@ export function SetupChannels() {
           credentials: credentials[ch.type],
         }));
       await api.setupChannels(channels);
-      navigate('/setup/complete');
+      navigate('/setup/connections');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save channels');
     } finally {
@@ -136,7 +136,7 @@ export function SetupChannels() {
           {loading ? 'Saving...' : 'Save & Continue'}
         </button>
         {error && <p className="error">{error}</p>}
-        <span className="skip-link" onClick={() => navigate('/setup/complete')}>Skip for now</span>
+        <span className="skip-link" onClick={() => navigate('/setup/connections')}>Skip for now</span>
       </div>
     </div>
   );

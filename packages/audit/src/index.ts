@@ -113,6 +113,10 @@ export type AuditEventType =
   | 'connector.disconnected'
   | 'connector.action_executed'
   | 'connector.action_failed'
+  | 'connector.credentials_stored'
+  | 'connector.oauth_started'
+  | 'connector.oauth_completed'
+  | 'connector.oauth_disconnected'
   // Social / Team (Phase 14)
   | 'social.user_created'
   | 'social.user_updated'

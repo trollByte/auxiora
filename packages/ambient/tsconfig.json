@@ -6,6 +6,7 @@
   },
   "include": ["src/**/*"],
   "references": [
+    { "path": "../behaviors" },
     { "path": "../memory" },
     { "path": "../connectors" },
     { "path": "../personality" }

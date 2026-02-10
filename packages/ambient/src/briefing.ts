@@ -130,3 +130,23 @@ export class BriefingGenerator {
     return { ...this.config };
   }
 }
+
+/** Format a briefing as human-readable text. */
+export function formatBriefingAsText(briefing: Briefing): string {
+  const greeting = briefing.timeOfDay === 'morning'
+    ? 'Good morning! Here\'s your day:'
+    : briefing.timeOfDay === 'evening'
+      ? 'Here\'s your evening summary:'
+      : 'Here\'s your briefing:';
+
+  if (briefing.sections.length === 0) {
+    return `${greeting}\n\nNo updates right now.`;
+  }
+
+  const sections = briefing.sections.map(s => {
+    const items = s.items.map(item => `  ${item}`).join('\n');
+    return `${s.title}\n${items}`;
+  }).join('\n\n');
+
+  return `${greeting}\n\n${sections}`;
+}

@@ -3,7 +3,7 @@ interface SetupProgressProps {
   totalSteps?: number;
 }
 
-export function SetupProgress({ currentStep, totalSteps = 6 }: SetupProgressProps) {
+export function SetupProgress({ currentStep, totalSteps = 7 }: SetupProgressProps) {
   return (
     <div className="setup-progress">
       {Array.from({ length: totalSteps }, (_, i) => {

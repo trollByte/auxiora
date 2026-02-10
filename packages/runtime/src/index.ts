@@ -51,7 +51,9 @@ import { IntentParser, ActionPlanner } from '@auxiora/intent';
 import { UserManager } from '@auxiora/social';
 import { WorkflowEngine, ApprovalManager } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
-import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine } from '@auxiora/ambient';
+import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG } from '@auxiora/ambient';
+import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
+import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
 import { ConversationEngine } from '@auxiora/conversation';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
@@ -131,6 +133,11 @@ export class Auxiora {
   private promptAssembler?: PromptAssembler;
   private sessionModes: Map<string, SessionModeState> = new Map();
   private userPreferences?: UserPreferences;
+  // Connector system
+  private connectorRegistry?: ConnectorRegistry;
+  private connectorAuthManager?: ConnectorAuthManager;
+  private triggerManager?: TriggerManager;
+  private ambientScheduler?: AmbientScheduler;
   // Security floor
   private securityFloor?: SecurityFloor;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
@@ -707,6 +714,57 @@ export class Auxiora {
     this.briefingGenerator = new BriefingGenerator();
     this.anticipationEngine = new AnticipationEngine();
     console.log('Ambient intelligence initialized');
+
+    // Initialize connector registry and wire ambient scheduler
+    this.connectorRegistry = new ConnectorRegistry();
+    this.connectorAuthManager = new ConnectorAuthManager();
+    this.connectorRegistry.register(googleWorkspaceConnector);
+    this.triggerManager = new TriggerManager(this.connectorRegistry, this.connectorAuthManager);
+
+    // Restore connector tokens from vault
+    try {
+      for (const connector of this.connectorRegistry.list()) {
+        const tokenData = this.vault.get(`connectors.${connector.id}.tokens`);
+        if (tokenData) {
+          const tokens = typeof tokenData === 'string' ? JSON.parse(tokenData) : tokenData;
+          await this.connectorAuthManager.authenticate(connector.id, connector.auth, tokens);
+        }
+      }
+    } catch {
+      // Vault locked or no tokens stored
+    }
+
+    // Wire ambient scheduler if Google Workspace has a stored token
+    if (this.connectorAuthManager.hasToken('google-workspace') && this.briefingGenerator) {
+      const scheduler = new (await import('@auxiora/behaviors')).Scheduler();
+      this.ambientScheduler = new AmbientScheduler({
+        scheduler,
+        connectorRegistry: this.connectorRegistry,
+        triggerManager: this.triggerManager,
+        briefingGenerator: this.briefingGenerator,
+        deliveryChannel: async (msg: string) => {
+          // Broadcast to all webchat connections
+          this.gateway.broadcast({
+            type: 'message',
+            payload: { role: 'assistant', content: msg, system: true },
+          });
+          // Send to all connected channels
+          if (this.channels) {
+            for (const channelType of this.channels.getConnectedChannels()) {
+              try {
+                await this.channels.send(channelType as any, 'system', { content: msg });
+              } catch {
+                // Channel delivery failure is non-fatal
+              }
+            }
+          }
+        },
+        userId: 'default',
+        config: DEFAULT_AMBIENT_SCHEDULER_CONFIG,
+      });
+      this.ambientScheduler.start();
+      console.log('Ambient scheduler started (Google Workspace connected)');
+    }
 
     // [P15] Initialize conversation engine
     this.conversationEngine = new ConversationEngine();
@@ -1956,6 +2014,9 @@ export class Auxiora {
     }
     if (this.pluginLoader) {
       await this.pluginLoader.shutdownAll();
+    }
+    if (this.ambientScheduler) {
+      this.ambientScheduler.stop();
     }
     if (this.memoryCleanupInterval) {
       clearInterval(this.memoryCleanupInterval);

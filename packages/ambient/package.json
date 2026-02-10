@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auxiora/behaviors": "workspace:*",
     "@auxiora/memory": "workspace:*",
     "@auxiora/connectors": "workspace:*",
     "@auxiora/personality": "workspace:*"

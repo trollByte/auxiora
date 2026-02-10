@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auxiora/connectors": "workspace:*"
+    "@auxiora/connectors": "workspace:*",
+    "googleapis": "^144.0.0"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -1,6 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthManager } from '../src/auth-manager.js';
 import type { AuthConfig } from '../src/types.js';
+import type { AuthManagerVault } from '../src/auth-manager.js';
+
+function createMockVault(data: Record<string, string> = {}): AuthManagerVault {
+  const store = new Map(Object.entries(data));
+  return {
+    get: (name: string) => store.get(name),
+    has: (name: string) => store.has(name),
+    add: async (name: string, value: string) => { store.set(name, value); },
+  };
+}
 
 describe('AuthManager', () => {
   let authManager: AuthManager;
@@ -81,16 +91,36 @@ describe('AuthManager', () => {
   });
 
   it('should refresh oauth2 token', async () => {
+    // refreshToken now makes a real HTTP call, so we mock fetch and provide vault credentials
+    const vault = createMockVault({
+      'connectors.inst-ref.credentials': JSON.stringify({ clientId: 'cid', clientSecret: 'csecret' }),
+    });
+    const mgr = new AuthManager(vault);
     const config: AuthConfig = {
       type: 'oauth2',
       oauth2: { authUrl: 'https://auth.example.com', tokenUrl: 'https://token.example.com', scopes: ['read'] },
     };
-    await authManager.authenticate('inst-ref', config, {
+    await mgr.authenticate('inst-ref', config, {
       accessToken: 'at-old',
       refreshToken: 'rt-xyz',
     });
-    const refreshed = await authManager.refreshToken('inst-ref', config);
-    expect(refreshed.expiresAt).toBeGreaterThan(Date.now());
+
+    // Mock the global fetch to return a fake token response
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: 'at-new', expires_in: 3600 }),
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as any;
+    try {
+      const refreshed = await mgr.refreshToken('inst-ref', config);
+      expect(refreshed.accessToken).toBe('at-new');
+      expect(refreshed.expiresAt).toBeGreaterThan(Date.now());
+      expect(refreshed.refreshToken).toBe('rt-xyz');
+      expect(mockFetch).toHaveBeenCalledOnce();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it('should throw when refreshing non-oauth2 token', async () => {

@@ -1,8 +1,21 @@
 import type { AuthConfig, StoredToken } from './types.js';
 
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+export interface AuthManagerVault {
+  get(name: string): string | undefined;
+  has(name: string): boolean;
+  add(name: string, value: string): Promise<void>;
+}
+
 /** In-memory token store with vault-like interface for connector auth tokens. */
 export class AuthManager {
   private tokens = new Map<string, StoredToken>();
+  private vault?: AuthManagerVault;
+
+  constructor(vault?: AuthManagerVault) {
+    this.vault = vault;
+  }
 
   /** Authenticate a connector instance with the given credentials. */
   async authenticate(
@@ -51,6 +64,12 @@ export class AuthManager {
     }
 
     this.tokens.set(instanceId, token);
+
+    // Persist tokens to vault if available
+    if (this.vault) {
+      await this.vault.add(`connectors.${instanceId}.tokens`, JSON.stringify(token));
+    }
+
     return token;
   }
 
@@ -70,14 +89,60 @@ export class AuthManager {
       throw new Error('No refresh token available');
     }
 
-    // In a real implementation, this would call the token endpoint.
-    // For now, mark the token as refreshed with a new expiry.
-    const refreshed: StoredToken = {
-      ...existing,
-      expiresAt: Date.now() + 3600_000,
+    // Load client credentials from vault
+    const credsJson = this.vault?.get(`connectors.${instanceId}.credentials`);
+    if (!credsJson) {
+      throw new Error(`No client credentials found for instance "${instanceId}"`);
+    }
+    const creds = JSON.parse(credsJson) as { clientId: string; clientSecret: string };
+
+    // Call Google's token endpoint to refresh
+    const body = new URLSearchParams({
+      client_id: creds.clientId,
+      client_secret: creds.clientSecret,
+      refresh_token: existing.refreshToken,
+      grant_type: 'refresh_token',
+    });
+
+    const response = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Token refresh failed: ${response.status} ${errBody}`);
+    }
+
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+      token_type?: string;
     };
+
+    const refreshed: StoredToken = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token ?? existing.refreshToken,
+      expiresAt: data.expires_in ? Date.now() + data.expires_in * 1000 : Date.now() + 3600_000,
+      tokenType: data.token_type ?? 'Bearer',
+      scopes: existing.scopes,
+    };
+
     this.tokens.set(instanceId, refreshed);
+
+    // Persist updated tokens to vault
+    if (this.vault) {
+      await this.vault.add(`connectors.${instanceId}.tokens`, JSON.stringify(refreshed));
+    }
+
     return refreshed;
+  }
+
+  /** Restore a token from vault into the in-memory store. */
+  restoreToken(instanceId: string, token: StoredToken): void {
+    this.tokens.set(instanceId, token);
   }
 
   /** Get the stored token for a connector instance. */
@@ -94,7 +159,15 @@ export class AuthManager {
 
   /** Revoke and remove a token for a connector instance. */
   async revokeToken(instanceId: string): Promise<boolean> {
-    return this.tokens.delete(instanceId);
+    const deleted = this.tokens.delete(instanceId);
+    if (deleted && this.vault) {
+      try {
+        await this.vault.add(`connectors.${instanceId}.tokens`, '');
+      } catch {
+        // Best-effort vault cleanup
+      }
+    }
+    return deleted;
   }
 
   /** Check whether a connector instance has a stored token. */

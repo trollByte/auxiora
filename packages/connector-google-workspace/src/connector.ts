@@ -1,5 +1,41 @@
+import { Readable } from 'node:stream';
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
+import { createGoogleClient } from './google-client.js';
+
+/** Decode a base64url-encoded string to UTF-8. */
+function base64urlDecode(data: string): string {
+  return Buffer.from(data, 'base64url').toString('utf-8');
+}
+
+/** Extract the plain-text body from a Gmail message payload. */
+function extractBody(payload: { mimeType?: string | null; body?: { data?: string | null } | null; parts?: Array<{ mimeType?: string | null; body?: { data?: string | null } | null; parts?: unknown[] }> | null } | null | undefined): string {
+  if (!payload) return '';
+
+  // Direct body on simple messages
+  if (payload.mimeType === 'text/plain' && payload.body?.data) {
+    return base64urlDecode(payload.body.data);
+  }
+
+  // Multipart: look for text/plain first, then text/html
+  if (payload.parts) {
+    const plainPart = payload.parts.find(p => p.mimeType === 'text/plain');
+    if (plainPart?.body?.data) {
+      return base64urlDecode(plainPart.body.data);
+    }
+    const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
+    if (htmlPart?.body?.data) {
+      return base64urlDecode(htmlPart.body.data);
+    }
+  }
+
+  // Fallback: any body data
+  if (payload.body?.data) {
+    return base64urlDecode(payload.body.data);
+  }
+
+  return '';
+}
 
 export const googleWorkspaceConnector = defineConnector({
   id: 'google-workspace',
@@ -314,50 +350,318 @@ export const googleWorkspaceConnector = defineConnector({
   ],
 
   async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
-    // In production, these would make real API calls to Google APIs.
-    // This is the connector skeleton with action routing.
+    const client = createGoogleClient(token);
+
     switch (actionId) {
-      case 'calendar-list-events':
-        return { events: [], calendarId: params.calendarId ?? 'primary' };
-      case 'calendar-create-event':
-        return { eventId: `evt_${Date.now()}`, status: 'created', summary: params.summary };
-      case 'calendar-update-event':
-        return { eventId: params.eventId, status: 'updated' };
-      case 'calendar-delete-event':
+      // --- Calendar ---
+      case 'calendar-list-events': {
+        const res = await client.calendar.events.list({
+          calendarId: (params.calendarId as string) ?? 'primary',
+          maxResults: (params.maxResults as number) ?? 10,
+          timeMin: (params.timeMin as string) ?? new Date().toISOString(),
+          timeMax: params.timeMax as string | undefined,
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+        return { events: res.data.items ?? [] };
+      }
+
+      case 'calendar-create-event': {
+        const attendees = params.attendees
+          ? (params.attendees as string[]).map(email => ({ email }))
+          : undefined;
+        const res = await client.calendar.events.insert({
+          calendarId: (params.calendarId as string) ?? 'primary',
+          requestBody: {
+            summary: params.summary as string,
+            description: params.description as string | undefined,
+            start: { dateTime: params.start as string },
+            end: { dateTime: params.end as string },
+            attendees,
+          },
+        });
+        return { eventId: res.data.id, status: 'created', summary: res.data.summary };
+      }
+
+      case 'calendar-update-event': {
+        const requestBody: Record<string, unknown> = {};
+        if (params.summary) requestBody.summary = params.summary;
+        if (params.start) requestBody.start = { dateTime: params.start as string };
+        if (params.end) requestBody.end = { dateTime: params.end as string };
+        const res = await client.calendar.events.patch({
+          calendarId: (params.calendarId as string) ?? 'primary',
+          eventId: params.eventId as string,
+          requestBody,
+        });
+        return { eventId: res.data.id, status: 'updated' };
+      }
+
+      case 'calendar-delete-event': {
+        await client.calendar.events.delete({
+          calendarId: (params.calendarId as string) ?? 'primary',
+          eventId: params.eventId as string,
+        });
         return { eventId: params.eventId, status: 'deleted' };
-      case 'calendar-find-free-slots':
-        return { slots: [] };
-      case 'gmail-list-messages':
-        return { messages: [] };
-      case 'gmail-read-message':
-        return { messageId: params.messageId, subject: '', body: '' };
-      case 'gmail-send':
-        return { messageId: `msg_${Date.now()}`, status: 'sent' };
-      case 'gmail-draft':
-        return { draftId: `draft_${Date.now()}`, status: 'created' };
-      case 'gmail-search':
-        return { messages: [], query: params.query };
-      case 'gmail-archive':
+      }
+
+      case 'calendar-find-free-slots': {
+        const calendarIds = (params.calendarIds as string[] | undefined) ?? ['primary'];
+        const res = await client.calendar.freebusy.query({
+          requestBody: {
+            timeMin: params.timeMin as string,
+            timeMax: params.timeMax as string,
+            items: calendarIds.map(id => ({ id })),
+          },
+        });
+        const durationMs = ((params.durationMinutes as number) ?? 30) * 60_000;
+        const busySlots = Object.values(res.data.calendars ?? {}).flatMap(
+          cal => (cal as { busy?: Array<{ start?: string; end?: string }> }).busy ?? [],
+        );
+        busySlots.sort((a, b) => new Date(a.start!).getTime() - new Date(b.start!).getTime());
+
+        const windowStart = new Date(params.timeMin as string).getTime();
+        const windowEnd = new Date(params.timeMax as string).getTime();
+        const slots: Array<{ start: string; end: string }> = [];
+        let cursor = windowStart;
+
+        for (const busy of busySlots) {
+          const busyStart = new Date(busy.start!).getTime();
+          if (busyStart - cursor >= durationMs) {
+            slots.push({ start: new Date(cursor).toISOString(), end: new Date(busyStart).toISOString() });
+          }
+          cursor = Math.max(cursor, new Date(busy.end!).getTime());
+        }
+        if (windowEnd - cursor >= durationMs) {
+          slots.push({ start: new Date(cursor).toISOString(), end: new Date(windowEnd).toISOString() });
+        }
+
+        return { slots };
+      }
+
+      // --- Gmail ---
+      case 'gmail-list-messages': {
+        const res = await client.gmail.users.messages.list({
+          userId: 'me',
+          maxResults: (params.maxResults as number) ?? 10,
+          q: params.query as string | undefined,
+          labelIds: params.labelIds as string[] | undefined,
+        });
+        return { messages: res.data.messages ?? [] };
+      }
+
+      case 'gmail-read-message': {
+        const res = await client.gmail.users.messages.get({
+          userId: 'me',
+          id: params.messageId as string,
+          format: 'full',
+        });
+        const headers = res.data.payload?.headers ?? [];
+        const subject = headers.find(h => h.name === 'Subject')?.value ?? '';
+        const from = headers.find(h => h.name === 'From')?.value ?? '';
+        const to = headers.find(h => h.name === 'To')?.value ?? '';
+        const date = headers.find(h => h.name === 'Date')?.value ?? '';
+        const body = extractBody(res.data.payload);
+        return { messageId: res.data.id, subject, from, to, date, body, snippet: res.data.snippet };
+      }
+
+      case 'gmail-send': {
+        const lines = [
+          `To: ${params.to as string}`,
+          ...(params.cc ? [`Cc: ${params.cc as string}`] : []),
+          ...(params.bcc ? [`Bcc: ${params.bcc as string}`] : []),
+          `Subject: ${params.subject as string}`,
+          'Content-Type: text/plain; charset="UTF-8"',
+          '',
+          params.body as string,
+        ];
+        const raw = Buffer.from(lines.join('\r\n')).toString('base64url');
+        const res = await client.gmail.users.messages.send({
+          userId: 'me',
+          requestBody: { raw },
+        });
+        return { messageId: res.data.id, status: 'sent' };
+      }
+
+      case 'gmail-draft': {
+        const draftLines = [
+          `To: ${params.to as string}`,
+          `Subject: ${params.subject as string}`,
+          'Content-Type: text/plain; charset="UTF-8"',
+          '',
+          params.body as string,
+        ];
+        const draftRaw = Buffer.from(draftLines.join('\r\n')).toString('base64url');
+        const res = await client.gmail.users.drafts.create({
+          userId: 'me',
+          requestBody: { message: { raw: draftRaw } },
+        });
+        return { draftId: res.data.id, status: 'created' };
+      }
+
+      case 'gmail-search': {
+        const res = await client.gmail.users.messages.list({
+          userId: 'me',
+          q: params.query as string,
+          maxResults: (params.maxResults as number) ?? 10,
+        });
+        return { messages: res.data.messages ?? [], query: params.query };
+      }
+
+      case 'gmail-archive': {
+        await client.gmail.users.messages.modify({
+          userId: 'me',
+          id: params.messageId as string,
+          requestBody: { removeLabelIds: ['INBOX'] },
+        });
         return { messageId: params.messageId, status: 'archived' };
-      case 'drive-list-files':
-        return { files: [] };
-      case 'drive-read-file':
-        return { fileId: params.fileId, content: '' };
-      case 'drive-create-file':
-        return { fileId: `file_${Date.now()}`, status: 'created' };
-      case 'drive-upload':
-        return { fileId: `file_${Date.now()}`, status: 'uploaded' };
-      case 'drive-search':
-        return { files: [], query: params.query };
-      case 'drive-share':
+      }
+
+      // --- Drive ---
+      case 'drive-list-files': {
+        const queryParts: string[] = [];
+        if (params.folderId) queryParts.push(`'${params.folderId as string}' in parents`);
+        if (params.query) queryParts.push(`name contains '${params.query as string}'`);
+        const res = await client.drive.files.list({
+          pageSize: (params.maxResults as number) ?? 20,
+          q: queryParts.length > 0 ? queryParts.join(' and ') : undefined,
+          fields: 'files(id,name,mimeType,size,modifiedTime)',
+        });
+        return { files: res.data.files ?? [] };
+      }
+
+      case 'drive-read-file': {
+        const meta = await client.drive.files.get({
+          fileId: params.fileId as string,
+          fields: 'id,name,mimeType,size',
+        });
+        const res = await client.drive.files.get(
+          { fileId: params.fileId as string, alt: 'media' },
+          { responseType: 'stream' },
+        );
+        const chunks: Buffer[] = [];
+        for await (const chunk of res.data as Readable) {
+          chunks.push(Buffer.from(chunk as Uint8Array));
+        }
+        const content = Buffer.concat(chunks).toString('utf-8');
+        return { fileId: meta.data.id, name: meta.data.name, mimeType: meta.data.mimeType, content };
+      }
+
+      case 'drive-create-file': {
+        const fileContent = params.content as string;
+        const res = await client.drive.files.create({
+          requestBody: {
+            name: params.name as string,
+            mimeType: (params.mimeType as string) ?? 'text/plain',
+            parents: params.folderId ? [params.folderId as string] : undefined,
+          },
+          media: {
+            mimeType: (params.mimeType as string) ?? 'text/plain',
+            body: Readable.from([fileContent]),
+          },
+          fields: 'id,name',
+        });
+        return { fileId: res.data.id, name: res.data.name, status: 'created' };
+      }
+
+      case 'drive-upload': {
+        const uploadBuffer = Buffer.from(params.content as string, 'base64');
+        const res = await client.drive.files.create({
+          requestBody: {
+            name: params.name as string,
+            mimeType: params.mimeType as string,
+            parents: params.folderId ? [params.folderId as string] : undefined,
+          },
+          media: {
+            mimeType: params.mimeType as string,
+            body: Readable.from([uploadBuffer]),
+          },
+          fields: 'id,name',
+        });
+        return { fileId: res.data.id, name: res.data.name, status: 'uploaded' };
+      }
+
+      case 'drive-search': {
+        const res = await client.drive.files.list({
+          q: `fullText contains '${params.query as string}'`,
+          pageSize: (params.maxResults as number) ?? 10,
+          fields: 'files(id,name,mimeType,size,modifiedTime)',
+        });
+        return { files: res.data.files ?? [], query: params.query };
+      }
+
+      case 'drive-share': {
+        await client.drive.permissions.create({
+          fileId: params.fileId as string,
+          requestBody: {
+            type: 'user',
+            role: (params.role as string) ?? 'reader',
+            emailAddress: params.email as string,
+          },
+        });
         return { fileId: params.fileId, sharedWith: params.email, status: 'shared' };
+      }
+
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    // In production, these would poll the real Google APIs.
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    const client = createGoogleClient(token);
+
+    switch (triggerId) {
+      case 'new-email': {
+        const after = Math.floor((lastPollAt ?? Date.now() - 120_000) / 1000);
+        const res = await client.gmail.users.messages.list({
+          userId: 'me',
+          q: `after:${after}`,
+          maxResults: 20,
+        });
+        return (res.data.messages ?? []).map(m => ({
+          triggerId: 'new-email',
+          connectorId: 'google-workspace',
+          timestamp: Date.now(),
+          data: { messageId: m.id },
+        }));
+      }
+
+      case 'event-starting-soon': {
+        const now = new Date();
+        const soon = new Date(now.getTime() + 15 * 60_000);
+        const res = await client.calendar.events.list({
+          calendarId: 'primary',
+          timeMin: now.toISOString(),
+          timeMax: soon.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+        return (res.data.items ?? []).map(e => ({
+          triggerId: 'event-starting-soon',
+          connectorId: 'google-workspace',
+          timestamp: Date.now(),
+          data: { eventId: e.id, summary: e.summary, start: e.start },
+        }));
+      }
+
+      case 'file-shared': {
+        const after = lastPollAt
+          ? new Date(lastPollAt).toISOString()
+          : new Date(Date.now() - 300_000).toISOString();
+        const res = await client.drive.files.list({
+          q: `sharedWithMe = true and modifiedTime > '${after}'`,
+          pageSize: 20,
+          fields: 'files(id,name,mimeType,modifiedTime,sharingUser)',
+        });
+        return (res.data.files ?? []).map(f => ({
+          triggerId: 'file-shared',
+          connectorId: 'google-workspace',
+          timestamp: Date.now(),
+          data: { fileId: f.id, name: f.name, mimeType: f.mimeType },
+        }));
+      }
+
+      default:
+        return [];
+    }
   },
 });

@@ -44,6 +44,8 @@
     "@auxiora/workflows": "workspace:*",
     "@auxiora/agent-protocol": "workspace:*",
     "@auxiora/ambient": "workspace:*",
+    "@auxiora/connectors": "workspace:*",
+    "@auxiora/connector-google-workspace": "workspace:*",
     "@auxiora/conversation": "workspace:*",
     "@auxiora/screen": "workspace:*",
     "express": "^5.1.0"

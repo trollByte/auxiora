@@ -137,4 +137,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ newPassword }),
     }),
+
+  // Connector OAuth API
+  getConnectorStatus: (connectorId: string) =>
+    fetchApi<{ data: { connectorId: string; hasCredentials: boolean; connected: boolean; expiresAt?: number } }>(
+      `/connectors/${connectorId}/status`,
+    ),
+  saveConnectorCredentials: (connectorId: string, clientId: string, clientSecret: string) =>
+    fetchApi<{ success: boolean; oauthUrl?: string }>(`/connectors/${connectorId}/credentials`, {
+      method: 'POST',
+      body: JSON.stringify({ clientId, clientSecret }),
+    }),
+  disconnectConnector: (connectorId: string) =>
+    fetchApi<{ success: boolean }>(`/connectors/${connectorId}/disconnect`, {
+      method: 'POST',
+    }),
+
+  // Ambient config
+  getAmbientConfig: () =>
+    fetchApi<{ data: any }>('/ambient/config'),
+  updateAmbientConfig: (config: Record<string, unknown>) =>
+    fetchApi<{ success: boolean }>('/ambient/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
 };

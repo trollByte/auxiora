@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
@@ -1506,6 +1507,251 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
     res.json({ data: result });
+  });
+
+  // --- OAuth2 connector routes ---
+
+  // In-memory CSRF state storage (keyed by state token, value is connectorId)
+  const oauthStates = new Map<string, { connectorId: string; createdAt: number }>();
+
+  // Clean up expired states (older than 10 minutes)
+  function cleanupOAuthStates(): void {
+    const cutoff = Date.now() - 10 * 60_000;
+    for (const [key, value] of oauthStates) {
+      if (value.createdAt < cutoff) oauthStates.delete(key);
+    }
+  }
+
+  // Store OAuth client credentials in vault
+  router.post('/connectors/:connectorId/credentials', async (req: Request, res: Response) => {
+    const connectorId = String(req.params.connectorId);
+    const { clientId, clientSecret } = req.body as { clientId?: string; clientSecret?: string };
+
+    if (!clientId || !clientSecret) {
+      res.status(400).json({ error: 'clientId and clientSecret are required' });
+      return;
+    }
+
+    try {
+      await deps.vault.add(
+        `connectors.${connectorId}.credentials`,
+        JSON.stringify({ clientId, clientSecret }),
+      );
+      void audit('connector.credentials_stored', { connectorId });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to store credentials';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // Start OAuth2 consent flow — redirects user to provider
+  router.get('/connectors/:connectorId/auth', async (req: Request, res: Response) => {
+    const connectorId = String(req.params.connectorId);
+
+    // Load client credentials from vault
+    const credsJson = deps.vault.get(`connectors.${connectorId}.credentials`);
+    if (!credsJson) {
+      res.status(400).json({ error: 'No client credentials configured. Store credentials first.' });
+      return;
+    }
+
+    let creds: { clientId: string; clientSecret: string };
+    try {
+      creds = JSON.parse(credsJson) as { clientId: string; clientSecret: string };
+    } catch {
+      res.status(500).json({ error: 'Invalid stored credentials' });
+      return;
+    }
+
+    // Look up connector to get scopes
+    const connector = deps.connectors?.get(connectorId);
+    const scopes = connector?.auth?.oauth2?.scopes ?? [];
+
+    // Generate CSRF state token
+    cleanupOAuthStates();
+    const state = crypto.randomUUID();
+    oauthStates.set(state, { connectorId, createdAt: Date.now() });
+
+    // Build callback URL from request
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.headers.host ?? 'localhost';
+    const callbackUrl = `${protocol}://${host}/api/v1/dashboard/connectors/${connectorId}/callback`;
+
+    // Build Google OAuth consent URL
+    const params = new URLSearchParams({
+      client_id: creds.clientId,
+      redirect_uri: callbackUrl,
+      response_type: 'code',
+      scope: scopes.join(' '),
+      access_type: 'offline',
+      prompt: 'consent',
+      state,
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    void audit('connector.oauth_started', { connectorId });
+    res.redirect(authUrl);
+  });
+
+  // OAuth2 callback — exchange code for tokens
+  router.get('/connectors/:connectorId/callback', async (req: Request, res: Response) => {
+    const connectorId = String(req.params.connectorId);
+    const { code, state, error: oauthError } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+    };
+
+    if (oauthError) {
+      logger.warn('OAuth error from provider', { connectorId, error: new Error(String(oauthError)) });
+      res.redirect(`/dashboard/settings/connections?error=${encodeURIComponent(String(oauthError))}`);
+      return;
+    }
+
+    if (!code || !state) {
+      res.status(400).json({ error: 'Missing code or state parameter' });
+      return;
+    }
+
+    // Validate CSRF state
+    const storedState = oauthStates.get(state);
+    if (!storedState || storedState.connectorId !== connectorId) {
+      res.status(403).json({ error: 'Invalid or expired state token' });
+      return;
+    }
+    oauthStates.delete(state);
+
+    // Load client credentials
+    const credsJson = deps.vault.get(`connectors.${connectorId}.credentials`);
+    if (!credsJson) {
+      res.status(500).json({ error: 'Client credentials not found' });
+      return;
+    }
+
+    let creds: { clientId: string; clientSecret: string };
+    try {
+      creds = JSON.parse(credsJson) as { clientId: string; clientSecret: string };
+    } catch {
+      res.status(500).json({ error: 'Invalid stored credentials' });
+      return;
+    }
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.headers.host ?? 'localhost';
+    const callbackUrl = `${protocol}://${host}/api/v1/dashboard/connectors/${connectorId}/callback`;
+
+    // Exchange authorization code for tokens
+    try {
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
+          redirect_uri: callbackUrl,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errBody = await tokenResponse.text();
+        logger.error(`Token exchange failed: ${tokenResponse.status}`);
+        res.redirect(`/dashboard/settings/connections?error=${encodeURIComponent('Token exchange failed')}`);
+        return;
+      }
+
+      const tokens = await tokenResponse.json() as {
+        access_token: string;
+        refresh_token?: string;
+        expires_in?: number;
+        token_type?: string;
+        scope?: string;
+      };
+
+      // Store tokens in vault
+      const storedTokens = {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined,
+        tokenType: tokens.token_type ?? 'Bearer',
+      };
+
+      await deps.vault.add(
+        `connectors.${connectorId}.tokens`,
+        JSON.stringify(storedTokens),
+      );
+
+      void audit('connector.oauth_completed', { connectorId });
+      res.redirect(`/dashboard/settings/connections?connected=${connectorId}`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Token exchange failed';
+      logger.error(`OAuth callback error: ${msg}`);
+      res.redirect(`/dashboard/settings/connections?error=${encodeURIComponent(msg)}`);
+    }
+  });
+
+  // Connection status
+  router.get('/connectors/:connectorId/status', (req: Request, res: Response) => {
+    const connectorId = String(req.params.connectorId);
+
+    const hasCredentials = deps.vault.has(`connectors.${connectorId}.credentials`);
+    const tokensJson = deps.vault.get(`connectors.${connectorId}.tokens`);
+    let connected = false;
+    let expiresAt: number | undefined;
+
+    if (tokensJson) {
+      try {
+        const tokens = JSON.parse(tokensJson) as { accessToken?: string; expiresAt?: number };
+        connected = !!tokens.accessToken;
+        expiresAt = tokens.expiresAt;
+      } catch {
+        // Invalid tokens
+      }
+    }
+
+    res.json({
+      data: {
+        connectorId,
+        hasCredentials,
+        connected,
+        expiresAt,
+      },
+    });
+  });
+
+  // Disconnect — revoke and delete tokens
+  router.post('/connectors/:connectorId/disconnect', async (req: Request, res: Response) => {
+    const connectorId = String(req.params.connectorId);
+
+    // Attempt to revoke the access token with Google
+    const tokensJson = deps.vault.get(`connectors.${connectorId}.tokens`);
+    if (tokensJson) {
+      try {
+        const tokens = JSON.parse(tokensJson) as { accessToken?: string };
+        if (tokens.accessToken) {
+          await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(tokens.accessToken)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          }).catch(() => {
+            // Best-effort revocation
+          });
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    // Clear tokens from vault (store empty string to overwrite)
+    try {
+      await deps.vault.add(`connectors.${connectorId}.tokens`, '');
+    } catch {
+      // Best-effort cleanup
+    }
+
+    void audit('connector.oauth_disconnected', { connectorId });
+    res.json({ success: true });
   });
 
   // --- [P14] Team / Social routes ---

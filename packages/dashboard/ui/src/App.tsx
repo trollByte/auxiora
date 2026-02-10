@@ -19,7 +19,9 @@ import { SetupIdentity } from './pages/SetupIdentity';
 import { SetupPersonality } from './pages/SetupPersonality';
 import { SetupProvider } from './pages/SetupProvider';
 import { SetupChannels } from './pages/SetupChannels';
+import { SetupConnections } from './pages/SetupConnections';
 import { SetupComplete } from './pages/SetupComplete';
+import { SettingsAmbient } from './pages/SettingsAmbient';
 
 export function App() {
   return (
@@ -33,6 +35,7 @@ export function App() {
       <Route path="/setup/personality" element={<SetupPersonality />} />
       <Route path="/setup/provider" element={<SetupProvider />} />
       <Route path="/setup/channels" element={<SetupChannels />} />
+      <Route path="/setup/connections" element={<SetupConnections />} />
       <Route path="/setup/complete" element={<SetupComplete />} />
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
@@ -43,6 +46,7 @@ export function App() {
         <Route path="settings/personality" element={<SettingsPersonality />} />
         <Route path="settings/provider" element={<SettingsProvider />} />
         <Route path="settings/channels" element={<SettingsChannels />} />
+        <Route path="settings/ambient" element={<SettingsAmbient />} />
         <Route path="settings/security" element={<SettingsSecurity />} />
         <Route path="settings/audit" element={<AuditLog />} />
       </Route>
