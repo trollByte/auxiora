@@ -11,6 +11,7 @@ import type {
   WorkflowEvent,
   ReminderConfig,
   EscalationPolicy,
+  AutonomousAction,
 } from './types.js';
 
 const logger = getLogger('workflows:engine');
@@ -24,9 +25,11 @@ export interface CreateWorkflowOptions {
     description: string;
     assigneeId: string;
     dependsOn?: string[];
+    action?: AutonomousAction;
   }>;
   reminder?: Partial<ReminderConfig>;
   escalation?: Partial<EscalationPolicy>;
+  autonomous?: boolean;
 }
 
 const DEFAULT_REMINDER: ReminderConfig = {
@@ -62,6 +65,7 @@ export class WorkflowEngine {
       assigneeId: s.assigneeId,
       status: 'pending',
       dependsOn: s.dependsOn ?? [],
+      ...(s.action ? { action: s.action } : {}),
     }));
 
     const workflow: HumanWorkflow = {
@@ -76,6 +80,7 @@ export class WorkflowEngine {
       events: [],
       createdAt: now,
       updatedAt: now,
+      ...(options.autonomous ? { autonomous: true } : {}),
     };
 
     workflow.events.push(this.createEvent(workflowId, 'created', { userId: options.createdBy }));
@@ -206,6 +211,21 @@ export class WorkflowEngine {
 
   async listAll(): Promise<HumanWorkflow[]> {
     return this.readFile();
+  }
+
+  async addEvent(
+    workflowId: string,
+    type: WorkflowEvent['type'],
+    extra?: { stepId?: string; userId?: string; details?: string },
+  ): Promise<boolean> {
+    const workflows = await this.readFile();
+    const workflow = workflows.find(w => w.id === workflowId);
+    if (!workflow) return false;
+
+    workflow.events.push(this.createEvent(workflowId, type, extra));
+    workflow.updatedAt = Date.now();
+    await this.writeFile(workflows);
+    return true;
   }
 
   async listByUser(userId: string): Promise<HumanWorkflow[]> {

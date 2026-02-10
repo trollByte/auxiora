@@ -50,7 +50,7 @@ import {
 import { TrustEngine, ActionAuditTrail, RollbackManager, TrustGate } from '@auxiora/autonomy';
 import { IntentParser, ActionPlanner } from '@auxiora/intent';
 import { UserManager } from '@auxiora/social';
-import { WorkflowEngine, ApprovalManager } from '@auxiora/workflows';
+import { WorkflowEngine, ApprovalManager, AutonomousExecutor } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
 import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator } from '@auxiora/ambient';
 import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
@@ -119,6 +119,7 @@ export class Auxiora {
   private userManager?: UserManager;
   private workflowEngine?: WorkflowEngine;
   private approvalManager?: ApprovalManager;
+  private autonomousExecutor?: AutonomousExecutor;
   private agentProtocol?: AgentProtocol;
   private agentDirectory?: AgentDirectory;
   // [P15] Senses
@@ -743,6 +744,38 @@ export class Auxiora {
       },
     );
     console.log('Notification orchestrator initialized');
+
+    // Initialize autonomous workflow executor
+    if (this.workflowEngine && this.trustGate && this.trustEngine && this.trustAuditTrail) {
+      this.autonomousExecutor = new AutonomousExecutor({
+        workflowEngine: this.workflowEngine,
+        trustGate: this.trustGate,
+        trustEngine: this.trustEngine,
+        auditTrail: this.trustAuditTrail,
+        executeTool: async (name, params) => {
+          const context = {
+            sessionId: 'autonomous',
+            workingDirectory: getWorkspacePath(),
+            timeout: 30000,
+          };
+          return toolExecutor.execute(name, params, context);
+        },
+        onWorkflowCompleted: (workflowId) => {
+          this.gateway.broadcast({
+            type: 'notification',
+            payload: { content: `Autonomous workflow ${workflowId} completed`, system: true },
+          });
+        },
+        onStepFailed: (workflowId, stepId, error) => {
+          this.gateway.broadcast({
+            type: 'notification',
+            payload: { content: `Workflow ${workflowId} step ${stepId} failed: ${error}`, system: true },
+          });
+        },
+      });
+      this.autonomousExecutor.start(30_000);
+      console.log('Autonomous workflow executor started (30s tick)');
+    }
 
     // Initialize connector registry and wire ambient scheduler
     this.connectorRegistry = new ConnectorRegistry();
@@ -2126,6 +2159,9 @@ export class Auxiora {
     }
     if (this.ambientScheduler) {
       this.ambientScheduler.stop();
+    }
+    if (this.autonomousExecutor) {
+      this.autonomousExecutor.stop();
     }
     if (this.memoryCleanupInterval) {
       clearInterval(this.memoryCleanupInterval);

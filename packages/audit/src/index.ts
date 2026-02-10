@@ -136,6 +136,8 @@ export type AuditEventType =
   | 'workflow.approved'
   | 'workflow.rejected'
   | 'workflow.approval_requested'
+  | 'workflow.autonomous_completed'
+  | 'workflow.step_auto_executed'
   // Agent Protocol (Phase 14)
   | 'agent_protocol.message_sent'
   | 'agent_protocol.message_received';
