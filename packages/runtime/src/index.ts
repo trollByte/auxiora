@@ -1636,15 +1636,30 @@ export class Auxiora {
           content: m.content,
         }));
 
+        // Enrich prompt with memories (same as text flow)
+        let voicePrompt = this.systemPrompt;
+        if (this.memoryRetriever && this.memoryStore) {
+          const memories = await this.memoryStore.getAll();
+          const memorySection = this.memoryRetriever.retrieve(memories, transcription.text);
+          if (memorySection) {
+            voicePrompt = this.systemPrompt + memorySection;
+          }
+        }
+
         const provider = this.providers.getPrimaryProvider();
         const result = await provider.complete(chatMessages, {
-          systemPrompt: this.systemPrompt,
+          systemPrompt: voicePrompt,
         });
 
         await this.sessions.addMessage(session.id, 'assistant', result.content, {
           input: result.usage.inputTokens,
           output: result.usage.outputTokens,
         });
+
+        // Extract memories from voice conversation
+        if (this.config.memory?.autoExtract !== false && this.memoryStore && result.content && transcription.text.length > 20) {
+          void this.extractAndLearn(transcription.text, result.content, session.id);
+        }
 
         // Send text response
         this.sendToClient(client, {
