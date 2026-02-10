@@ -1995,6 +1995,30 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: anticipations });
   });
 
+  // Ambient config (persisted to vault)
+  router.get('/ambient/config', (_req: Request, res: Response) => {
+    const raw = deps.vault.get('ambient.config');
+    if (!raw) {
+      res.json({ data: {} });
+      return;
+    }
+    try {
+      res.json({ data: JSON.parse(raw) });
+    } catch {
+      res.json({ data: {} });
+    }
+  });
+
+  router.post('/ambient/config', async (req: Request, res: Response) => {
+    try {
+      const config = req.body as Record<string, unknown>;
+      await deps.vault.add('ambient.config', JSON.stringify(config));
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to save ambient config' });
+    }
+  });
+
   // --- [P15] Conversation routes ---
   router.get('/conversation/state', (req: Request, res: Response) => {
     if (!deps.conversation) {
