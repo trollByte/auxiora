@@ -248,6 +248,18 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/compose:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      nanoid:
+        specifier: ^5.1.2
+        version: 5.1.6
+
   packages/config:
     dependencies:
       '@auxiora/core':
@@ -293,6 +305,12 @@ importers:
         specifier: workspace:*
         version: link:../connectors
 
+  packages/connector-social:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
   packages/connectors:
     dependencies:
       '@auxiora/autonomy':
@@ -301,6 +319,18 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/contacts:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      nanoid:
+        specifier: ^5.1.2
+        version: 5.1.6
 
   packages/conversation:
     dependencies:
@@ -526,6 +556,18 @@ importers:
         specifier: workspace:*
         version: link:../providers
 
+  packages/os-bridge:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      nanoid:
+        specifier: ^5.1.2
+        version: 5.1.6
+
   packages/personality:
     dependencies:
       '@auxiora/config':
@@ -573,6 +615,18 @@ importers:
       openai:
         specifier: ^4.103.0
         version: 4.104.0(ws@8.19.0)(zod@3.25.76)
+
+  packages/research:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      nanoid:
+        specifier: ^5.1.2
+        version: 5.1.6
 
   packages/router:
     dependencies:

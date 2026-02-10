@@ -419,3 +419,55 @@ toolRegistry.register(MeetingPrepTool);
 // Export calendar tools
 export { CalendarOptimizeTool, ScheduleMeetingTool, MeetingPrepTool } from './calendar.js';
 export { setCalendarIntelligence, setCalendarConnectors } from './calendar.js';
+
+// Import and register OS bridge tools
+import { ClipboardTransformTool, AppLaunchTool, SystemInfoTool } from './os-bridge.js';
+
+toolRegistry.register(ClipboardTransformTool);
+toolRegistry.register(AppLaunchTool);
+toolRegistry.register(SystemInfoTool);
+
+// Export OS bridge tools
+export { ClipboardTransformTool, AppLaunchTool, SystemInfoTool } from './os-bridge.js';
+export { setClipboardMonitor, setAppController, setSystemStateMonitor } from './os-bridge.js';
+
+// Import and register social tools
+import { PostSocialTool, CheckMentionsTool, SchedulePostTool } from './social.js';
+
+toolRegistry.register(PostSocialTool);
+toolRegistry.register(CheckMentionsTool);
+toolRegistry.register(SchedulePostTool);
+
+// Export social tools
+export { PostSocialTool, CheckMentionsTool, SchedulePostTool } from './social.js';
+export { setSocialConnectors } from './social.js';
+
+// Import and register contacts tools
+import { WhoIsTool, ContactSearchTool } from './contacts.js';
+
+toolRegistry.register(WhoIsTool);
+toolRegistry.register(ContactSearchTool);
+
+// Export contacts tools
+export { WhoIsTool, ContactSearchTool } from './contacts.js';
+export { setContactGraph, setContextRecall } from './contacts.js';
+
+// Import and register research tools
+import { ResearchTool } from './research.js';
+
+toolRegistry.register(ResearchTool);
+
+// Export research tools
+export { ResearchTool } from './research.js';
+export { setResearchEngine } from './research.js';
+
+// Import and register compose tools
+import { ComposeTool, GrammarCheckTool, DetectLanguageTool } from './compose.js';
+
+toolRegistry.register(ComposeTool);
+toolRegistry.register(GrammarCheckTool);
+toolRegistry.register(DetectLanguageTool);
+
+// Export compose tools
+export { ComposeTool, GrammarCheckTool, DetectLanguageTool } from './compose.js';
+export { setComposeEngine, setGrammarChecker, setLanguageDetector } from './compose.js';
