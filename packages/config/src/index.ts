@@ -63,7 +63,7 @@ const ProviderConfigSchema = z.object({
     maxTokens: z.number().int().positive().default(4096),
   }).default({}),
   openai: z.object({
-    model: z.string().default('gpt-4o'),
+    model: z.string().default('gpt-5.2'),
     maxTokens: z.number().int().positive().default(4096),
   }).default({}),
   google: z.object({

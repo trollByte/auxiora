@@ -235,6 +235,14 @@ export class Auxiora {
         executorDeps: {
           getProvider: () => this.providers.getPrimaryProvider() as any,
           sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
+            // Webchat delivery goes through the WebSocket gateway, not the channel adapters
+            if (channelType === 'webchat') {
+              this.gateway.broadcast({
+                type: 'message',
+                payload: { role: 'assistant', content: message.content },
+              });
+              return { success: true };
+            }
             if (this.channels) {
               return this.channels.send(channelType as any, channelId, message);
             }

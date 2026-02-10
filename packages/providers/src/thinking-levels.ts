@@ -32,5 +32,6 @@ export function getOpenAIReasoningEffort(level: ThinkingLevel): 'low' | 'medium'
  * Check if an OpenAI model supports reasoning_effort (o-series).
  */
 export function isOpenAIReasoningModel(model: string): boolean {
-  return model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4');
+  return model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')
+    || model.startsWith('gpt-5');
 }

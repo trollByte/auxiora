@@ -958,6 +958,16 @@ body {
   margin-top: 0;
 }
 
+.form-hint {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+}
+
 .create-form-success {
   background: rgba(34, 197, 94, 0.06);
   border: 1px solid rgba(34, 197, 94, 0.2);

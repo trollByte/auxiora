@@ -9,7 +9,7 @@ import type {
 } from './types.js';
 import { getOpenAIReasoningEffort, isOpenAIReasoningModel } from './thinking-levels.js';
 
-const DEFAULT_MODEL = 'gpt-4o';
+const DEFAULT_MODEL = 'gpt-5.2';
 const DEFAULT_MAX_TOKENS = 4096;
 
 export interface OpenAIProviderOptions {
@@ -25,37 +25,70 @@ export class OpenAIProvider implements Provider {
     name: 'openai',
     displayName: 'OpenAI GPT',
     models: {
-      'gpt-4o': {
-        maxContextTokens: 128000,
+      'gpt-5.2': {
+        maxContextTokens: 1048576,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.003,
+        costPer1kOutput: 0.012,
+        strengths: ['reasoning', 'code', 'vision', 'creative', 'agentic'],
+        isLocal: false,
+      },
+      'gpt-5.2-pro': {
+        maxContextTokens: 1048576,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.01,
+        costPer1kOutput: 0.04,
+        strengths: ['reasoning', 'code', 'precision', 'agentic'],
+        isLocal: false,
+      },
+      'gpt-5': {
+        maxContextTokens: 1048576,
         supportsVision: true,
         supportsTools: true,
         supportsStreaming: true,
         supportsImageGen: false,
         costPer1kInput: 0.0025,
         costPer1kOutput: 0.01,
-        strengths: ['reasoning', 'code', 'vision', 'creative'],
+        strengths: ['reasoning', 'code', 'agentic'],
         isLocal: false,
       },
-      'gpt-4o-mini': {
-        maxContextTokens: 128000,
+      'gpt-5-mini': {
+        maxContextTokens: 1048576,
         supportsVision: true,
         supportsTools: true,
         supportsStreaming: true,
         supportsImageGen: false,
-        costPer1kInput: 0.00015,
-        costPer1kOutput: 0.0006,
-        strengths: ['fast', 'code'],
+        costPer1kInput: 0.0004,
+        costPer1kOutput: 0.0016,
+        strengths: ['fast', 'code', 'cost-efficient'],
         isLocal: false,
       },
-      'o1': {
-        maxContextTokens: 200000,
+      'gpt-5-nano': {
+        maxContextTokens: 1048576,
         supportsVision: true,
         supportsTools: true,
         supportsStreaming: true,
         supportsImageGen: false,
-        costPer1kInput: 0.015,
-        costPer1kOutput: 0.06,
-        strengths: ['reasoning', 'code', 'long-context'],
+        costPer1kInput: 0.0001,
+        costPer1kOutput: 0.0004,
+        strengths: ['fast', 'cost-efficient'],
+        isLocal: false,
+      },
+      'gpt-4.1': {
+        maxContextTokens: 1048576,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.002,
+        costPer1kOutput: 0.008,
+        strengths: ['code', 'instruction-following', 'long-context'],
         isLocal: false,
       },
     },
