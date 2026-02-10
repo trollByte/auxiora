@@ -64,7 +64,7 @@ export const api = {
   },
   getStatus: () => fetchApi<{ data: any }>('/status'),
   getSetupStatus: () =>
-    fetchApi<{ needsSetup: boolean; completedSteps: string[]; vaultUnlocked: boolean; dashboardPasswordSet: boolean }>('/setup/status'),
+    fetchApi<{ needsSetup: boolean; completedSteps: string[]; vaultUnlocked: boolean; dashboardPasswordSet: boolean; agentName: string }>('/setup/status'),
   setupVault: (password: string) =>
     fetchApi<{ success: boolean }>('/setup/vault', { method: 'POST', body: JSON.stringify({ password }) }),
   setupDashboardPassword: (password: string) =>

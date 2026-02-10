@@ -118,11 +118,9 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     const completedSteps: string[] = [];
     let vaultUnlocked = false;
     let dashboardPasswordSet = false;
+    const agentName = setup?.getAgentName?.() ?? 'Auxiora';
 
-    if (setup?.getAgentName) {
-      const name = setup.getAgentName();
-      if (name !== 'Auxiora') completedSteps.push('identity');
-    }
+    if (agentName !== 'Auxiora') completedSteps.push('identity');
     if (setup?.hasSoulFile && await setup.hasSoulFile()) {
       completedSteps.push('personality');
     }
@@ -136,7 +134,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       // vault locked
     }
 
-    res.json({ needsSetup, completedSteps, vaultUnlocked, dashboardPasswordSet });
+    res.json({ needsSetup, completedSteps, vaultUnlocked, dashboardPasswordSet, agentName });
   });
 
   router.get('/setup/templates', async (req: Request, res: Response) => {

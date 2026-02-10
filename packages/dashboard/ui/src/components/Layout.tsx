@@ -9,11 +9,13 @@ const CHANNEL_TYPES = ['webchat', 'discord', 'telegram', 'slack', 'twilio', 'mat
 export function Layout() {
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
+  const [agentName, setAgentName] = useState('Auxiora');
   const navigate = useNavigate();
 
   useEffect(() => {
     api.getSetupStatus()
       .then(status => {
+        if (status.agentName) setAgentName(status.agentName);
         if (status.needsSetup) {
           navigate('/setup', { replace: true });
         } else if (!status.vaultUnlocked) {
@@ -50,7 +52,7 @@ export function Layout() {
     <div className="layout">
       <nav className="sidebar">
         <div className="sidebar-header">
-          <h1>Auxiora</h1>
+          <h1>{agentName}</h1>
         </div>
         <ul className="nav-list">
           {/* MAIN */}

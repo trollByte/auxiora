@@ -7,12 +7,14 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [agentName, setAgentName] = useState('Auxiora');
   const navigate = useNavigate();
 
   // Check if vault needs unlocking before allowing login
   useEffect(() => {
     api.getSetupStatus()
       .then(status => {
+        if (status.agentName) setAgentName(status.agentName);
         if (status.needsSetup) {
           navigate('/setup', { replace: true });
         } else if (!status.vaultUnlocked) {
@@ -42,7 +44,7 @@ export function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>Auxiora Dashboard</h1>
+        <h1>{agentName} Dashboard</h1>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
