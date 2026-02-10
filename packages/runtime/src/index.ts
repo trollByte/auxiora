@@ -20,6 +20,7 @@ import {
   toolRegistry,
   toolExecutor,
   initializeToolExecutor,
+  ToolPermission,
   setBrowserManager,
   setWebhookManager,
   setBehaviorManager,
@@ -734,6 +735,9 @@ export class Auxiora {
       // Vault locked or no tokens stored
     }
 
+    // Register connector actions as AI-callable tools
+    this.registerConnectorTools();
+
     // Wire ambient scheduler if Google Workspace has a stored token
     if (this.connectorAuthManager.hasToken('google-workspace') && this.briefingGenerator) {
       const scheduler = new (await import('@auxiora/behaviors')).Scheduler();
@@ -1253,43 +1257,25 @@ export class Auxiora {
         provider = this.providers.getPrimaryProvider();
       }
 
-      let fullResponse = '';
-      let usage = { inputTokens: 0, outputTokens: 0 };
-      const toolUses: Array<{ id: string; name: string; input: any }> = [];
-
-      for await (const chunk of provider.stream(chatMessages, {
-        systemPrompt: enrichedPrompt,
-        model: modelOverride || routingResult?.selection.model,
-        tools: tools.length > 0 ? tools : undefined,
-        thinkingLevel,
-      })) {
-        if (chunk.type === 'text' && chunk.content) {
-          fullResponse += chunk.content;
-          this.sendToClient(client, {
-            type: 'chunk',
-            id: requestId,
-            payload: { content: chunk.content },
-          });
-        } else if (chunk.type === 'thinking' && chunk.content) {
-          this.sendToClient(client, {
-            type: 'thinking',
-            id: requestId,
-            payload: { content: chunk.content },
-          });
-        } else if (chunk.type === 'tool_use' && chunk.toolUse) {
-          // Collect tool uses for execution
-          toolUses.push(chunk.toolUse);
-          this.sendToClient(client, {
-            type: 'tool_use',
-            id: requestId,
-            payload: { tool: chunk.toolUse.name, params: chunk.toolUse.input },
-          });
-        } else if (chunk.type === 'done') {
-          usage = chunk.usage || usage;
-        } else if (chunk.type === 'error') {
-          throw new Error(chunk.error);
-        }
-      }
+      // Execute streaming AI call with tool follow-up loop
+      const { response: fullResponse, usage } = await this.executeWithTools(
+        session.id,
+        chatMessages,
+        enrichedPrompt,
+        provider,
+        (type, data) => {
+          if (type === 'text') {
+            this.sendToClient(client, { type: 'chunk', id: requestId, payload: { content: data } });
+          } else if (type === 'thinking') {
+            this.sendToClient(client, { type: 'thinking', id: requestId, payload: { content: data } });
+          } else if (type === 'tool_use') {
+            this.sendToClient(client, { type: 'tool_use', id: requestId, payload: data });
+          } else if (type === 'tool_result') {
+            this.sendToClient(client, { type: 'tool_result', id: requestId, payload: data });
+          }
+        },
+        { tools },
+      );
 
       // Save assistant message (skip if empty — happens when response is tool-only)
       if (fullResponse) {
@@ -1314,29 +1300,24 @@ export class Auxiora {
         void this.extractAndLearn(content, fullResponse, session.id);
       }
 
-      // Execute tools if any were called
-      if (toolUses.length > 0) {
-        await this.handleToolExecution(client, session.id, toolUses, requestId);
-      } else {
-        // No tools used - send done signal
-        this.sendToClient(client, {
-          type: 'done',
-          id: requestId,
-          payload: {
-            usage,
-            routing: routingResult ? {
-              model: routingResult.selection.model,
-              provider: routingResult.selection.provider,
-              isLocal: routingResult.selection.isLocal,
-              taskType: routingResult.classification.type,
-            } : (providerOverride || modelOverride) ? {
-              model: modelOverride,
-              provider: providerOverride || this.config.provider.primary,
-              override: true,
-            } : undefined,
-          },
-        });
-      }
+      // Send done signal
+      this.sendToClient(client, {
+        type: 'done',
+        id: requestId,
+        payload: {
+          usage,
+          routing: routingResult ? {
+            model: routingResult.selection.model,
+            provider: routingResult.selection.provider,
+            isLocal: routingResult.selection.isLocal,
+            taskType: routingResult.classification.type,
+          } : (providerOverride || modelOverride) ? {
+            model: modelOverride,
+            provider: providerOverride || this.config.provider.primary,
+            override: true,
+          } : undefined,
+        },
+      });
 
       audit('message.sent', {
         sessionId: session.id,
@@ -1490,79 +1471,95 @@ export class Auxiora {
     }
   }
 
-  private async handleToolExecution(
-    client: ClientConnection,
+  /**
+   * Execute a streaming AI call with tool follow-up loop.
+   * When the AI calls tools, executes them and feeds results back to the AI
+   * for synthesis, looping up to maxToolRounds times.
+   */
+  private async executeWithTools(
     sessionId: string,
-    toolUses: Array<{ id: string; name: string; input: any }>,
-    requestId?: string
-  ): Promise<void> {
-    // Create execution context
-    const context: ExecutionContext = {
-      sessionId,
-      workingDirectory: getWorkspacePath(),
-      timeout: 30000,
-    };
+    messages: Array<{ role: string; content: string }>,
+    enrichedPrompt: string,
+    provider: import('@auxiora/providers').Provider,
+    onChunk: (type: string, data: any) => void,
+    options?: { maxToolRounds?: number; tools?: Array<{ name: string; description: string; input_schema: any }> }
+  ): Promise<{ response: string; usage: { inputTokens: number; outputTokens: number } }> {
+    const maxRounds = options?.maxToolRounds ?? 5;
+    const tools = options?.tools ?? toolRegistry.toProviderFormat();
+    let currentMessages = [...messages];
+    let totalUsage = { inputTokens: 0, outputTokens: 0 };
+    let fullResponse = '';
 
-    // Execute each tool
-    const toolResults = [];
-    for (const toolUse of toolUses) {
-      try {
-        const result = await toolExecutor.execute(toolUse.name, toolUse.input, context);
+    for (let round = 0; round < maxRounds; round++) {
+      let roundResponse = '';
+      let roundUsage = { inputTokens: 0, outputTokens: 0 };
+      const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
-        // Send tool result to client
-        this.sendToClient(client, {
-          type: 'tool_result',
-          id: requestId,
-          payload: {
+      for await (const chunk of provider.stream(currentMessages as any, {
+        systemPrompt: enrichedPrompt,
+        tools: tools.length > 0 ? tools : undefined,
+      })) {
+        if (chunk.type === 'text' && chunk.content) {
+          roundResponse += chunk.content;
+          onChunk('text', chunk.content);
+        } else if (chunk.type === 'thinking' && chunk.content) {
+          onChunk('thinking', chunk.content);
+        } else if (chunk.type === 'tool_use' && chunk.toolUse) {
+          toolUses.push(chunk.toolUse);
+          onChunk('tool_use', { tool: chunk.toolUse.name, params: chunk.toolUse.input });
+        } else if (chunk.type === 'done') {
+          roundUsage = chunk.usage || roundUsage;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.error);
+        }
+      }
+
+      totalUsage.inputTokens += roundUsage.inputTokens;
+      totalUsage.outputTokens += roundUsage.outputTokens;
+      fullResponse += roundResponse;
+
+      // No tool calls — we're done
+      if (toolUses.length === 0) {
+        break;
+      }
+
+      // Execute tools and collect results
+      const context: ExecutionContext = {
+        sessionId,
+        workingDirectory: getWorkspacePath(),
+        timeout: 30000,
+      };
+
+      const toolResultParts: string[] = [];
+      for (const toolUse of toolUses) {
+        try {
+          const result = await toolExecutor.execute(toolUse.name, toolUse.input, context);
+          onChunk('tool_result', {
             tool: toolUse.name,
             success: result.success,
             output: result.output,
             error: result.error,
-          },
-        });
-
-        // Store result for sending back to AI
-        toolResults.push({
-          tool_use_id: toolUse.id,
-          content: result.success
-            ? (result.output || 'Tool executed successfully')
-            : `Error: ${result.error || 'Unknown error'}`,
-          is_error: !result.success,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        this.sendToClient(client, {
-          type: 'tool_result',
-          id: requestId,
-          payload: {
-            tool: toolUse.name,
-            success: false,
-            error: errorMessage,
-          },
-        });
-
-        toolResults.push({
-          tool_use_id: toolUse.id,
-          content: `Error: ${errorMessage}`,
-          is_error: true,
-        });
+          });
+          toolResultParts.push(
+            `[${toolUse.name}]: ${result.success ? (result.output || 'Success') : `Error: ${result.error}`}`
+          );
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          onChunk('tool_result', { tool: toolUse.name, success: false, error: errorMessage });
+          toolResultParts.push(`[${toolUse.name}]: Error: ${errorMessage}`);
+        }
       }
+
+      // Feed tool results back to AI for synthesis
+      const toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
+      await this.sessions.addMessage(sessionId, 'user', toolResultsMessage);
+
+      // Rebuild messages with tool results for next round
+      const contextMessages = this.sessions.getContextMessages(sessionId);
+      currentMessages = contextMessages.map((m) => ({ role: m.role, content: m.content }));
     }
 
-    // Add tool results to session as a system message (for context)
-    const toolResultsSummary = toolResults.map(r =>
-      `Tool ${r.tool_use_id}: ${r.is_error ? 'ERROR' : 'SUCCESS'}\n${r.content}`
-    ).join('\n\n');
-    await this.sessions.addMessage(sessionId, 'user', `[Tool Results]\n${toolResultsSummary}`);
-
-    // Continue conversation with tool results
-    // In a full implementation, we would send tool results back to the AI
-    // and let it process them. For now, we just send a done signal.
-    this.sendToClient(client, {
-      type: 'done',
-      id: requestId,
-      payload: { toolResults },
-    });
+    return { response: fullResponse, usage: totalUsage };
   }
 
   private async handleVoiceMessage(
@@ -1646,35 +1643,42 @@ export class Auxiora {
           }
         }
 
+        // Use executeWithTools for voice — tools execute silently, only final text goes to TTS
         const provider = this.providers.getPrimaryProvider();
-        const result = await provider.complete(chatMessages, {
-          systemPrompt: voicePrompt,
-        });
+        const { response: voiceResponse, usage: voiceUsage } = await this.executeWithTools(
+          session.id,
+          chatMessages,
+          voicePrompt,
+          provider,
+          (_type, _data) => {
+            // Voice: don't stream chunks to client — we synthesize the final text
+          },
+        );
 
-        await this.sessions.addMessage(session.id, 'assistant', result.content, {
-          input: result.usage.inputTokens,
-          output: result.usage.outputTokens,
+        await this.sessions.addMessage(session.id, 'assistant', voiceResponse, {
+          input: voiceUsage.inputTokens,
+          output: voiceUsage.outputTokens,
         });
 
         // Extract memories from voice conversation
-        if (this.config.memory?.autoExtract !== false && this.memoryStore && result.content && transcription.text.length > 20) {
-          void this.extractAndLearn(transcription.text, result.content, session.id);
+        if (this.config.memory?.autoExtract !== false && this.memoryStore && voiceResponse && transcription.text.length > 20) {
+          void this.extractAndLearn(transcription.text, voiceResponse, session.id);
         }
 
         // Send text response
         this.sendToClient(client, {
           type: 'voice_text',
-          payload: { content: result.content },
+          payload: { content: voiceResponse },
         });
 
         // Stream TTS audio
-        for await (const chunk of this.voiceManager.synthesize(client.id, result.content)) {
+        for await (const chunk of this.voiceManager.synthesize(client.id, voiceResponse)) {
           this.gateway.sendBinary(client, chunk);
         }
 
         audit('voice.synthesized', {
           clientId: client.id,
-          textLength: result.content.length,
+          textLength: voiceResponse.length,
           voice: this.config.voice?.defaultVoice ?? 'alloy',
         });
 
@@ -1781,30 +1785,36 @@ export class Auxiora {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
 
-      // Get completion (non-streaming for channels)
+      // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();
-      const result = await provider.complete(chatMessages, {
-        systemPrompt: enrichedPrompt,
-        tools: tools.length > 0 ? tools : undefined,
-      });
+      const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
+        session.id,
+        chatMessages,
+        enrichedPrompt,
+        provider,
+        (_type, _data) => {
+          // Channels: don't stream individual chunks — send complete response at end
+        },
+        { tools },
+      );
 
       stopTyping();
 
       // Save assistant message
-      await this.sessions.addMessage(session.id, 'assistant', result.content, {
-        input: result.usage.inputTokens,
-        output: result.usage.outputTokens,
+      await this.sessions.addMessage(session.id, 'assistant', channelResponse, {
+        input: channelUsage.inputTokens,
+        output: channelUsage.outputTokens,
       });
 
       // Extract memories and learn from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && result.content && inbound.content.length > 20) {
-        void this.extractAndLearn(inbound.content, result.content, session.id);
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && channelResponse && inbound.content.length > 20) {
+        void this.extractAndLearn(inbound.content, channelResponse, session.id);
       }
 
       // Send response
       if (this.channels) {
         await this.channels.send(inbound.channelType, inbound.channelId, {
-          content: result.content,
+          content: channelResponse,
           replyToId: inbound.id,
         });
       }
@@ -1812,8 +1822,8 @@ export class Auxiora {
       audit('message.sent', {
         channelType: inbound.channelType,
         sessionId: session.id,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
+        inputTokens: channelUsage.inputTokens,
+        outputTokens: channelUsage.outputTokens,
       });
     } catch (error) {
       stopTyping();
@@ -1853,6 +1863,61 @@ export class Auxiora {
 
       default:
         return `Unknown command: ${cmd}. Try /help`;
+    }
+  }
+
+  /** Register each connector action as an AI-callable tool. */
+  private registerConnectorTools(): void {
+    if (!this.connectorRegistry || !this.connectorAuthManager) return;
+
+    for (const connector of this.connectorRegistry.list()) {
+      // Only register tools for connectors with active auth tokens
+      if (!this.connectorAuthManager.hasToken(connector.id)) continue;
+
+      for (const action of connector.actions) {
+        const toolName = `${connector.id.replace(/-/g, '_')}_${action.id.replace(/-/g, '_')}`;
+
+        // Convert connector param schema to tool parameters
+        const parameters: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array'; description: string; required: boolean }> = [];
+        for (const [paramName, paramDef] of Object.entries(action.params)) {
+          parameters.push({
+            name: paramName,
+            type: paramDef.type as 'string' | 'number' | 'boolean' | 'object' | 'array',
+            description: paramDef.description,
+            required: paramDef.required ?? false,
+          });
+        }
+
+        const connectorId = connector.id;
+        const actionId = action.id;
+        const authManager = this.connectorAuthManager;
+
+        toolRegistry.register({
+          name: toolName,
+          description: `[${connector.name}] ${action.description}`,
+          parameters,
+          getPermission: () => {
+            // Trust level 0-1 = require approval, 2+ = auto-approve
+            return action.trustMinimum >= 2
+              ? ToolPermission.AUTO_APPROVE
+              : ToolPermission.USER_APPROVAL;
+          },
+          execute: async (params) => {
+            const token = authManager.getToken(connectorId);
+            if (!token) {
+              return { success: false, error: `${connector.name} is not connected. Please authenticate first.` };
+            }
+            try {
+              const result = await connector.executeAction(actionId, params, token.accessToken);
+              return { success: true, output: JSON.stringify(result, null, 2) };
+            } catch (error) {
+              return { success: false, error: error instanceof Error ? error.message : String(error) };
+            }
+          },
+        });
+      }
+
+      console.log(`Registered ${connector.actions.length} tools for connector: ${connector.name}`);
     }
   }
 
