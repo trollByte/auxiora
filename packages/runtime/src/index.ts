@@ -807,8 +807,9 @@ export class Auxiora {
     // Register connector actions as AI-callable tools
     this.registerConnectorTools();
 
-    // Wire ambient scheduler if Google Workspace has a stored token
-    if (this.connectorAuthManager.hasToken('google-workspace') && this.briefingGenerator) {
+    // Wire ambient scheduler — always start it; connector-dependent features
+    // (email/calendar) gracefully return empty when connectors aren't configured
+    if (this.briefingGenerator) {
       const scheduler = new (await import('@auxiora/behaviors')).Scheduler();
       this.ambientScheduler = new AmbientScheduler({
         scheduler,
@@ -837,7 +838,7 @@ export class Auxiora {
         config: DEFAULT_AMBIENT_SCHEDULER_CONFIG,
       });
       this.ambientScheduler.start();
-      console.log('Ambient scheduler started (Google Workspace connected)');
+      console.log('Ambient scheduler started');
     }
 
     // [P15] Initialize conversation engine
