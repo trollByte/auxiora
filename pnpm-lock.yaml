@@ -97,6 +97,15 @@ importers:
         specifier: ^1.50.0
         version: 1.58.1
 
+  packages/calendar-intelligence:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/canvas:
     dependencies:
       '@auxiora/audit':
@@ -272,6 +281,12 @@ importers:
         specifier: workspace:*
         version: link:../connectors
 
+  packages/connector-microsoft:
+    dependencies:
+      '@auxiora/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+
   packages/connector-notion:
     dependencies:
       '@auxiora/connectors':
@@ -369,6 +384,15 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/email-intelligence:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/errors: {}
 
   packages/gateway:
@@ -462,6 +486,18 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+
+  packages/notification-hub:
+    dependencies:
+      '@auxiora/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      nanoid:
+        specifier: ^5.1.2
+        version: 5.1.6
 
   packages/onboarding:
     dependencies:

@@ -1233,11 +1233,13 @@ export class Auxiora {
         }
       }
 
-      // Save assistant message
-      await this.sessions.addMessage(session.id, 'assistant', fullResponse, {
-        input: usage.inputTokens,
-        output: usage.outputTokens,
-      });
+      // Save assistant message (skip if empty — happens when response is tool-only)
+      if (fullResponse) {
+        await this.sessions.addMessage(session.id, 'assistant', fullResponse, {
+          input: usage.inputTokens,
+          output: usage.outputTokens,
+        });
+      }
 
       // Record usage for cost tracking
       if (this.modelRouter && routingResult) {

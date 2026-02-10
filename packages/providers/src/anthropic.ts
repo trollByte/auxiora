@@ -465,7 +465,8 @@ export class AnthropicProvider implements Provider {
       if (msg.role === 'system') {
         // Anthropic uses system as a separate parameter
         systemPrompt = systemPrompt ? `${systemPrompt}\n\n${msg.content}` : msg.content;
-      } else {
+      } else if (msg.content) {
+        // Skip messages with empty content — Anthropic API rejects them
         anthropicMessages.push({
           role: msg.role,
           content: msg.content,

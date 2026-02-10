@@ -395,3 +395,27 @@ toolRegistry.register(BuildPersonalityTool);
 
 // Export build-personality tool
 export { BuildPersonalityTool } from './build-personality.js';
+
+// Import and register email tools
+import { EmailTriageTool, EmailReplyTool, EmailSearchTool, EmailComposeTool, EmailSummarizeTool } from './email.js';
+
+toolRegistry.register(EmailTriageTool);
+toolRegistry.register(EmailReplyTool);
+toolRegistry.register(EmailSearchTool);
+toolRegistry.register(EmailComposeTool);
+toolRegistry.register(EmailSummarizeTool);
+
+// Export email tools
+export { EmailTriageTool, EmailReplyTool, EmailSearchTool, EmailComposeTool, EmailSummarizeTool } from './email.js';
+export { setEmailIntelligence, setEmailConnectors } from './email.js';
+
+// Import and register calendar tools
+import { CalendarOptimizeTool, ScheduleMeetingTool, MeetingPrepTool } from './calendar.js';
+
+toolRegistry.register(CalendarOptimizeTool);
+toolRegistry.register(ScheduleMeetingTool);
+toolRegistry.register(MeetingPrepTool);
+
+// Export calendar tools
+export { CalendarOptimizeTool, ScheduleMeetingTool, MeetingPrepTool } from './calendar.js';
+export { setCalendarIntelligence, setCalendarConnectors } from './calendar.js';
