@@ -50,6 +50,15 @@ export function createStartCommand(): Command {
         process.on('SIGBREAK', gracefulShutdown);
       }
 
+      process.on('unhandledRejection', (reason) => {
+        console.error('Unhandled rejection:', reason instanceof Error ? reason.message : reason);
+      });
+
+      process.on('uncaughtException', (error) => {
+        console.error('Uncaught exception:', error.message);
+        gracefulShutdown();
+      });
+
       try {
         auxiora = await startAuxiora({ vaultPassword });
 

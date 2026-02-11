@@ -41,6 +41,8 @@ export class PluginLoader {
   private registeredChannels: ChannelDefinition[] = [];
   private pluginConfigs: Record<string, Record<string, unknown>>;
   private approvedPermissions: Record<string, PluginPermission[]>;
+  private memoryStore: any = null;
+  private channelManager: any = null;
 
   constructor(pluginsDirOrOptions?: string | PluginLoaderOptions) {
     if (typeof pluginsDirOrOptions === 'string' || pluginsDirOrOptions === undefined) {
@@ -53,6 +55,14 @@ export class PluginLoader {
       this.approvedPermissions = pluginsDirOrOptions.approvedPermissions ?? {};
     }
     this.builtinToolNames = new Set(toolRegistry.listNames());
+  }
+
+  setMemoryStore(store: any): void {
+    this.memoryStore = store;
+  }
+
+  setChannelManager(manager: any): void {
+    this.channelManager = manager;
   }
 
   async loadAll(): Promise<LoadedPlugin[]> {
@@ -375,12 +385,24 @@ export class PluginLoader {
       registerChannel: (channel: ChannelDefinition) => {
         dynamicChannels.push(channel);
       },
-      getMemory: async (_key: string) => {
-        // Placeholder — will be wired to memory store
+      getMemory: async (key: string) => {
+        if (this.memoryStore) {
+          const results = await this.memoryStore.search(key);
+          return results.length > 0 ? results[0].content : undefined;
+        }
         return undefined;
       },
-      sendMessage: async (_channel: string, _content: string) => {
-        // Placeholder — will be wired to channel system
+      sendMessage: async (channel: string, content: string) => {
+        if (this.channelManager) {
+          const connected: string[] = this.channelManager.getConnectedChannels();
+          if (connected.includes(channel)) {
+            await this.channelManager.send(channel, channel, { content });
+          } else {
+            pluginLogger.warn('Channel not connected for sendMessage', { channel });
+          }
+        } else {
+          pluginLogger.warn('No channel manager available for sendMessage', { channel });
+        }
       },
     };
   }

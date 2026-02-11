@@ -96,7 +96,11 @@ export class GoogleChatAdapter implements ChannelAdapter {
 
   constructor(config: GoogleChatAdapterConfig) {
     this.config = config;
-    this.serviceAccount = JSON.parse(config.serviceAccountKey) as ServiceAccountKey;
+    try {
+      this.serviceAccount = JSON.parse(config.serviceAccountKey) as ServiceAccountKey;
+    } catch {
+      throw new Error('Invalid Google Chat service account key: must be valid JSON');
+    }
   }
 
   async connect(): Promise<void> {

@@ -799,6 +799,10 @@ export class Auxiora {
       }
 
       console.log('Memory system enabled (living memory)');
+
+      if (this.pluginLoader) {
+        this.pluginLoader.setMemoryStore(this.memoryStore);
+      }
     }
 
     // Initialize trust engine (if enabled)
@@ -1188,6 +1192,10 @@ export class Auxiora {
     this.channels.onError((error, channelType) => {
       console.error(`Channel error (${channelType}):`, error.message);
     });
+
+    if (this.pluginLoader) {
+      this.pluginLoader.setChannelManager(this.channels);
+    }
   }
 
   private buildIdentityPreamble(agent: AgentIdentity): string {
