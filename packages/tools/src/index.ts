@@ -26,6 +26,10 @@ export interface ToolParameter {
   description: string;
   required: boolean;
   default?: any;
+  /** JSON Schema for array items (required by OpenAI when type is 'array') */
+  items?: Record<string, any>;
+  /** JSON Schema for object properties (when type is 'object') */
+  properties?: Record<string, any>;
 }
 
 export interface ExecutionContext {
@@ -124,6 +128,12 @@ export class ToolRegistry {
           };
           if (param.default !== undefined) {
             acc[param.name].default = param.default;
+          }
+          if (param.items) {
+            acc[param.name].items = param.items;
+          }
+          if (param.properties) {
+            acc[param.name].properties = param.properties;
           }
           return acc;
         }, {} as Record<string, any>),

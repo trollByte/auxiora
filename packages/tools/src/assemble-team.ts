@@ -44,8 +44,20 @@ Patterns:
     {
       name: 'agents',
       type: 'array',
-      description: 'Array of agent definitions: [{name, provider, model?, prompt, systemPrompt?}]',
+      description: 'Array of agent definitions',
       required: true,
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Agent name' },
+          provider: { type: 'string', description: 'Provider to use (e.g. anthropic, openai)' },
+          model: { type: 'string', description: 'Model to use (optional)' },
+          prompt: { type: 'string', description: 'The task prompt for this agent' },
+          systemPrompt: { type: 'string', description: 'System prompt override (optional)' },
+          tools: { type: 'array', items: { type: 'string' }, description: 'Tool names to give this agent (optional)' },
+        },
+        required: ['name', 'provider', 'prompt'],
+      },
     },
     {
       name: 'synthesisPrompt',
