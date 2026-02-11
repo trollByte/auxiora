@@ -147,6 +147,9 @@ export class Auxiora {
   // Security floor
   private securityFloor?: SecurityFloor;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
+  /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
+   *  Used for proactive delivery (behaviors, ambient briefings). */
+  private lastActiveChannels: Map<string, string> = new Map();
   private orchestrationHistory: Array<{
     workflowId: string;
     pattern: string;
@@ -234,19 +237,14 @@ export class Auxiora {
         storePath: getBehaviorsPath(),
         executorDeps: {
           getProvider: () => this.providers.getPrimaryProvider() as any,
-          sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
-            // Webchat delivery goes through the WebSocket gateway, not the channel adapters
-            if (channelType === 'webchat') {
-              this.gateway.broadcast({
-                type: 'message',
-                payload: { role: 'assistant', content: message.content },
-              });
-              return { success: true };
-            }
-            if (this.channels) {
-              return this.channels.send(channelType as any, channelId, message);
-            }
-            return { success: false, error: 'Channel not available for proactive delivery' };
+          sendToChannel: async (_channelType: string, _channelId: string, message: { content: string }) => {
+            // Fan out to webchat + all connected channel adapters
+            this.gateway.broadcast({
+              type: 'message',
+              payload: { role: 'assistant', content: message.content },
+            });
+            this.deliverToAllChannels(message.content);
+            return { success: true };
           },
           getSystemPrompt: () => this.systemPrompt,
         },
@@ -756,15 +754,7 @@ export class Auxiora {
           type: 'notification',
           payload: { content: notification.message, system: true },
         });
-        if (this.channels) {
-          for (const channelType of this.channels.getConnectedChannels()) {
-            try {
-              void this.channels.send(channelType as any, 'system', { content: notification.message });
-            } catch {
-              // Channel delivery failure is non-fatal
-            }
-          }
-        }
+        this.deliverToAllChannels(notification.message);
       },
     );
     console.log('Notification orchestrator initialized');
@@ -785,16 +775,20 @@ export class Auxiora {
           return toolExecutor.execute(name, params, context);
         },
         onWorkflowCompleted: (workflowId) => {
+          const msg = `Autonomous workflow ${workflowId} completed`;
           this.gateway.broadcast({
             type: 'notification',
-            payload: { content: `Autonomous workflow ${workflowId} completed`, system: true },
+            payload: { content: msg, system: true },
           });
+          this.deliverToAllChannels(msg);
         },
         onStepFailed: (workflowId, stepId, error) => {
+          const msg = `Workflow ${workflowId} step ${stepId} failed: ${error}`;
           this.gateway.broadcast({
             type: 'notification',
-            payload: { content: `Workflow ${workflowId} step ${stepId} failed: ${error}`, system: true },
+            payload: { content: msg, system: true },
           });
+          this.deliverToAllChannels(msg);
         },
       });
       this.autonomousExecutor.start(30_000);
@@ -839,16 +833,7 @@ export class Auxiora {
             type: 'message',
             payload: { role: 'assistant', content: msg, system: true },
           });
-          // Send to all connected channels
-          if (this.channels) {
-            for (const channelType of this.channels.getConnectedChannels()) {
-              try {
-                await this.channels.send(channelType as any, 'system', { content: msg });
-              } catch {
-                // Channel delivery failure is non-fatal
-              }
-            }
-          }
+          this.deliverToAllChannels(msg);
         },
         userId: 'default',
         config: DEFAULT_AMBIENT_SCHEDULER_CONFIG,
@@ -1789,7 +1774,22 @@ export class Auxiora {
     }
   }
 
+  /** Deliver a proactive message to all connected channel adapters using tracked channel IDs. */
+  private deliverToAllChannels(content: string): void {
+    if (!this.channels) return;
+    for (const ct of this.channels.getConnectedChannels()) {
+      const targetId = this.lastActiveChannels.get(ct);
+      if (!targetId) continue;
+      this.channels.send(ct as any, targetId, { content }).catch(() => {
+        // Non-fatal: proactive channel delivery failure
+      });
+    }
+  }
+
   private async handleChannelMessage(inbound: InboundMessage): Promise<void> {
+    // Track last-active channel ID for proactive delivery
+    this.lastActiveChannels.set(inbound.channelType, inbound.channelId);
+
     // Get or create session for this sender
     const session = await this.sessions.getOrCreate(
       `${inbound.channelType}:${inbound.senderId}`,
