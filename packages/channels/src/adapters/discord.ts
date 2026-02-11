@@ -47,7 +47,7 @@ export class DiscordAdapter implements ChannelAdapter {
   }
 
   private setupEventHandlers(): void {
-    this.client.on('ready', () => {
+    this.client.on('clientReady', () => {
       audit('channel.connected', {
         channelType: 'discord',
         username: this.client.user?.tag,
