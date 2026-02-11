@@ -705,6 +705,9 @@ importers:
       '@auxiora/orchestrator':
         specifier: workspace:*
         version: link:../orchestrator
+      '@auxiora/os-bridge':
+        specifier: workspace:*
+        version: link:../os-bridge
       '@auxiora/personality':
         specifier: workspace:*
         version: link:../personality

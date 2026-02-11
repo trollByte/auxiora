@@ -27,6 +27,9 @@ import {
   setProviderFactory,
   setOrchestrationEngine,
   setResearchEngine,
+  setClipboardMonitor,
+  setAppController,
+  setSystemStateMonitor,
   type ExecutionContext,
 } from '@auxiora/tools';
 import { ResearchEngine } from '@auxiora/research';
@@ -36,6 +39,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BehaviorManager } from '@auxiora/behaviors';
 import { BrowserManager } from '@auxiora/browser';
+import { ClipboardMonitor, AppController, SystemStateMonitor } from '@auxiora/os-bridge';
+import type { Platform } from '@auxiora/os-bridge';
 import { VoiceManager } from '@auxiora/voice';
 import { WhisperSTT } from '@auxiora/stt';
 import { OpenAITTS } from '@auxiora/tts';
@@ -297,6 +302,15 @@ export class Auxiora {
       },
     });
     setBrowserManager(this.browserManager);
+
+    // Initialize OS bridge
+    const clipboardMonitor = new ClipboardMonitor();
+    const appController = new AppController(process.platform as Platform);
+    const systemStateMonitor = new SystemStateMonitor();
+    setClipboardMonitor(clipboardMonitor);
+    setAppController(appController);
+    setSystemStateMonitor(systemStateMonitor);
+    console.log('OS bridge initialized');
 
     // Initialize voice system (if enabled and OpenAI key available)
     if (this.config.voice?.enabled) {

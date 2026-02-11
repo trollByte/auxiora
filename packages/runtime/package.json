@@ -38,6 +38,7 @@
     "@auxiora/dashboard": "workspace:*",
     "@auxiora/plugins": "workspace:*",
     "@auxiora/memory": "workspace:*",
+    "@auxiora/os-bridge": "workspace:*",
     "@auxiora/orchestrator": "workspace:*",
     "@auxiora/personality": "workspace:*",
     "@auxiora/router": "workspace:*",
