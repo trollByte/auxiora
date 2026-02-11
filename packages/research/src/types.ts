@@ -55,3 +55,24 @@ export interface KnowledgeRelation {
   toId: string;
   relation: string;
 }
+
+/** Minimal provider interface — avoids hard dep on @auxiora/providers */
+export interface ResearchProvider {
+  complete(
+    messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+    options?: { systemPrompt?: string; maxTokens?: number; temperature?: number },
+  ): Promise<{ content: string }>;
+}
+
+export interface BraveWebResult {
+  title: string;
+  url: string;
+  description: string;
+  extra_snippets?: string[];
+}
+
+export interface BraveSearchResponse {
+  web?: {
+    results: BraveWebResult[];
+  };
+}

@@ -194,6 +194,15 @@ const TrustConfigSchema = z.object({
   autoPromoteCeiling: z.number().int().min(0).max(4).default(3),
 });
 
+const ResearchConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  braveApiKey: z.string().optional(),
+  defaultDepth: z.enum(['quick', 'standard', 'deep']).default('standard'),
+  maxConcurrentSources: z.number().int().positive().default(5),
+  searchTimeout: z.number().int().positive().default(10000),
+  fetchTimeout: z.number().int().positive().default(15000),
+});
+
 const IntentConfigSchema = z.object({
   enabled: z.boolean().default(true),
   confidenceThreshold: z.number().min(0).max(1).default(0.3),
@@ -303,6 +312,7 @@ export const ConfigSchema = z.object({
   orchestration: OrchestrationConfigSchema.default({}),
   agent: AgentIdentitySchema.default({}),
   modes: ModesConfigSchema.default({}),
+  research: ResearchConfigSchema.default({}),
   // [P12] Trust / Autonomy
   trust: TrustConfigSchema.default({}),
   intent: IntentConfigSchema.default({}),
@@ -315,6 +325,7 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 export type ModelRouting = z.infer<typeof ModelRoutingSchema>;
 export type OrchestrationConfig = z.infer<typeof OrchestrationConfigSchema>;
+export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;
 export type TrustConfig = z.infer<typeof TrustConfigSchema>;
 export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 export type ModesConfig = z.infer<typeof ModesConfigSchema>;

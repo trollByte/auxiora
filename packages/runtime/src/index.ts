@@ -26,8 +26,10 @@ import {
   setBehaviorManager,
   setProviderFactory,
   setOrchestrationEngine,
+  setResearchEngine,
   type ExecutionContext,
 } from '@auxiora/tools';
+import { ResearchEngine } from '@auxiora/research';
 import { OrchestrationEngine } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
@@ -207,6 +209,33 @@ export class Auxiora {
       );
       setOrchestrationEngine(this.orchestrationEngine);
       console.log('Orchestration engine initialized');
+    }
+
+    // Initialize research engine (if Brave API key available)
+    if (this.config.research?.enabled !== false) {
+      let vaultKey: string | undefined;
+      try { vaultKey = this.vault.get('BRAVE_API_KEY'); } catch { /* vault locked */ }
+      const braveApiKey = this.config.research?.braveApiKey
+        ?? vaultKey
+        ?? process.env.AUXIORA_RESEARCH_BRAVE_API_KEY;
+
+      if (braveApiKey) {
+        try {
+          const provider = this.providers?.getPrimaryProvider();
+          const researchEngine = new ResearchEngine({
+            braveApiKey,
+            provider: provider ?? undefined,
+            defaultDepth: this.config.research?.defaultDepth ?? 'standard',
+            maxConcurrentSources: this.config.research?.maxConcurrentSources ?? 5,
+            searchTimeout: this.config.research?.searchTimeout ?? 10_000,
+            fetchTimeout: this.config.research?.fetchTimeout ?? 15_000,
+          });
+          setResearchEngine(researchEngine);
+          console.log(`Research engine initialized (Brave Search configured${provider ? ', AI extraction enabled' : ''})`);
+        } catch (err) {
+          console.warn('Failed to initialize research engine:', err);
+        }
+      }
     }
 
     // Initialize channels (if configured and vault is unlocked)

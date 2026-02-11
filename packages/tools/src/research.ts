@@ -51,7 +51,7 @@ export const ResearchTool: Tool = {
         ? params.focusAreas.split(',').map((a: string) => a.trim())
         : undefined;
 
-      const result = researchEngine.research({
+      const result = await researchEngine.research({
         topic: params.topic,
         depth: params.depth || 'standard',
         focusAreas,

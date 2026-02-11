@@ -30,6 +30,7 @@
     "@auxiora/core": "workspace:*",
     "@auxiora/gateway": "workspace:*",
     "@auxiora/providers": "workspace:*",
+    "@auxiora/research": "workspace:*",
     "@auxiora/sessions": "workspace:*",
     "@auxiora/tools": "workspace:*",
     "@auxiora/vault": "workspace:*",

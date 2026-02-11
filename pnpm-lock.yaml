@@ -714,6 +714,9 @@ importers:
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
+      '@auxiora/research':
+        specifier: workspace:*
+        version: link:../research
       '@auxiora/router':
         specifier: workspace:*
         version: link:../router
