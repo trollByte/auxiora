@@ -70,6 +70,12 @@ import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, Anti
 import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
 import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
 import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
+import { microsoftConnector } from '@auxiora/connector-microsoft';
+import { githubConnector } from '@auxiora/connector-github';
+import { linearConnector } from '@auxiora/connector-linear';
+import { notionConnector } from '@auxiora/connector-notion';
+import { homeAssistantConnector } from '@auxiora/connector-homeassistant';
+import { twitterConnector, linkedinConnector, redditConnector, instagramConnector } from '@auxiora/connector-social';
 import { ConversationEngine } from '@auxiora/conversation';
 import { EmailTriageEngine, ThreadSummarizer } from '@auxiora/email-intelligence';
 import { ScheduleAnalyzer, ScheduleOptimizer, MeetingPrepGenerator } from '@auxiora/calendar-intelligence';
@@ -906,6 +912,15 @@ export class Auxiora {
     this.connectorRegistry = new ConnectorRegistry();
     this.connectorAuthManager = new ConnectorAuthManager();
     this.connectorRegistry.register(googleWorkspaceConnector);
+    this.connectorRegistry.register(microsoftConnector);
+    this.connectorRegistry.register(githubConnector);
+    this.connectorRegistry.register(linearConnector);
+    this.connectorRegistry.register(notionConnector);
+    this.connectorRegistry.register(homeAssistantConnector);
+    this.connectorRegistry.register(twitterConnector);
+    this.connectorRegistry.register(linkedinConnector);
+    this.connectorRegistry.register(redditConnector);
+    this.connectorRegistry.register(instagramConnector);
     this.triggerManager = new TriggerManager(this.connectorRegistry, this.connectorAuthManager);
 
     // Restore connector tokens from vault

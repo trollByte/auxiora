@@ -681,9 +681,27 @@ importers:
       '@auxiora/config':
         specifier: workspace:*
         version: link:../config
+      '@auxiora/connector-github':
+        specifier: workspace:*
+        version: link:../connector-github
       '@auxiora/connector-google-workspace':
         specifier: workspace:*
         version: link:../connector-google-workspace
+      '@auxiora/connector-homeassistant':
+        specifier: workspace:*
+        version: link:../connector-homeassistant
+      '@auxiora/connector-linear':
+        specifier: workspace:*
+        version: link:../connector-linear
+      '@auxiora/connector-microsoft':
+        specifier: workspace:*
+        version: link:../connector-microsoft
+      '@auxiora/connector-notion':
+        specifier: workspace:*
+        version: link:../connector-notion
+      '@auxiora/connector-social':
+        specifier: workspace:*
+        version: link:../connector-social
       '@auxiora/connectors':
         specifier: workspace:*
         version: link:../connectors
