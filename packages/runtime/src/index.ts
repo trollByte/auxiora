@@ -30,6 +30,13 @@ import {
   setClipboardMonitor,
   setAppController,
   setSystemStateMonitor,
+  setEmailIntelligence,
+  setCalendarIntelligence,
+  setContactGraph,
+  setContextRecall,
+  setComposeEngine,
+  setGrammarChecker,
+  setLanguageDetector,
   type ExecutionContext,
 } from '@auxiora/tools';
 import { ResearchEngine } from '@auxiora/research';
@@ -64,6 +71,10 @@ import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub'
 import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
 import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
 import { ConversationEngine } from '@auxiora/conversation';
+import { EmailTriageEngine, ThreadSummarizer } from '@auxiora/email-intelligence';
+import { ScheduleAnalyzer, ScheduleOptimizer, MeetingPrepGenerator } from '@auxiora/calendar-intelligence';
+import { ContactGraph, ContextRecall } from '@auxiora/contacts';
+import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compose';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
@@ -311,6 +322,59 @@ export class Auxiora {
     setAppController(appController);
     setSystemStateMonitor(systemStateMonitor);
     console.log('OS bridge initialized');
+
+    // Initialize email intelligence (engines ready; connectors needed for full functionality)
+    const emailTriageEngine = new EmailTriageEngine();
+    const threadSummarizer = new ThreadSummarizer();
+    setEmailIntelligence({
+      triage: {
+        getTriageSummary: async () => ({
+          categories: { urgent: [], action: [], fyi: [], newsletter: [], spam: [] },
+          total: 0,
+          message: 'Connect an email account to enable triage. Use /connect google-workspace',
+        }),
+        engine: emailTriageEngine,
+      },
+      summarizer: {
+        summarizeThread: async () => ({
+          summary: 'Connect an email account to enable thread summarization.',
+        }),
+        engine: threadSummarizer,
+      },
+    });
+    console.log('Email intelligence initialized');
+
+    // Initialize calendar intelligence (engines ready; connectors needed for full functionality)
+    const scheduleAnalyzer = new ScheduleAnalyzer();
+    const scheduleOptimizer = new ScheduleOptimizer();
+    const meetingPrepGenerator = new MeetingPrepGenerator();
+    setCalendarIntelligence({
+      analyzeDay: async (date: string) => scheduleAnalyzer.analyzeDay([], date),
+      suggest: (analysis: any) => scheduleOptimizer.suggest(analysis),
+      getMeetingBrief: async () => ({
+        message: 'Connect a calendar account to enable meeting preparation. Use /connect google-workspace',
+      }),
+      analyzer: scheduleAnalyzer,
+      optimizer: scheduleOptimizer,
+      meetingPrep: meetingPrepGenerator,
+    });
+    console.log('Calendar intelligence initialized');
+
+    // Initialize contacts system
+    const contactGraph = new ContactGraph();
+    const contextRecall = new ContextRecall(contactGraph);
+    setContactGraph(contactGraph);
+    setContextRecall(contextRecall);
+    console.log('Contacts system initialized');
+
+    // Initialize compose system
+    const composeEngine = new ComposeEngine();
+    const grammarChecker = new GrammarChecker();
+    const languageDetector = new LanguageDetector();
+    setComposeEngine(composeEngine);
+    setGrammarChecker(grammarChecker);
+    setLanguageDetector(languageDetector);
+    console.log('Compose system initialized');
 
     // Initialize voice system (if enabled and OpenAI key available)
     if (this.config.voice?.enabled) {

@@ -669,9 +669,15 @@ importers:
       '@auxiora/browser':
         specifier: workspace:*
         version: link:../browser
+      '@auxiora/calendar-intelligence':
+        specifier: workspace:*
+        version: link:../calendar-intelligence
       '@auxiora/channels':
         specifier: workspace:*
         version: link:../channels
+      '@auxiora/compose':
+        specifier: workspace:*
+        version: link:../compose
       '@auxiora/config':
         specifier: workspace:*
         version: link:../config
@@ -681,6 +687,9 @@ importers:
       '@auxiora/connectors':
         specifier: workspace:*
         version: link:../connectors
+      '@auxiora/contacts':
+        specifier: workspace:*
+        version: link:../contacts
       '@auxiora/conversation':
         specifier: workspace:*
         version: link:../conversation
@@ -690,6 +699,9 @@ importers:
       '@auxiora/dashboard':
         specifier: workspace:*
         version: link:../dashboard
+      '@auxiora/email-intelligence':
+        specifier: workspace:*
+        version: link:../email-intelligence
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
