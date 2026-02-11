@@ -22,7 +22,7 @@ const AuthConfigSchema = z.object({
 const RateLimitConfigSchema = z.object({
   enabled: z.boolean().default(true),
   windowMs: z.number().int().positive().default(60000), // 1 minute
-  maxRequests: z.number().int().positive().default(60),
+  maxRequests: z.number().int().positive().default(300),
 });
 
 const PairingConfigSchema = z.object({

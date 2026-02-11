@@ -331,6 +331,8 @@ export class Auxiora {
 
     // Initialize dashboard (if enabled)
     if (this.config.dashboard?.enabled) {
+      // Capture class reference for lazy getters (getters rebind `this` to the deps object)
+      const self = this;
       const { router } = createDashboardRouter({
         deps: {
           vault: this.vault,
@@ -461,82 +463,96 @@ export class Auxiora {
                 .map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
             },
           },
-          trust: this.trustEngine && this.trustAuditTrail && this.rollbackManager ? {
-            getLevels: () => this.trustEngine!.getAllLevels(),
-            getLevel: (domain: string) => this.trustEngine!.getTrustLevel(domain as any),
-            setLevel: async (domain: string, level: number, reason: string) => {
-              await this.trustEngine!.setTrustLevel(domain as any, level as any, reason);
-            },
-            getAuditEntries: (limit?: number) => this.trustAuditTrail!.query({ limit }),
-            getAuditEntry: (id: string) => this.trustAuditTrail!.getById(id),
-            rollback: async (id: string) => this.rollbackManager!.rollback(id),
-            getPromotions: () => this.trustEngine!.getPromotions(),
-          } : undefined,
+          get trust() {
+            return self.trustEngine && self.trustAuditTrail && self.rollbackManager ? {
+              getLevels: () => self.trustEngine!.getAllLevels(),
+              getLevel: (domain: string) => self.trustEngine!.getTrustLevel(domain as any),
+              setLevel: async (domain: string, level: number, reason: string) => {
+                await self.trustEngine!.setTrustLevel(domain as any, level as any, reason);
+              },
+              getAuditEntries: (limit?: number) => self.trustAuditTrail!.query({ limit }),
+              getAuditEntry: (id: string) => self.trustAuditTrail!.getById(id),
+              rollback: async (id: string) => self.rollbackManager!.rollback(id),
+              getPromotions: () => self.trustEngine!.getPromotions(),
+            } : undefined;
+          },
           // [P14] Team / Social
-          team: this.userManager ? {
-            listUsers: () => this.userManager!.listUsers(),
-            createUser: (name: string, role: string, channels?: any[]) =>
-              this.userManager!.createUser(name, role, { channels }),
-            deleteUser: (id: string) => this.userManager!.deleteUser(id),
-          } : undefined,
+          get team() {
+            return self.userManager ? {
+              listUsers: () => self.userManager!.listUsers(),
+              createUser: (name: string, role: string, channels?: any[]) =>
+                self.userManager!.createUser(name, role, { channels }),
+              deleteUser: (id: string) => self.userManager!.deleteUser(id),
+            } : undefined;
+          },
           // [P14] Workflows
-          workflows: this.workflowEngine && this.approvalManager ? {
-            listActive: () => this.workflowEngine!.listActive(),
-            listAll: () => this.workflowEngine!.listAll(),
-            getStatus: (id: string) => this.workflowEngine!.getStatus(id),
-            createWorkflow: (options: any) => this.workflowEngine!.createWorkflow(options),
-            completeStep: (wfId: string, stepId: string, completedBy: string) =>
-              this.workflowEngine!.completeStep(wfId, stepId, completedBy),
-            cancelWorkflow: (id: string) => this.workflowEngine!.cancelWorkflow(id),
-            getPendingApprovals: (userId?: string) => this.approvalManager!.getPending(userId),
-            approve: (id: string, userId: string, reason?: string) =>
-              this.approvalManager!.approve(id, userId, reason),
-            reject: (id: string, userId: string, reason?: string) =>
-              this.approvalManager!.reject(id, userId, reason),
-          } : undefined,
+          get workflows() {
+            return self.workflowEngine && self.approvalManager ? {
+              listActive: () => self.workflowEngine!.listActive(),
+              listAll: () => self.workflowEngine!.listAll(),
+              getStatus: (id: string) => self.workflowEngine!.getStatus(id),
+              createWorkflow: (options: any) => self.workflowEngine!.createWorkflow(options),
+              completeStep: (wfId: string, stepId: string, completedBy: string) =>
+                self.workflowEngine!.completeStep(wfId, stepId, completedBy),
+              cancelWorkflow: (id: string) => self.workflowEngine!.cancelWorkflow(id),
+              getPendingApprovals: (userId?: string) => self.approvalManager!.getPending(userId),
+              approve: (id: string, userId: string, reason?: string) =>
+                self.approvalManager!.approve(id, userId, reason),
+              reject: (id: string, userId: string, reason?: string) =>
+                self.approvalManager!.reject(id, userId, reason),
+            } : undefined;
+          },
           // [P14] Agent Protocol
-          agentProtocol: this.agentProtocol && this.agentDirectory ? {
-            getIdentity: () => this.agentProtocol!.getIdentity(),
-            getInbox: (limit?: number) => this.agentProtocol!.getInbox(limit),
-            discover: (query: string) => this.agentProtocol!.discover(query),
-            getDirectory: () => this.agentDirectory!.listAll(),
-          } : undefined,
+          get agentProtocol() {
+            return self.agentProtocol && self.agentDirectory ? {
+              getIdentity: () => self.agentProtocol!.getIdentity(),
+              getInbox: (limit?: number) => self.agentProtocol!.getInbox(limit),
+              discover: (query: string) => self.agentProtocol!.discover(query),
+              getDirectory: () => self.agentDirectory!.listAll(),
+            } : undefined;
+          },
           // [P15] Screen
-          screen: this.screenCapturer ? {
-            capture: async () => {
-              const cap = await this.screenCapturer!.captureScreen();
-              return { image: cap.image.toString('base64'), dimensions: cap.dimensions };
-            },
-            analyze: async (question?: string) => {
-              if (!this.screenAnalyzer) return 'Screen analyzer not available';
-              const cap = await this.screenCapturer!.captureScreen();
-              return this.screenAnalyzer.analyzeScreen(cap.image, question);
-            },
-          } : undefined,
+          get screen() {
+            return self.screenCapturer ? {
+              capture: async () => {
+                const cap = await self.screenCapturer!.captureScreen();
+                return { image: cap.image.toString('base64'), dimensions: cap.dimensions };
+              },
+              analyze: async (question?: string) => {
+                if (!self.screenAnalyzer) return 'Screen analyzer not available';
+                const cap = await self.screenCapturer!.captureScreen();
+                return self.screenAnalyzer.analyzeScreen(cap.image, question);
+              },
+            } : undefined;
+          },
           // [P15] Ambient
-          ambient: this.ambientEngine && this.ambientNotifications ? {
-            getPatterns: () => this.ambientEngine!.getPatterns(),
-            getNotifications: () => this.ambientNotifications!.getQueue(),
-            dismissNotification: (id: string) => this.ambientNotifications!.dismiss(id),
-            getBriefing: (time: string) => {
-              return this.briefingGenerator!.generateBriefing(
-                'dashboard', time === 'evening' ? 'evening' : 'morning',
-                {
-                  patterns: this.ambientEngine!.getPatterns(),
-                  notifications: this.ambientNotifications!.getQueue(),
-                  anticipations: this.anticipationEngine!.getAnticipations(),
-                },
-              );
-            },
-            getAnticipations: () => this.anticipationEngine!.getAnticipations(),
-          } : undefined,
+          get ambient() {
+            return self.ambientEngine && self.ambientNotifications ? {
+              getPatterns: () => self.ambientEngine!.getPatterns(),
+              getNotifications: () => self.ambientNotifications!.getQueue(),
+              dismissNotification: (id: string) => self.ambientNotifications!.dismiss(id),
+              getBriefing: (time: string) => {
+                return self.briefingGenerator!.generateBriefing(
+                  'dashboard', time === 'evening' ? 'evening' : 'morning',
+                  {
+                    patterns: self.ambientEngine!.getPatterns(),
+                    notifications: self.ambientNotifications!.getQueue(),
+                    anticipations: self.anticipationEngine!.getAnticipations(),
+                  },
+                );
+              },
+              getAnticipations: () => self.anticipationEngine!.getAnticipations(),
+            } : undefined;
+          },
           // [P15] Conversation
-          conversation: this.conversationEngine ? {
-            getState: () => this.conversationEngine!.getState(),
-            start: () => this.conversationEngine!.start(),
-            stop: () => this.conversationEngine!.stop(),
-            getTurnCount: () => this.conversationEngine!.getTurnCount(),
-          } : undefined,
+          get conversation() {
+            return self.conversationEngine ? {
+              getState: () => self.conversationEngine!.getState(),
+              start: () => self.conversationEngine!.start(),
+              stop: () => self.conversationEngine!.stop(),
+              getTurnCount: () => self.conversationEngine!.getTurnCount(),
+            } : undefined;
+          },
           setup: {
             personality: (() => {
               const mgr = new PersonalityManager(
