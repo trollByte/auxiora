@@ -43,7 +43,11 @@ export class BraveSearchClient {
       }
 
       const data = (await response.json()) as BraveSearchResponse;
-      return data.web?.results ?? [];
+      return (data.web?.results ?? []).map((r) => ({
+        ...r,
+        description: stripHtml(r.description),
+        extra_snippets: r.extra_snippets?.map(stripHtml),
+      }));
     } finally {
       clearTimeout(timer);
     }
@@ -78,6 +82,19 @@ export class BraveSearchClient {
       clearTimeout(timer);
     }
   }
+}
+
+/** Strip HTML tags and decode entities from short text (e.g. Brave snippets). */
+function stripHtml(text: string): string {
+  return text
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
 }
 
 /**
