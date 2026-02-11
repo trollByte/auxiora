@@ -6,6 +6,7 @@ import type {
   CompletionOptions,
   CompletionResult,
   StreamChunk,
+  ToolDefinition,
 } from './types.js';
 import { getOpenAIReasoningEffort, isOpenAIReasoningModel } from './thinking-levels.js';
 
@@ -126,6 +127,11 @@ export class OpenAIProvider implements Provider {
       messages: openaiMessages,
     };
 
+    // Add tools if provided
+    if (options?.tools && options.tools.length > 0) {
+      createParams.tools = this.transformTools(options.tools);
+    }
+
     // Add reasoning_effort for o-series models
     if (options?.thinkingLevel && isOpenAIReasoningModel(model)) {
       const effort = getOpenAIReasoningEffort(options.thinkingLevel);
@@ -137,7 +143,27 @@ export class OpenAIProvider implements Provider {
     const response = await this.client.chat.completions.create(createParams);
 
     const choice = response.choices[0];
-    const content = choice?.message?.content || '';
+    const message = choice?.message;
+    const content = message?.content || '';
+
+    // Handle tool calls in the response
+    const toolCalls = message?.tool_calls;
+    if (toolCalls && toolCalls.length > 0) {
+      return {
+        content,
+        toolUse: toolCalls.map((tc) => ({
+          id: tc.id,
+          name: tc.function.name,
+          input: JSON.parse(tc.function.arguments || '{}'),
+        })),
+        usage: {
+          inputTokens: response.usage?.prompt_tokens || 0,
+          outputTokens: response.usage?.completion_tokens || 0,
+        },
+        model: response.model,
+        finishReason: 'tool_use',
+      };
+    }
 
     return {
       content,
@@ -166,6 +192,11 @@ export class OpenAIProvider implements Provider {
         stream_options: { include_usage: true },
       };
 
+      // Add tools if provided
+      if (options?.tools && options.tools.length > 0) {
+        createParams.tools = this.transformTools(options.tools);
+      }
+
       // Add reasoning_effort for o-series models
       if (options?.thinkingLevel && isOpenAIReasoningModel(model)) {
         const effort = getOpenAIReasoningEffort(options.thinkingLevel);
@@ -179,11 +210,29 @@ export class OpenAIProvider implements Provider {
       let inputTokens = 0;
       let outputTokens = 0;
 
+      // Track streaming tool calls: index -> { id, name, arguments }
+      const toolCallAccumulators = new Map<number, { id: string; name: string; arguments: string }>();
+
       for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta;
+        const choice = chunk.choices[0];
+        const delta = choice?.delta;
 
         if (delta?.content) {
           yield { type: 'text', content: delta.content };
+        }
+
+        // Handle streaming tool_calls deltas
+        if (delta?.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index;
+            if (!toolCallAccumulators.has(idx)) {
+              toolCallAccumulators.set(idx, { id: '', name: '', arguments: '' });
+            }
+            const acc = toolCallAccumulators.get(idx)!;
+            if (tc.id) acc.id = tc.id;
+            if (tc.function?.name) acc.name = tc.function.name;
+            if (tc.function?.arguments) acc.arguments += tc.function.arguments;
+          }
         }
 
         if (chunk.usage) {
@@ -191,7 +240,21 @@ export class OpenAIProvider implements Provider {
           outputTokens = chunk.usage.completion_tokens || 0;
         }
 
-        if (chunk.choices[0]?.finish_reason) {
+        if (choice?.finish_reason) {
+          // Yield accumulated tool calls before done
+          if (choice.finish_reason === 'tool_calls' && toolCallAccumulators.size > 0) {
+            for (const [, acc] of toolCallAccumulators) {
+              yield {
+                type: 'tool_use',
+                toolUse: {
+                  id: acc.id,
+                  name: acc.name,
+                  input: JSON.parse(acc.arguments || '{}'),
+                },
+              };
+            }
+          }
+
           yield {
             type: 'done',
             usage: { inputTokens, outputTokens },
@@ -204,6 +267,17 @@ export class OpenAIProvider implements Provider {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  private transformTools(tools: ToolDefinition[]): OpenAI.ChatCompletionTool[] {
+    return tools.map((tool) => ({
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.input_schema as OpenAI.FunctionParameters,
+      },
+    }));
   }
 
   private prepareMessages(

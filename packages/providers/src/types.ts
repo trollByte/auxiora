@@ -68,6 +68,7 @@ export interface CompletionOptions {
 
 export interface CompletionResult {
   content: string;
+  toolUse?: ToolUse[];
   usage: {
     inputTokens: number;
     outputTokens: number;
