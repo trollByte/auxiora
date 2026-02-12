@@ -782,11 +782,15 @@ export class Auxiora {
       setMemoryStore(this.memoryStore);
 
       // Create extractor with AI provider (needs providers initialized)
-      if (this.providers) {
-        this.memoryExtractor = new MemoryExtractor(
-          this.memoryStore,
-          this.providers.getPrimaryProvider(),
-        );
+      if (this.providers && this.providers.listAvailable().length > 0) {
+        try {
+          this.memoryExtractor = new MemoryExtractor(
+            this.memoryStore,
+            this.providers.getPrimaryProvider(),
+          );
+        } catch {
+          console.warn('Memory extractor disabled: no AI provider available');
+        }
       }
 
       // Set up periodic cleanup of expired memories

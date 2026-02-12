@@ -84,6 +84,15 @@ export class ProviderFactory {
     if (options.config.xai?.apiKey) {
       this.providers.set('xai', new XAIProvider(options.config.xai));
     }
+
+    // Auto-fallback: if configured primary isn't available, use first registered provider
+    if (this.providers.size > 0 && !this.providers.has(this.primary)) {
+      const firstAvailable = this.providers.keys().next().value as string;
+      console.warn(
+        `Provider '${this.primary}' not configured, falling back to '${firstAvailable}'`,
+      );
+      this.primary = firstAvailable;
+    }
   }
 
   getProvider(name?: ProviderName): Provider {
