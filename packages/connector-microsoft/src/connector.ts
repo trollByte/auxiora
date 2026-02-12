@@ -1,6 +1,25 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+
+async function graphFetch(token: string, path: string, options?: { method?: string; body?: unknown }) {
+  const res = await fetch(`${GRAPH_BASE}${path}`, {
+    method: options?.method ?? 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(`Graph API error: ${res.status} ${err.error?.message ?? res.statusText}`);
+  }
+  if (res.status === 204) return undefined;
+  return res.json();
+}
+
 export const microsoftConnector = defineConnector({
   id: 'microsoft-365',
   name: 'Microsoft 365',
@@ -371,58 +390,290 @@ export const microsoftConnector = defineConnector({
   ],
 
   async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
-    // In production, these would make real API calls to Microsoft Graph API.
-    // This is the connector skeleton with action routing.
     switch (actionId) {
-      case 'mail-list-messages':
-        return { messages: [], folderId: params.folderId ?? 'inbox' };
-      case 'mail-read-message':
-        return { messageId: params.messageId, subject: '', body: '' };
-      case 'mail-send':
-        return { messageId: `msg_${Date.now()}`, status: 'sent' };
-      case 'mail-reply':
+      // --- Mail ---
+      case 'mail-list-messages': {
+        const folderId = (params.folderId as string) ?? 'inbox';
+        const top = (params.maxResults as number) ?? 10;
+        let path = `/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=${top}`;
+        if (params.query) path += `&$filter=${encodeURIComponent(params.query as string)}`;
+        const res = await graphFetch(token, path) as { value: unknown[] };
+        return { messages: res.value, folderId };
+      }
+
+      case 'mail-read-message': {
+        const msg = await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}`);
+        return msg;
+      }
+
+      case 'mail-send': {
+        const toRecipients = [{ emailAddress: { address: params.to as string } }];
+        const ccRecipients = params.cc
+          ? (params.cc as string).split(',').map(e => ({ emailAddress: { address: e.trim() } }))
+          : undefined;
+        const bccRecipients = params.bcc
+          ? (params.bcc as string).split(',').map(e => ({ emailAddress: { address: e.trim() } }))
+          : undefined;
+        await graphFetch(token, '/me/sendMail', {
+          method: 'POST',
+          body: {
+            message: {
+              toRecipients,
+              subject: params.subject as string,
+              body: { contentType: 'Text', content: params.body as string },
+              ...(ccRecipients ? { ccRecipients } : {}),
+              ...(bccRecipients ? { bccRecipients } : {}),
+            },
+          },
+        });
+        return { status: 'sent' };
+      }
+
+      case 'mail-reply': {
+        const action = params.replyAll ? 'replyAll' : 'reply';
+        await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}/${action}`, {
+          method: 'POST',
+          body: { comment: params.body as string },
+        });
         return { messageId: params.messageId, status: 'replied' };
-      case 'mail-forward':
+      }
+
+      case 'mail-forward': {
+        await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}/forward`, {
+          method: 'POST',
+          body: {
+            toRecipients: [{ emailAddress: { address: params.to as string } }],
+            comment: (params.comment as string) ?? '',
+          },
+        });
         return { messageId: params.messageId, status: 'forwarded', to: params.to };
-      case 'mail-move':
-        return { messageId: params.messageId, status: 'moved', destinationFolderId: params.destinationFolderId };
-      case 'mail-archive':
-        return { messageId: params.messageId, status: 'archived' };
-      case 'mail-flag':
-        return { messageId: params.messageId, status: 'flagged' };
-      case 'mail-search':
-        return { messages: [], query: params.query };
-      case 'mail-draft':
-        return { draftId: `draft_${Date.now()}`, status: 'created' };
-      case 'calendar-list-events':
-        return { events: [], calendarId: params.calendarId ?? 'primary' };
-      case 'calendar-create-event':
-        return { eventId: `evt_${Date.now()}`, status: 'created', subject: params.subject };
-      case 'calendar-update-event':
-        return { eventId: params.eventId, status: 'updated' };
-      case 'calendar-delete-event':
+      }
+
+      case 'mail-move': {
+        const moved = await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}/move`, {
+          method: 'POST',
+          body: { destinationId: params.destinationFolderId as string },
+        });
+        return { messageId: (moved as { id: string }).id, status: 'moved', destinationFolderId: params.destinationFolderId };
+      }
+
+      case 'mail-archive': {
+        const archived = await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}/move`, {
+          method: 'POST',
+          body: { destinationId: 'archive' },
+        });
+        return { messageId: (archived as { id: string }).id, status: 'archived' };
+      }
+
+      case 'mail-flag': {
+        const flagged = await graphFetch(token, `/me/messages/${encodeURIComponent(params.messageId as string)}`, {
+          method: 'PATCH',
+          body: { flag: { flagStatus: (params.flagStatus as string) ?? 'flagged' } },
+        });
+        return { messageId: (flagged as { id: string }).id, status: 'flagged' };
+      }
+
+      case 'mail-search': {
+        const top = (params.maxResults as number) ?? 10;
+        const query = encodeURIComponent(`"${params.query as string}"`);
+        const res = await graphFetch(token, `/me/messages?$search=${query}&$top=${top}`) as { value: unknown[] };
+        return { messages: res.value, query: params.query };
+      }
+
+      case 'mail-draft': {
+        const draft = await graphFetch(token, '/me/messages', {
+          method: 'POST',
+          body: {
+            toRecipients: [{ emailAddress: { address: params.to as string } }],
+            subject: params.subject as string,
+            body: { contentType: 'Text', content: params.body as string },
+            isDraft: true,
+          },
+        }) as { id: string };
+        return { draftId: draft.id, status: 'created' };
+      }
+
+      // --- Calendar ---
+      case 'calendar-list-events': {
+        const top = (params.maxResults as number) ?? 10;
+        let res: { value: unknown[] };
+        if (params.startDateTime && params.endDateTime) {
+          const start = encodeURIComponent(params.startDateTime as string);
+          const end = encodeURIComponent(params.endDateTime as string);
+          res = await graphFetch(token, `/me/calendarView?startDateTime=${start}&endDateTime=${end}&$top=${top}`) as { value: unknown[] };
+        } else {
+          res = await graphFetch(token, `/me/events?$top=${top}&$orderby=start/dateTime`) as { value: unknown[] };
+        }
+        return { events: res.value };
+      }
+
+      case 'calendar-create-event': {
+        const attendees = params.attendees
+          ? (params.attendees as string[]).map(email => ({
+              emailAddress: { address: email },
+              type: 'required',
+            }))
+          : undefined;
+        const eventBody: Record<string, unknown> = {
+          subject: params.subject as string,
+          start: { dateTime: params.start as string, timeZone: 'UTC' },
+          end: { dateTime: params.end as string, timeZone: 'UTC' },
+        };
+        if (params.body) eventBody.body = { contentType: 'Text', content: params.body as string };
+        if (attendees) eventBody.attendees = attendees;
+        if (params.location) eventBody.location = { displayName: params.location as string };
+        if (params.isOnlineMeeting) eventBody.isOnlineMeeting = true;
+        const created = await graphFetch(token, '/me/events', {
+          method: 'POST',
+          body: eventBody,
+        }) as { id: string; subject: string };
+        return { eventId: created.id, status: 'created', subject: created.subject };
+      }
+
+      case 'calendar-update-event': {
+        const updates: Record<string, unknown> = {};
+        if (params.subject) updates.subject = params.subject;
+        if (params.start) updates.start = { dateTime: params.start as string, timeZone: 'UTC' };
+        if (params.end) updates.end = { dateTime: params.end as string, timeZone: 'UTC' };
+        const updated = await graphFetch(token, `/me/events/${encodeURIComponent(params.eventId as string)}`, {
+          method: 'PATCH',
+          body: updates,
+        }) as { id: string };
+        return { eventId: updated.id, status: 'updated' };
+      }
+
+      case 'calendar-delete-event': {
+        await graphFetch(token, `/me/events/${encodeURIComponent(params.eventId as string)}`, {
+          method: 'DELETE',
+        });
         return { eventId: params.eventId, status: 'deleted' };
-      case 'calendar-find-availability':
-        return { slots: [] };
-      case 'contacts-list':
-        return { contacts: [] };
-      case 'contacts-get':
-        return { contactId: params.contactId, displayName: '', emailAddresses: [] };
-      case 'files-list':
-        return { files: [] };
-      case 'files-download':
-        return { fileId: params.fileId, content: '' };
-      case 'files-upload':
-        return { fileId: `file_${Date.now()}`, status: 'uploaded', name: params.name };
-      case 'files-search':
-        return { files: [], query: params.query };
+      }
+
+      case 'calendar-find-availability': {
+        const schedules = (params.attendees as string[]);
+        const res = await graphFetch(token, '/me/calendar/getSchedule', {
+          method: 'POST',
+          body: {
+            schedules,
+            startTime: { dateTime: params.startDateTime as string, timeZone: 'UTC' },
+            endTime: { dateTime: params.endDateTime as string, timeZone: 'UTC' },
+            availabilityViewInterval: (params.durationMinutes as number) ?? 30,
+          },
+        });
+        return res;
+      }
+
+      // --- Contacts ---
+      case 'contacts-list': {
+        const top = (params.maxResults as number) ?? 20;
+        let path = `/me/contacts?$top=${top}`;
+        if (params.search) path += `&$search="${encodeURIComponent(params.search as string)}"`;
+        const res = await graphFetch(token, path) as { value: unknown[] };
+        return { contacts: res.value };
+      }
+
+      case 'contacts-get': {
+        const contact = await graphFetch(token, `/me/contacts/${encodeURIComponent(params.contactId as string)}`);
+        return contact;
+      }
+
+      // --- OneDrive ---
+      case 'files-list': {
+        const top = (params.maxResults as number) ?? 20;
+        const path = params.folderId
+          ? `/me/drive/items/${encodeURIComponent(params.folderId as string)}/children?$top=${top}`
+          : `/me/drive/root/children?$top=${top}`;
+        const res = await graphFetch(token, path) as { value: unknown[] };
+        return { files: res.value };
+      }
+
+      case 'files-download': {
+        const downloadRes = await fetch(`${GRAPH_BASE}/me/drive/items/${encodeURIComponent(params.fileId as string)}/content`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+          redirect: 'follow',
+        });
+        if (!downloadRes.ok) {
+          throw new Error(`Graph API error: ${downloadRes.status} ${downloadRes.statusText}`);
+        }
+        const content = await downloadRes.text();
+        return { fileId: params.fileId, content };
+      }
+
+      case 'files-upload': {
+        const fileName = encodeURIComponent(params.name as string);
+        const uploadPath = params.folderId
+          ? `/me/drive/items/${encodeURIComponent(params.folderId as string)}:/${fileName}:/content`
+          : `/me/drive/root:/${fileName}:/content`;
+        const uploadRes = await fetch(`${GRAPH_BASE}${uploadPath}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/octet-stream',
+          },
+          body: params.content as string,
+        });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({})) as { error?: { message?: string } };
+          throw new Error(`Graph API error: ${uploadRes.status} ${err.error?.message ?? uploadRes.statusText}`);
+        }
+        const uploaded = await uploadRes.json() as { id: string; name: string };
+        return { fileId: uploaded.id, status: 'uploaded', name: uploaded.name };
+      }
+
+      case 'files-search': {
+        const q = encodeURIComponent(params.query as string);
+        const top = (params.maxResults as number) ?? 10;
+        const res = await graphFetch(token, `/me/drive/root/search(q='${q}')?$top=${top}`) as { value: unknown[] };
+        return { files: res.value, query: params.query };
+      }
+
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    // In production, these would poll the real Microsoft Graph API.
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    switch (triggerId) {
+      case 'new-email': {
+        const res = await graphFetch(token, '/me/mailFolders/inbox/messages?$orderby=receivedDateTime desc&$top=10') as { value: Array<{ id: string; receivedDateTime: string; subject?: string; from?: unknown }> };
+        const since = lastPollAt ?? (Date.now() - 120_000);
+        const newMessages = res.value.filter(m => new Date(m.receivedDateTime).getTime() > since);
+        return newMessages.map(m => ({
+          triggerId: 'new-email',
+          connectorId: 'microsoft-365',
+          timestamp: new Date(m.receivedDateTime).getTime(),
+          data: { messageId: m.id, subject: m.subject, from: m.from },
+        }));
+      }
+
+      case 'event-starting-soon': {
+        const now = new Date();
+        const soon = new Date(now.getTime() + 15 * 60_000);
+        const start = encodeURIComponent(now.toISOString());
+        const end = encodeURIComponent(soon.toISOString());
+        const res = await graphFetch(token, `/me/calendarView?startDateTime=${start}&endDateTime=${end}&$top=10`) as { value: Array<{ id: string; subject?: string; start?: unknown; end?: unknown }> };
+        return res.value.map(e => ({
+          triggerId: 'event-starting-soon',
+          connectorId: 'microsoft-365',
+          timestamp: Date.now(),
+          data: { eventId: e.id, subject: e.subject, start: e.start, end: e.end },
+        }));
+      }
+
+      case 'calendar-event-created': {
+        const res = await graphFetch(token, '/me/events?$orderby=createdDateTime desc&$top=10') as { value: Array<{ id: string; createdDateTime: string; subject?: string; start?: unknown }> };
+        const since = lastPollAt ?? (Date.now() - 300_000);
+        const newEvents = res.value.filter(e => new Date(e.createdDateTime).getTime() > since);
+        return newEvents.map(e => ({
+          triggerId: 'calendar-event-created',
+          connectorId: 'microsoft-365',
+          timestamp: new Date(e.createdDateTime).getTime(),
+          data: { eventId: e.id, subject: e.subject, start: e.start },
+        }));
+      }
+
+      default:
+        return [];
+    }
   },
 });

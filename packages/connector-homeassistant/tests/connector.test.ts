@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { homeAssistantConnector } from '../src/connector.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function mockResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) };
+}
 
 describe('Home Assistant Connector', () => {
   it('should have correct metadata', () => {
@@ -53,6 +66,12 @@ describe('Home Assistant Connector', () => {
   });
 
   it('should execute devices-set-state action', async () => {
+    // POST /api/states/light.living_room returns the updated state object
+    fetchMock.mockResolvedValueOnce(mockResponse({
+      entity_id: 'light.living_room',
+      state: 'on',
+      attributes: {},
+    }));
     const result = await homeAssistantConnector.executeAction(
       'devices-set-state',
       { entityId: 'light.living_room', state: 'on' },
@@ -63,6 +82,8 @@ describe('Home Assistant Connector', () => {
   });
 
   it('should execute scenes-activate action', async () => {
+    // POST /api/services/scene/turn_on
+    fetchMock.mockResolvedValueOnce(mockResponse([]));
     const result = await homeAssistantConnector.executeAction(
       'scenes-activate',
       { sceneId: 'scene.movie_time' },
@@ -72,6 +93,8 @@ describe('Home Assistant Connector', () => {
   });
 
   it('should execute automations-toggle action', async () => {
+    // POST /api/services/automation/turn_on
+    fetchMock.mockResolvedValueOnce(mockResponse([]));
     const result = await homeAssistantConnector.executeAction(
       'automations-toggle',
       { automationId: 'automation.morning', enabled: true },
@@ -86,6 +109,8 @@ describe('Home Assistant Connector', () => {
   });
 
   it('should return empty events from pollTrigger', async () => {
+    // GET /api/states returns empty array (no states changed recently)
+    fetchMock.mockResolvedValueOnce(mockResponse([]));
     const events = await homeAssistantConnector.pollTrigger!('state-changed', 'token');
     expect(events).toEqual([]);
   });

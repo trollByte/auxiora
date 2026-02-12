@@ -1,6 +1,20 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+async function instagramFetch(token: string, path: string, options?: { method?: string; body?: unknown }) {
+  const url = new URL(`https://graph.instagram.com${path}`);
+  if (!options?.method || options.method === 'GET') {
+    url.searchParams.set('access_token', token);
+  }
+  const res = await fetch(url.toString(), {
+    method: options?.method ?? 'GET',
+    headers: options?.body ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } : { 'Authorization': `Bearer ${token}` },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) throw new Error(`Instagram API error: ${res.status} ${await res.text().catch(() => res.statusText)}`);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export const instagramConnector = defineConnector({
   id: 'instagram',
   name: 'Instagram',
@@ -124,24 +138,75 @@ export const instagramConnector = defineConnector({
 
   async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'feed-read':
-        return { posts: [] };
-      case 'stories-read':
-        return { stories: [] };
-      case 'dm-list':
-        return { messages: [] };
-      case 'dm-send':
-        return { messageId: `dm_${Date.now()}`, status: 'sent', recipientId: params.recipientId };
-      case 'post-schedule':
-        return { postId: `post_${Date.now()}`, status: 'scheduled', caption: params.caption };
-      case 'profile-get':
-        return { userId: params.userId ?? 'me', username: '', bio: '' };
+      case 'feed-read': {
+        const res = await instagramFetch(token, '/me/media?fields=id,caption,media_url,timestamp,like_count,comments_count');
+        return { posts: res.data };
+      }
+      case 'stories-read': {
+        const res = await instagramFetch(token, '/me/stories?fields=id,media_url,timestamp');
+        return { stories: res.data };
+      }
+      case 'dm-list': {
+        return { messages: [], note: 'Instagram Messaging API requires approved app access' };
+      }
+      case 'dm-send': {
+        return { error: 'Instagram Messaging API requires approved app access', status: 'unavailable' };
+      }
+      case 'post-schedule': {
+        // Step 1: Create media container
+        const container = await instagramFetch(token, '/me/media', {
+          method: 'POST',
+          body: {
+            caption: params.caption,
+            image_url: params.mediaUrl,
+          },
+        });
+        const creationId = container.id as string;
+        // Step 2: Publish the media
+        const published = await instagramFetch(token, '/me/media_publish', {
+          method: 'POST',
+          body: { creation_id: creationId },
+        });
+        return { postId: published.id, status: 'published' };
+      }
+      case 'profile-get': {
+        const userId = (params.userId as string | undefined) ?? 'me';
+        const fields = 'id,username,name,biography,media_count,followers_count,follows_count';
+        const res = await instagramFetch(token, `/${userId}?fields=${fields}`);
+        return res;
+      }
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    switch (triggerId) {
+      case 'new-dm':
+        // Instagram Messaging API requires approved access
+        return [];
+      case 'new-comment': {
+        const media = await instagramFetch(token, '/me/media?fields=id&limit=10');
+        const posts = (media.data ?? []) as Array<Record<string, unknown>>;
+        const events: TriggerEvent[] = [];
+        const since = lastPollAt ? new Date(lastPollAt).toISOString() : undefined;
+        for (const post of posts) {
+          const sinceParam = since ? `&since=${since}` : '';
+          const commentsRes = await instagramFetch(token, `/${post.id as string}/comments?fields=id,text,username,timestamp${sinceParam}`);
+          const comments = (commentsRes.data ?? []) as Array<Record<string, unknown>>;
+          for (const comment of comments) {
+            events.push({
+              triggerId: 'new-comment',
+              connectorId: 'instagram',
+              data: { ...comment, mediaId: post.id },
+              timestamp: comment.timestamp ? new Date(comment.timestamp as string).getTime() : Date.now(),
+            });
+          }
+        }
+        return events;
+      }
+      default:
+        return [];
+    }
   },
 });

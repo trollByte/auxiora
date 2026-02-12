@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { instagramConnector } from '../src/instagram.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function mockResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) };
+}
 
 describe('Instagram Connector', () => {
   it('should have correct metadata', () => {
@@ -40,25 +53,33 @@ describe('Instagram Connector', () => {
   });
 
   it('should execute feed-read action', async () => {
+    // GET /me/media?fields=... -> { data: [] }
+    fetchMock.mockResolvedValueOnce(mockResponse({ data: [] }));
     const result = await instagramConnector.executeAction('feed-read', {}, 'token');
     expect(result).toEqual({ posts: [] });
   });
 
   it('should execute dm-send action', async () => {
+    // dm-send returns unavailable status (Instagram Messaging API requires approved access)
     const result = await instagramConnector.executeAction('dm-send', { recipientId: 'u1', text: 'Hi' }, 'token') as any;
-    expect(result.status).toBe('sent');
-    expect(result.recipientId).toBe('u1');
+    expect(result.status).toBe('unavailable');
   });
 
   it('should execute post-schedule action', async () => {
+    // POST /me/media -> { id: 'container1' } (create media container)
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: 'container1' }));
+    // POST /me/media_publish -> { id: 'post1' } (publish)
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: 'post1' }));
     const result = await instagramConnector.executeAction('post-schedule', { caption: 'Hello', mediaUrl: 'https://example.com/img.jpg' }, 'token') as any;
-    expect(result.status).toBe('scheduled');
-    expect(result.caption).toBe('Hello');
+    expect(result.status).toBe('published');
+    expect(result.postId).toBe('post1');
   });
 
   it('should execute profile-get action', async () => {
+    // GET /me?fields=... -> profile object
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: 'me123', username: 'testuser', name: 'Test' }));
     const result = await instagramConnector.executeAction('profile-get', {}, 'token') as any;
-    expect(result.userId).toBe('me');
+    expect(result.id).toBe('me123');
   });
 
   it('should throw for unknown action', async () => {
@@ -66,6 +87,7 @@ describe('Instagram Connector', () => {
   });
 
   it('should return empty events from pollTrigger', async () => {
+    // new-dm trigger returns [] directly without fetching
     const events = await instagramConnector.pollTrigger!('new-dm', 'token');
     expect(events).toEqual([]);
   });

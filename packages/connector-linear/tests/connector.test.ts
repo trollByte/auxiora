@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { linearConnector } from '../src/connector.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('Linear Connector', () => {
   it('should have correct metadata', () => {
@@ -46,22 +55,53 @@ describe('Linear Connector', () => {
   });
 
   it('should execute issues-create action', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          issueCreate: {
+            issue: { id: 'issue-1', identifier: 'BUG-1', title: 'Bug fix' },
+            success: true,
+          },
+        },
+      }),
+    });
     const result = await linearConnector.executeAction(
       'issues-create',
       { teamId: 'team-1', title: 'Bug fix' },
       'token',
     ) as any;
-    expect(result.status).toBe('created');
-    expect(result.title).toBe('Bug fix');
+    expect(result.success).toBe(true);
+    expect(result.issue.title).toBe('Bug fix');
   });
 
   it('should execute cycles-current action', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          team: {
+            activeCycle: {
+              id: 'cycle-1',
+              name: 'Sprint 1',
+              number: 1,
+              startsAt: '2025-01-01T00:00:00Z',
+              endsAt: '2025-01-14T00:00:00Z',
+              progress: 0.5,
+            },
+          },
+        },
+      }),
+    });
     const result = await linearConnector.executeAction(
       'cycles-current',
       { teamId: 'team-1' },
       'token',
     ) as any;
-    expect(result.teamId).toBe('team-1');
+    expect(result.id).toBe('cycle-1');
+    expect(result.name).toBe('Sprint 1');
   });
 
   it('should throw for unknown action', async () => {

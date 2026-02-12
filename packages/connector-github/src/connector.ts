@@ -1,6 +1,32 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+const GITHUB_API = 'https://api.github.com';
+
+async function ghFetch(path: string, token: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(`${GITHUB_API}${path}`, {
+    ...options,
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...options.headers,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub API error ${res.status}: ${body}`);
+  }
+  return res;
+}
+
+async function ghJson<T = unknown>(path: string, token: string, options: RequestInit = {}): Promise<T> {
+  const res = await ghFetch(path, token, options);
+  // 204 No Content (e.g. workflow dispatch) returns no body
+  if (res.status === 204) return {} as T;
+  return res.json() as Promise<T>;
+}
+
 export const githubConnector = defineConnector({
   id: 'github',
   name: 'GitHub',
@@ -233,36 +259,224 @@ export const githubConnector = defineConnector({
     },
   ],
 
-  async executeAction(actionId: string, params: Record<string, unknown>, _token: string): Promise<unknown> {
+  async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'issues-list':
-        return { issues: [], owner: params.owner, repo: params.repo };
-      case 'issues-create':
-        return { issueNumber: Math.floor(Math.random() * 1000), status: 'created', title: params.title };
-      case 'issues-update':
-        return { issueNumber: params.issueNumber, status: 'updated' };
-      case 'issues-comment':
-        return { commentId: Math.floor(Math.random() * 10000), status: 'created' };
-      case 'prs-list':
-        return { pullRequests: [], owner: params.owner, repo: params.repo };
-      case 'prs-create':
-        return { pullNumber: Math.floor(Math.random() * 100), status: 'created', title: params.title };
-      case 'prs-merge':
-        return { pullNumber: params.pullNumber, status: 'merged' };
-      case 'actions-list-runs':
-        return { runs: [] };
-      case 'actions-trigger':
-        return { status: 'triggered', workflowId: params.workflowId };
-      case 'repos-list':
-        return { repositories: [] };
-      case 'repos-get':
-        return { owner: params.owner, repo: params.repo, defaultBranch: 'main' };
+      // --- Issues ---
+      case 'issues-list': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const state = (params.state as string) ?? 'open';
+        const items = await ghJson<Array<{ number: number; title: string; state: string; body: string | null; labels: Array<{ name: string }> }>>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues?state=${encodeURIComponent(state)}`,
+          token,
+        );
+        return {
+          issues: items.map(i => ({
+            number: i.number,
+            title: i.title,
+            state: i.state,
+            body: i.body ?? '',
+            labels: i.labels.map(l => l.name),
+          })),
+        };
+      }
+
+      case 'issues-create': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const issue = await ghJson<{ number: number; title: string; state: string; html_url: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues`,
+          token,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: params.title as string,
+              body: params.body as string | undefined,
+              labels: params.labels as string[] | undefined,
+              assignees: params.assignees as string[] | undefined,
+            }),
+          },
+        );
+        return { issueNumber: issue.number, status: 'created', title: issue.title, url: issue.html_url };
+      }
+
+      case 'issues-update': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const issueNumber = params.issueNumber as number;
+        const body: Record<string, unknown> = {};
+        if (params.title !== undefined) body.title = params.title;
+        if (params.body !== undefined) body.body = params.body;
+        if (params.state !== undefined) body.state = params.state;
+        const issue = await ghJson<{ number: number; title: string; state: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
+          token,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          },
+        );
+        return { issueNumber: issue.number, status: 'updated', title: issue.title, state: issue.state };
+      }
+
+      case 'issues-comment': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const issueNumber = params.issueNumber as number;
+        const comment = await ghJson<{ id: number; html_url: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments`,
+          token,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body: params.body as string }),
+          },
+        );
+        return { commentId: comment.id, status: 'created', url: comment.html_url };
+      }
+
+      // --- Pull Requests ---
+      case 'prs-list': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const state = (params.state as string) ?? 'open';
+        const items = await ghJson<Array<{ number: number; title: string; state: string; head: { ref: string }; base: { ref: string } }>>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=${encodeURIComponent(state)}`,
+          token,
+        );
+        return {
+          pullRequests: items.map(pr => ({
+            number: pr.number,
+            title: pr.title,
+            state: pr.state,
+            head: pr.head.ref,
+            base: pr.base.ref,
+          })),
+        };
+      }
+
+      case 'prs-create': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const pr = await ghJson<{ number: number; title: string; state: string; html_url: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`,
+          token,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: params.title as string,
+              head: params.head as string,
+              base: params.base as string,
+              body: params.body as string | undefined,
+            }),
+          },
+        );
+        return { pullNumber: pr.number, status: 'created', title: pr.title, url: pr.html_url };
+      }
+
+      case 'prs-merge': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const pullNumber = params.pullNumber as number;
+        const result = await ghJson<{ merged: boolean; message: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${pullNumber}/merge`,
+          token,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              merge_method: (params.mergeMethod as string) ?? 'merge',
+            }),
+          },
+        );
+        return { pullNumber, status: result.merged ? 'merged' : 'failed', message: result.message };
+      }
+
+      // --- Actions ---
+      case 'actions-list-runs': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const data = await ghJson<{ workflow_runs: Array<{ id: number; name: string | null; status: string; conclusion: string | null; html_url: string; created_at: string }> }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs`,
+          token,
+        );
+        return {
+          runs: data.workflow_runs.map(r => ({
+            id: r.id,
+            name: r.name,
+            status: r.status,
+            conclusion: r.conclusion,
+            url: r.html_url,
+            createdAt: r.created_at,
+          })),
+        };
+      }
+
+      case 'actions-trigger': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const workflowId = params.workflowId as string;
+        const ref = (params.ref as string) ?? 'main';
+        await ghJson(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`,
+          token,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ref }),
+          },
+        );
+        return { status: 'triggered', workflowId, ref };
+      }
+
+      // --- Repos ---
+      case 'repos-list': {
+        const type = (params.type as string) ?? 'all';
+        const items = await ghJson<Array<{ name: string; full_name: string; private: boolean; default_branch: string }>>(
+          `/user/repos?type=${encodeURIComponent(type)}`,
+          token,
+        );
+        return {
+          repositories: items.map(r => ({
+            name: r.name,
+            fullName: r.full_name,
+            private: r.private,
+            defaultBranch: r.default_branch,
+          })),
+        };
+      }
+
+      case 'repos-get': {
+        const owner = params.owner as string;
+        const repo = params.repo as string;
+        const r = await ghJson<{ name: string; full_name: string; private: boolean; default_branch: string; description: string | null; stargazers_count: number; forks_count: number; html_url: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+          token,
+        );
+        return {
+          name: r.name,
+          fullName: r.full_name,
+          private: r.private,
+          defaultBranch: r.default_branch,
+          description: r.description,
+          stars: r.stargazers_count,
+          forks: r.forks_count,
+          url: r.html_url,
+        };
+      }
+
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
   async pollTrigger(_triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
+    // Triggers require repository configuration (owner/repo) which is not available
+    // in the pollTrigger signature. A future version could store monitored repos in
+    // connector config. For now, return empty to avoid errors.
     return [];
   },
 });

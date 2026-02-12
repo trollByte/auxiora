@@ -1,6 +1,51 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+const NOTION_BASE = 'https://api.notion.com/v1';
+const NOTION_VERSION = '2022-06-28';
+
+async function notionFetch(token: string, path: string, options?: { method?: string; body?: unknown }) {
+  const res = await fetch(`${NOTION_BASE}${path}`, {
+    method: options?.method ?? 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Notion-Version': NOTION_VERSION,
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(`Notion API error: ${res.status} ${err.message ?? res.statusText}`);
+  }
+  return res.json();
+}
+
+/** Convert plain text content into Notion paragraph blocks (split by newlines). */
+function contentToBlocks(content: string): Array<Record<string, unknown>> {
+  return content.split('\n').map(line => ({
+    object: 'block',
+    type: 'paragraph',
+    paragraph: {
+      rich_text: [{ type: 'text', text: { content: line } }],
+    },
+  }));
+}
+
+/** Extract a plain-text title from a Notion page object. */
+function extractTitle(page: Record<string, unknown>): string {
+  const props = page.properties as Record<string, unknown> | undefined;
+  if (!props) return '';
+  for (const val of Object.values(props)) {
+    const prop = val as Record<string, unknown>;
+    if (prop.type === 'title') {
+      const titleArr = prop.title as Array<{ plain_text?: string }> | undefined;
+      return titleArr?.[0]?.plain_text ?? '';
+    }
+  }
+  return '';
+}
+
 export const notionConnector = defineConnector({
   id: 'notion',
   name: 'Notion',
@@ -184,34 +229,117 @@ export const notionConnector = defineConnector({
     },
   ],
 
-  async executeAction(actionId: string, params: Record<string, unknown>, _token: string): Promise<unknown> {
+  async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'pages-list':
-        return { pages: [], query: params.query };
+      case 'pages-list': {
+        const body: Record<string, unknown> = {
+          filter: { property: 'object', value: 'page' },
+          page_size: (params.maxResults as number | undefined) ?? 10,
+        };
+        if (params.query) body.query = params.query;
+        return notionFetch(token, '/search', { method: 'POST', body });
+      }
+
       case 'pages-get':
-        return { pageId: params.pageId, title: '', content: '' };
-      case 'pages-create':
-        return { pageId: `page_${Date.now()}`, status: 'created', title: params.title };
+        return notionFetch(token, `/pages/${params.pageId as string}`);
+
+      case 'pages-create': {
+        const parentId = params.parentId as string;
+        const title = params.title as string;
+        const content = params.content as string | undefined;
+        const properties = params.properties as Record<string, unknown> | undefined;
+
+        const body: Record<string, unknown> = {
+          parent: parentId.includes('-')
+            ? { page_id: parentId }
+            : { database_id: parentId },
+          properties: properties ?? {
+            title: [{ text: { content: title } }],
+          },
+        };
+        if (content) {
+          body.children = contentToBlocks(content);
+        }
+        return notionFetch(token, '/pages', { method: 'POST', body });
+      }
+
       case 'pages-update':
-        return { pageId: params.pageId, status: 'updated' };
+        return notionFetch(token, `/pages/${params.pageId as string}`, {
+          method: 'PATCH',
+          body: { properties: params.properties },
+        });
+
       case 'pages-archive':
-        return { pageId: params.pageId, status: 'archived' };
+        return notionFetch(token, `/pages/${params.pageId as string}`, {
+          method: 'PATCH',
+          body: { archived: true },
+        });
+
       case 'databases-list':
-        return { databases: [] };
-      case 'databases-query':
-        return { results: [], databaseId: params.databaseId };
-      case 'search':
-        return { results: [], query: params.query };
+        return notionFetch(token, '/search', {
+          method: 'POST',
+          body: { filter: { property: 'object', value: 'database' } },
+        });
+
+      case 'databases-query': {
+        const dbBody: Record<string, unknown> = {};
+        if (params.filter) dbBody.filter = params.filter;
+        if (params.sorts) dbBody.sorts = params.sorts;
+        return notionFetch(token, `/databases/${params.databaseId as string}/query`, {
+          method: 'POST',
+          body: dbBody,
+        });
+      }
+
+      case 'search': {
+        const searchBody: Record<string, unknown> = { query: params.query };
+        if (params.filter) searchBody.filter = params.filter;
+        return notionFetch(token, '/search', { method: 'POST', body: searchBody });
+      }
+
       case 'blocks-get-children':
-        return { blocks: [], blockId: params.blockId };
+        return notionFetch(token, `/blocks/${params.blockId as string}/children`);
+
       case 'blocks-append':
-        return { blockId: params.blockId, status: 'appended' };
+        return notionFetch(token, `/blocks/${params.blockId as string}/children`, {
+          method: 'PATCH',
+          body: { children: params.children },
+        });
+
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(_triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    if (triggerId !== 'page-updated') return [];
+
+    const result = await notionFetch(token, '/search', {
+      method: 'POST',
+      body: {
+        sort: { direction: 'descending', timestamp: 'last_edited_time' },
+        page_size: 10,
+      },
+    }) as { results?: Array<Record<string, unknown>> };
+
+    if (!result.results) return [];
+
+    const cutoff = lastPollAt ?? 0;
+
+    return result.results
+      .filter(page => {
+        const editedAt = new Date(page.last_edited_time as string).getTime();
+        return editedAt > cutoff;
+      })
+      .map(page => ({
+        triggerId: 'page-updated',
+        connectorId: 'notion',
+        data: {
+          pageId: page.id as string,
+          title: extractTitle(page),
+          lastEditedTime: page.last_edited_time as string,
+        },
+        timestamp: new Date(page.last_edited_time as string).getTime(),
+      }));
   },
 });

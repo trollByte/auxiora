@@ -1,6 +1,21 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+async function linearQuery(token: string, query: string, variables?: Record<string, unknown>) {
+  const res = await fetch('https://api.linear.app/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!res.ok) throw new Error(`Linear API error: ${res.status} ${res.statusText}`);
+  const json = await res.json() as { data?: Record<string, unknown>; errors?: Array<{ message: string }> };
+  if (json.errors?.length) throw new Error(`Linear GraphQL error: ${json.errors[0].message}`);
+  return json.data!;
+}
+
 export const linearConnector = defineConnector({
   id: 'linear',
   name: 'Linear',
@@ -182,32 +197,93 @@ export const linearConnector = defineConnector({
     },
   ],
 
-  async executeAction(actionId: string, params: Record<string, unknown>, _token: string): Promise<unknown> {
+  async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'issues-list':
-        return { issues: [] };
-      case 'issues-get':
-        return { issueId: params.issueId, title: '', state: 'todo' };
-      case 'issues-create':
-        return { issueId: `issue_${Date.now()}`, status: 'created', title: params.title };
-      case 'issues-update':
-        return { issueId: params.issueId, status: 'updated' };
-      case 'issues-comment':
-        return { commentId: `comment_${Date.now()}`, status: 'created' };
-      case 'projects-list':
-        return { projects: [] };
-      case 'projects-get':
-        return { projectId: params.projectId, name: '', state: 'active' };
-      case 'cycles-list':
-        return { cycles: [] };
-      case 'cycles-current':
-        return { cycle: null, teamId: params.teamId };
+      case 'issues-list': {
+        const filters: string[] = [];
+        if (params.teamId) filters.push(`team: { id: { eq: "${params.teamId}" } }`);
+        if (params.state) filters.push(`state: { name: { eq: "${params.state}" } }`);
+        if (params.assigneeId) filters.push(`assignee: { id: { eq: "${params.assigneeId}" } }`);
+        const filterClause = filters.length > 0 ? `filter: { ${filters.join(', ')} }, ` : '';
+        const first = (params.maxResults as number) || 20;
+        const data = await linearQuery(token, `query { issues(${filterClause}first: ${first}) { nodes { id identifier title state { name } priority assignee { name } createdAt updatedAt } } }`);
+        return data.issues;
+      }
+      case 'issues-get': {
+        const data = await linearQuery(token, `query($issueId: String!) { issue(id: $issueId) { id identifier title description state { name } priority assignee { name } createdAt updatedAt labels { nodes { name } } } }`, { issueId: params.issueId });
+        return data.issue;
+      }
+      case 'issues-create': {
+        const input: Record<string, unknown> = {
+          teamId: params.teamId,
+          title: params.title,
+        };
+        if (params.description !== undefined) input.description = params.description;
+        if (params.priority !== undefined) input.priority = params.priority;
+        if (params.assigneeId !== undefined) input.assigneeId = params.assigneeId;
+        if (params.labelIds !== undefined) input.labelIds = params.labelIds;
+        const data = await linearQuery(token, `mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { id identifier title } success } }`, { input });
+        return data.issueCreate;
+      }
+      case 'issues-update': {
+        const input: Record<string, unknown> = {};
+        if (params.title !== undefined) input.title = params.title;
+        if (params.description !== undefined) input.description = params.description;
+        if (params.stateId !== undefined) input.stateId = params.stateId;
+        if (params.priority !== undefined) input.priority = params.priority;
+        const data = await linearQuery(token, `mutation($issueId: String!, $input: IssueUpdateInput!) { issueUpdate(id: $issueId, input: $input) { issue { id identifier title state { name } } success } }`, { issueId: params.issueId, input });
+        return data.issueUpdate;
+      }
+      case 'issues-comment': {
+        const data = await linearQuery(token, `mutation($input: CommentCreateInput!) { commentCreate(input: $input) { comment { id body createdAt } success } }`, { input: { issueId: params.issueId, body: params.body } });
+        return data.commentCreate;
+      }
+      case 'projects-list': {
+        const data = await linearQuery(token, `query { projects(first: 50) { nodes { id name state progress } } }`);
+        return data.projects;
+      }
+      case 'projects-get': {
+        const data = await linearQuery(token, `query($projectId: String!) { project(id: $projectId) { id name description state progress startDate targetDate } }`, { projectId: params.projectId });
+        return data.project;
+      }
+      case 'cycles-list': {
+        const data = await linearQuery(token, `query($teamId: String!) { team(id: $teamId) { cycles(first: 20) { nodes { id name number startsAt endsAt progress } } } }`, { teamId: params.teamId });
+        return (data.team as Record<string, unknown>).cycles;
+      }
+      case 'cycles-current': {
+        const data = await linearQuery(token, `query($teamId: String!) { team(id: $teamId) { activeCycle { id name number startsAt endsAt progress } } }`, { teamId: params.teamId });
+        return (data.team as Record<string, unknown>).activeCycle;
+      }
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(_triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    const since = lastPollAt ? new Date(lastPollAt).toISOString() : new Date(Date.now() - 60_000).toISOString();
+
+    if (triggerId === 'issue-created') {
+      const data = await linearQuery(token, `query($since: DateTime!) { issues(filter: { createdAt: { gte: $since } }, first: 50) { nodes { id identifier title state { name } priority createdAt } } }`, { since });
+      const issues = data.issues as { nodes: Array<Record<string, unknown>> };
+      return issues.nodes.map(issue => ({
+        triggerId: 'issue-created',
+        connectorId: 'linear',
+        data: issue,
+        timestamp: new Date(issue.createdAt as string).getTime(),
+      }));
+    }
+
+    if (triggerId === 'status-changed') {
+      const data = await linearQuery(token, `query($since: DateTime!) { issues(filter: { updatedAt: { gte: $since } }, first: 50) { nodes { id identifier title state { name } priority updatedAt } } }`, { since });
+      const issues = data.issues as { nodes: Array<Record<string, unknown>> };
+      return issues.nodes.map(issue => ({
+        triggerId: 'status-changed',
+        connectorId: 'linear',
+        data: issue,
+        timestamp: new Date(issue.updatedAt as string).getTime(),
+      }));
+    }
+
     return [];
   },
 });

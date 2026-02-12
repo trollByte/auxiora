@@ -1,6 +1,22 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+async function twitterFetch(token: string, path: string, options?: { method?: string; body?: unknown }) {
+  const res = await fetch(`https://api.twitter.com/2${path}`, {
+    method: options?.method ?? 'GET',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) throw new Error(`Twitter API error: ${res.status} ${await res.text().catch(() => res.statusText)}`);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+async function getMyUserId(token: string): Promise<string> {
+  const res = await twitterFetch(token, '/users/me');
+  const data = res.data as Record<string, unknown>;
+  return data.id as string;
+}
+
 export const twitterConnector = defineConnector({
   id: 'twitter',
   name: 'Twitter / X',
@@ -147,28 +163,91 @@ export const twitterConnector = defineConnector({
 
   async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'timeline-read':
-        return { tweets: [] };
-      case 'mentions-list':
-        return { mentions: [] };
-      case 'post-tweet':
-        return { tweetId: `tweet_${Date.now()}`, status: 'posted', text: params.text };
-      case 'reply-tweet':
-        return { tweetId: `tweet_${Date.now()}`, status: 'replied', inReplyTo: params.tweetId };
-      case 'delete-tweet':
+      case 'timeline-read': {
+        const userId = await getMyUserId(token);
+        const res = await twitterFetch(token, `/users/${userId}/timelines/reverse_chronological`);
+        return { tweets: res.data };
+      }
+      case 'mentions-list': {
+        const userId = await getMyUserId(token);
+        const res = await twitterFetch(token, `/users/${userId}/mentions`);
+        return { mentions: res.data };
+      }
+      case 'post-tweet': {
+        const res = await twitterFetch(token, '/tweets', {
+          method: 'POST',
+          body: { text: params.text },
+        });
+        const data = res.data as Record<string, unknown>;
+        return { tweetId: data.id, status: 'posted' };
+      }
+      case 'reply-tweet': {
+        const res = await twitterFetch(token, '/tweets', {
+          method: 'POST',
+          body: { text: params.text, reply: { in_reply_to_tweet_id: params.tweetId } },
+        });
+        const data = res.data as Record<string, unknown>;
+        return { tweetId: data.id, status: 'replied' };
+      }
+      case 'delete-tweet': {
+        await twitterFetch(token, `/tweets/${params.tweetId as string}`, { method: 'DELETE' });
         return { tweetId: params.tweetId, status: 'deleted' };
-      case 'search-tweets':
-        return { tweets: [], query: params.query };
-      case 'dm-list':
-        return { messages: [] };
-      case 'dm-send':
-        return { messageId: `dm_${Date.now()}`, status: 'sent', recipientId: params.recipientId };
+      }
+      case 'search-tweets': {
+        const query = encodeURIComponent(params.query as string);
+        const res = await twitterFetch(token, `/tweets/search/recent?query=${query}`);
+        return { tweets: res.data };
+      }
+      case 'dm-list': {
+        const res = await twitterFetch(token, '/dm_events');
+        return { messages: res.data };
+      }
+      case 'dm-send': {
+        const res = await twitterFetch(token, `/dm_conversations/with/${params.recipientId as string}/messages`, {
+          method: 'POST',
+          body: { text: params.text },
+        });
+        const data = res.data as Record<string, unknown>;
+        return { messageId: data.dm_event_id ?? data.id, status: 'sent' };
+      }
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    switch (triggerId) {
+      case 'new-mention': {
+        const userId = await getMyUserId(token);
+        const startTime = lastPollAt ? new Date(lastPollAt).toISOString() : undefined;
+        const query = startTime ? `?start_time=${startTime}` : '';
+        const res = await twitterFetch(token, `/users/${userId}/mentions${query}`);
+        const mentions = (res.data ?? []) as Array<Record<string, unknown>>;
+        return mentions.map((m) => ({
+          triggerId: 'new-mention',
+          connectorId: 'twitter',
+          data: m,
+          timestamp: m.created_at ? new Date(m.created_at as string).getTime() : Date.now(),
+        }));
+      }
+      case 'new-dm': {
+        const res = await twitterFetch(token, '/dm_events?event_types=MessageCreate');
+        const events = (res.data ?? []) as Array<Record<string, unknown>>;
+        const cutoff = lastPollAt ?? 0;
+        return events
+          .filter((e) => {
+            const ts = e.created_at ? new Date(e.created_at as string).getTime() : 0;
+            return ts > cutoff;
+          })
+          .map((e) => ({
+            triggerId: 'new-dm',
+            connectorId: 'twitter',
+            data: e,
+            timestamp: e.created_at ? new Date(e.created_at as string).getTime() : Date.now(),
+          }));
+      }
+      default:
+        return [];
+    }
   },
 });

@@ -1,5 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { twitterConnector } from '../src/twitter.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function mockResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) };
+}
+
+/** Mock GET /users/me then the actual endpoint */
+function mockWithUserId(responseBody: unknown) {
+  fetchMock.mockResolvedValueOnce(mockResponse({ data: { id: '123' } }));
+  fetchMock.mockResolvedValueOnce(mockResponse(responseBody));
+}
 
 describe('Twitter / X Connector', () => {
   it('should have correct metadata', () => {
@@ -50,20 +69,27 @@ describe('Twitter / X Connector', () => {
   });
 
   it('should execute timeline-read action', async () => {
+    // GET /users/me -> { data: { id: '123' } }
+    // GET /users/123/timelines/reverse_chronological -> { data: [] }
+    mockWithUserId({ data: [] });
     const result = await twitterConnector.executeAction('timeline-read', {}, 'token');
     expect(result).toEqual({ tweets: [] });
   });
 
   it('should execute post-tweet action', async () => {
+    // POST /tweets -> { data: { id: 't1' } }
+    fetchMock.mockResolvedValueOnce(mockResponse({ data: { id: 't1' } }));
     const result = await twitterConnector.executeAction('post-tweet', { text: 'Hello' }, 'token') as any;
     expect(result.status).toBe('posted');
-    expect(result.text).toBe('Hello');
+    expect(result.tweetId).toBe('t1');
   });
 
   it('should execute dm-send action', async () => {
+    // POST /dm_conversations/with/u1/messages -> { data: { dm_event_id: 'dm1' } }
+    fetchMock.mockResolvedValueOnce(mockResponse({ data: { dm_event_id: 'dm1' } }));
     const result = await twitterConnector.executeAction('dm-send', { recipientId: 'u1', text: 'Hi' }, 'token') as any;
     expect(result.status).toBe('sent');
-    expect(result.recipientId).toBe('u1');
+    expect(result.messageId).toBe('dm1');
   });
 
   it('should throw for unknown action', async () => {
@@ -71,6 +97,9 @@ describe('Twitter / X Connector', () => {
   });
 
   it('should return empty events from pollTrigger', async () => {
+    // GET /users/me -> { data: { id: '123' } }
+    // GET /users/123/mentions -> { data: [] }
+    mockWithUserId({ data: [] });
     const events = await twitterConnector.pollTrigger!('new-mention', 'token');
     expect(events).toEqual([]);
   });

@@ -1,5 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { redditConnector } from '../src/reddit.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function mockResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) };
+}
+
+/** Reddit listing format with empty children */
+function emptyListing() {
+  return { data: { children: [] } };
+}
 
 describe('Reddit Connector', () => {
   it('should have correct metadata', () => {
@@ -53,25 +71,33 @@ describe('Reddit Connector', () => {
   });
 
   it('should execute front-page action', async () => {
+    // GET /best?limit=25 -> listing with no children
+    fetchMock.mockResolvedValueOnce(mockResponse(emptyListing()));
     const result = await redditConnector.executeAction('front-page', {}, 'token');
     expect(result).toEqual({ posts: [] });
   });
 
   it('should execute subreddit-read action', async () => {
+    // GET /r/typescript/hot?limit=25 -> listing with no children
+    fetchMock.mockResolvedValueOnce(mockResponse(emptyListing()));
     const result = await redditConnector.executeAction('subreddit-read', { subreddit: 'typescript' }, 'token') as any;
-    expect(result.subreddit).toBe('typescript');
+    expect(result.posts).toEqual([]);
   });
 
   it('should execute post-submit action', async () => {
+    // POST /api/submit -> { json: { data: { id: 'abc123' } } }
+    fetchMock.mockResolvedValueOnce(mockResponse({ json: { data: { id: 'abc123' } } }));
     const result = await redditConnector.executeAction('post-submit', { subreddit: 'test', title: 'Title', body: 'Body' }, 'token') as any;
     expect(result.status).toBe('submitted');
-    expect(result.subreddit).toBe('test');
+    expect(result.postId).toBe('abc123');
   });
 
   it('should execute upvote action with default direction', async () => {
+    // POST /api/vote -> {}
+    fetchMock.mockResolvedValueOnce(mockResponse({}));
     const result = await redditConnector.executeAction('upvote', { postId: 'p1' }, 'token') as any;
     expect(result.status).toBe('voted');
-    expect(result.direction).toBe('up');
+    expect(result.postId).toBe('p1');
   });
 
   it('should throw for unknown action', async () => {
@@ -79,6 +105,8 @@ describe('Reddit Connector', () => {
   });
 
   it('should return empty events from pollTrigger', async () => {
+    // GET /message/unread?limit=25 -> empty listing
+    fetchMock.mockResolvedValueOnce(mockResponse(emptyListing()));
     const events = await redditConnector.pollTrigger!('new-inbox', 'token');
     expect(events).toEqual([]);
   });

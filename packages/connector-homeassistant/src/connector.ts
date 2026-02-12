@@ -1,6 +1,31 @@
 import { defineConnector } from '@auxiora/connectors';
 import type { TriggerEvent } from '@auxiora/connectors';
 
+function parseHAToken(token: string): { baseUrl: string; accessToken: string } {
+  const pipeIdx = token.indexOf('|');
+  if (pipeIdx !== -1) {
+    return { baseUrl: token.slice(0, pipeIdx), accessToken: token.slice(pipeIdx + 1) };
+  }
+  return { baseUrl: 'http://localhost:8123', accessToken: token };
+}
+
+async function haFetch(token: string, path: string, options?: { method?: string; body?: unknown }): Promise<unknown> {
+  const { baseUrl, accessToken } = parseHAToken(token);
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: options?.method ?? 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Home Assistant API error: ${res.status} ${text || res.statusText}`);
+  }
+  return res.json();
+}
+
 export const homeAssistantConnector = defineConnector({
   id: 'homeassistant',
   name: 'Home Assistant',
@@ -159,32 +184,133 @@ export const homeAssistantConnector = defineConnector({
     },
   ],
 
-  async executeAction(actionId: string, params: Record<string, unknown>, _token: string): Promise<unknown> {
+  async executeAction(actionId: string, params: Record<string, unknown>, token: string): Promise<unknown> {
     switch (actionId) {
-      case 'devices-list':
-        return { devices: [] };
-      case 'devices-get-state':
-        return { entityId: params.entityId, state: 'off', attributes: {} };
-      case 'devices-set-state':
-        return { entityId: params.entityId, state: params.state, status: 'updated' };
-      case 'devices-call-service':
-        return { domain: params.domain, service: params.service, status: 'called' };
-      case 'scenes-list':
-        return { scenes: [] };
-      case 'scenes-activate':
-        return { sceneId: params.sceneId, status: 'activated' };
-      case 'automations-list':
-        return { automations: [] };
-      case 'automations-trigger':
-        return { automationId: params.automationId, status: 'triggered' };
-      case 'automations-toggle':
-        return { automationId: params.automationId, enabled: params.enabled, status: 'toggled' };
+      case 'devices-list': {
+        const states = await haFetch(token, '/api/states') as Array<Record<string, unknown>>;
+        return {
+          devices: states.map((s) => ({
+            entityId: s.entity_id,
+            state: s.state,
+            attributes: s.attributes,
+            lastChanged: s.last_changed,
+          })),
+        };
+      }
+      case 'devices-get-state': {
+        const entityId = params.entityId as string;
+        const state = await haFetch(token, `/api/states/${entityId}`) as Record<string, unknown>;
+        return {
+          entityId: state.entity_id,
+          state: state.state,
+          attributes: state.attributes,
+          lastChanged: state.last_changed,
+        };
+      }
+      case 'devices-set-state': {
+        const entityId = params.entityId as string;
+        const result = await haFetch(token, `/api/states/${entityId}`, {
+          method: 'POST',
+          body: { state: params.state, attributes: params.attributes ?? {} },
+        }) as Record<string, unknown>;
+        return {
+          entityId: result.entity_id,
+          state: result.state,
+          attributes: result.attributes,
+          status: 'updated',
+        };
+      }
+      case 'devices-call-service': {
+        const domain = params.domain as string;
+        const service = params.service as string;
+        const body: Record<string, unknown> = { ...(params.data as Record<string, unknown> ?? {}) };
+        if (params.entityId) {
+          body.entity_id = params.entityId;
+        }
+        const result = await haFetch(token, `/api/services/${domain}/${service}`, {
+          method: 'POST',
+          body,
+        });
+        return { domain, service, status: 'called', result };
+      }
+      case 'scenes-list': {
+        const states = await haFetch(token, '/api/states') as Array<Record<string, unknown>>;
+        return {
+          scenes: states
+            .filter((s) => (s.entity_id as string).startsWith('scene.'))
+            .map((s) => ({
+              entityId: s.entity_id,
+              name: (s.attributes as Record<string, unknown>)?.friendly_name ?? s.entity_id,
+            })),
+        };
+      }
+      case 'scenes-activate': {
+        const sceneId = params.sceneId as string;
+        await haFetch(token, '/api/services/scene/turn_on', {
+          method: 'POST',
+          body: { entity_id: sceneId },
+        });
+        return { sceneId, status: 'activated' };
+      }
+      case 'automations-list': {
+        const states = await haFetch(token, '/api/states') as Array<Record<string, unknown>>;
+        return {
+          automations: states
+            .filter((s) => (s.entity_id as string).startsWith('automation.'))
+            .map((s) => ({
+              entityId: s.entity_id,
+              alias: (s.attributes as Record<string, unknown>)?.friendly_name ?? s.entity_id,
+              state: s.state,
+            })),
+        };
+      }
+      case 'automations-trigger': {
+        const automationId = params.automationId as string;
+        await haFetch(token, '/api/services/automation/trigger', {
+          method: 'POST',
+          body: { entity_id: automationId },
+        });
+        return { automationId, status: 'triggered' };
+      }
+      case 'automations-toggle': {
+        const automationId = params.automationId as string;
+        const enabled = params.enabled as boolean;
+        const service = enabled ? 'turn_on' : 'turn_off';
+        await haFetch(token, `/api/services/automation/${service}`, {
+          method: 'POST',
+          body: { entity_id: automationId },
+        });
+        return { automationId, enabled, status: 'toggled' };
+      }
       default:
         throw new Error(`Unknown action: ${actionId}`);
     }
   },
 
-  async pollTrigger(_triggerId: string, _token: string, _lastPollAt?: number): Promise<TriggerEvent[]> {
-    return [];
+  async pollTrigger(triggerId: string, token: string, lastPollAt?: number): Promise<TriggerEvent[]> {
+    if (triggerId !== 'state-changed') return [];
+
+    const states = await haFetch(token, '/api/states') as Array<Record<string, unknown>>;
+    const since = lastPollAt ?? Date.now() - 10_000;
+    const changed: TriggerEvent[] = [];
+
+    for (const s of states) {
+      const lastChanged = s.last_changed as string | undefined;
+      if (lastChanged && new Date(lastChanged).getTime() > since) {
+        changed.push({
+          triggerId: 'state-changed',
+          connectorId: 'homeassistant',
+          timestamp: new Date(lastChanged).getTime(),
+          data: {
+            entityId: s.entity_id,
+            state: s.state,
+            attributes: s.attributes,
+            lastChanged,
+          },
+        });
+      }
+    }
+
+    return changed;
   },
 });

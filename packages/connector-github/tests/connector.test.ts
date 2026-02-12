@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { githubConnector } from '../src/connector.js';
+
+let fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('GitHub Connector', () => {
   it('should have correct metadata', () => {
@@ -53,6 +62,11 @@ describe('GitHub Connector', () => {
   });
 
   it('should execute issues-create action', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ number: 1, title: 'Bug', state: 'open', html_url: 'https://github.com/test/repo/issues/1' }),
+    });
     const result = await githubConnector.executeAction(
       'issues-create',
       { owner: 'test', repo: 'repo', title: 'Bug' },
@@ -63,12 +77,26 @@ describe('GitHub Connector', () => {
   });
 
   it('should execute repos-get action', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        name: 'repo',
+        full_name: 'test/repo',
+        private: false,
+        default_branch: 'main',
+        description: 'A test repo',
+        stargazers_count: 10,
+        forks_count: 2,
+        html_url: 'https://github.com/test/repo',
+      }),
+    });
     const result = await githubConnector.executeAction(
       'repos-get',
       { owner: 'test', repo: 'repo' },
       'token',
     ) as any;
-    expect(result.owner).toBe('test');
+    expect(result.fullName).toBe('test/repo');
     expect(result.defaultBranch).toBe('main');
   });
 
