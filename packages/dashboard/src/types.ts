@@ -47,6 +47,7 @@ export interface DashboardDeps {
   getActiveModel?: () => { provider: string; model: string };
   behaviors?: {
     list(filter?: { type?: string; status?: string }): Promise<any[]>;
+    get(id: string): Promise<any | undefined>;
     create(input: Record<string, unknown>): Promise<any>;
     update(id: string, updates: Record<string, unknown>): Promise<any>;
     remove(id: string): Promise<boolean>;
