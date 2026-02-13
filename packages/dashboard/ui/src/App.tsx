@@ -21,6 +21,8 @@ import { SetupProvider } from './pages/SetupProvider';
 import { SetupChannels } from './pages/SetupChannels';
 import { SetupConnections } from './pages/SetupConnections';
 import { SetupComplete } from './pages/SetupComplete';
+import { SetupAppearance } from './pages/SetupAppearance';
+import { SettingsAppearance } from './pages/settings/Appearance';
 import { SettingsAmbient } from './pages/SettingsAmbient';
 import { SettingsNotifications } from './pages/SettingsNotifications';
 
@@ -34,6 +36,7 @@ export function App() {
       <Route path="/setup/dashboard-password" element={<SetupDashboardPassword />} />
       <Route path="/setup/identity" element={<SetupIdentity />} />
       <Route path="/setup/personality" element={<SetupPersonality />} />
+      <Route path="/setup/appearance" element={<SetupAppearance />} />
       <Route path="/setup/provider" element={<SetupProvider />} />
       <Route path="/setup/channels" element={<SetupChannels />} />
       <Route path="/setup/connections" element={<SetupConnections />} />
@@ -48,6 +51,7 @@ export function App() {
         <Route path="settings/provider" element={<SettingsProvider />} />
         <Route path="settings/channels" element={<SettingsChannels />} />
         <Route path="settings/ambient" element={<SettingsAmbient />} />
+        <Route path="settings/appearance" element={<SettingsAppearance />} />
         <Route path="settings/notifications" element={<SettingsNotifications />} />
         <Route path="settings/security" element={<SettingsSecurity />} />
         <Route path="settings/audit" element={<AuditLog />} />
