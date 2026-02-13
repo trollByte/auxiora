@@ -5,6 +5,7 @@
    ═══════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import './themes/index.css';
 
 :root {
   --bg-primary: #0a0a0a;
@@ -1612,42 +1613,5 @@ body {
 
   .page h2 {
     font-size: 1.4rem;
-  }
-}
-
-/* ── Light Mode ────────────────────────────────── */
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg-primary: #fafafa;
-    --bg-secondary: #f2f2f2;
-    --bg-card: #ffffff;
-    --bg-hover: #f5f5f5;
-    --text-primary: #0a0a0a;
-    --text-secondary: #737373;
-    --accent: #7c3aed;
-    --accent-hover: #6d28d9;
-    --accent-glow: rgba(124, 58, 237, 0.08);
-    --accent-subtle: rgba(124, 58, 237, 0.04);
-    --border: rgba(0, 0, 0, 0.06);
-    --border-strong: rgba(0, 0, 0, 0.12);
-  }
-
-  .chat-message.user {
-    background: var(--accent);
-    color: white;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.18);
-  }
-
-  ::selection {
-    background: var(--accent);
-    color: white;
   }
 }
