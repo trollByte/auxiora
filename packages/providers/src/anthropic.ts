@@ -1,4 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getLogger } from '@auxiora/logger';
+
+const logger = getLogger('providers:anthropic');
 import type {
   Provider,
   ProviderMetadata,
@@ -158,12 +161,12 @@ export class AnthropicProvider implements Provider {
         // Setup tokens (sk-ant-oat01-*) use authToken, not apiKey
         this.authMode = 'setup-token';
         this.client = this.createOAuthClient(options.oauthToken);
-        console.log('[AnthropicProvider] Using setup-token auth mode (Claude Code emulation enabled)');
+        logger.info('Using setup-token auth mode (Claude Code emulation enabled)');
       } else {
         // Other OAuth tokens (access tokens)
         this.authMode = 'oauth';
         this.client = this.createOAuthClient(options.oauthToken);
-        console.log('[AnthropicProvider] Using oauth auth mode (Claude Code emulation enabled)');
+        logger.info('Using oauth auth mode (Claude Code emulation enabled)');
       }
     } else if (options.apiKey) {
       this.authMode = 'api-key';
@@ -174,7 +177,7 @@ export class AnthropicProvider implements Provider {
       if (cliCreds) {
         this.authMode = cliCreds.type === 'oauth' ? 'oauth' : 'setup-token';
         this.client = this.createOAuthClient(cliCreds.accessToken);
-        console.log(`[AnthropicProvider] Using CLI credentials, auth mode: ${this.authMode} (Claude Code emulation enabled)`);
+        logger.info(`Using CLI credentials, auth mode: ${this.authMode} (Claude Code emulation enabled)`);
       } else {
         throw new Error(
           'No credentials found. Provide apiKey, oauthToken, or authenticate with `claude setup-token`.'

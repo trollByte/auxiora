@@ -6,7 +6,10 @@ import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { type Config } from '@auxiora/config';
 import { audit } from '@auxiora/audit';
+import { getLogger } from '@auxiora/logger';
 import { RateLimiter } from './rate-limiter.js';
+
+const logger = getLogger('gateway');
 import { PairingManager } from './pairing.js';
 import type { ClientConnection, WsMessage } from './types.js';
 
@@ -500,7 +503,7 @@ export class Gateway {
     return new Promise((resolve) => {
       this.server.listen(port, host, () => {
         audit('system.startup', { host, port });
-        console.log(`Auxiora Gateway running at http://${host}:${port}`);
+        logger.info(`Auxiora Gateway running at http://${host}:${port}`);
         resolve();
       });
     });

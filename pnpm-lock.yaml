@@ -132,6 +132,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@grammyjs/types':
         specifier: ^3.16.0
         version: 3.23.0
@@ -445,6 +448,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
@@ -615,6 +621,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
@@ -726,6 +735,9 @@ importers:
       '@auxiora/intent':
         specifier: workspace:*
         version: link:../intent
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory

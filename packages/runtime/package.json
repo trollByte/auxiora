@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@auxiora/audit": "workspace:*",
+    "@auxiora/logger": "workspace:*",
     "@auxiora/autonomy": "workspace:*",
     "@auxiora/intent": "workspace:*",
     "@auxiora/behaviors": "workspace:*",

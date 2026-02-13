@@ -9,7 +9,10 @@ import { DeepSeekProvider, type DeepSeekProviderOptions } from './deepseek.js';
 import { CohereProvider, type CohereProviderOptions } from './cohere.js';
 import { XAIProvider, type XAIProviderOptions } from './xai.js';
 import { readClaudeCliCredentials } from './claude-oauth.js';
+import { getLogger } from '@auxiora/logger';
 import type { Provider, ProviderConfig } from './types.js';
+
+const logger = getLogger('providers');
 
 export type ProviderName = string;
 
@@ -88,9 +91,7 @@ export class ProviderFactory {
     // Auto-fallback: if configured primary isn't available, use first registered provider
     if (this.providers.size > 0 && !this.providers.has(this.primary)) {
       const firstAvailable = this.providers.keys().next().value as string;
-      console.warn(
-        `Provider '${this.primary}' not configured, falling back to '${firstAvailable}'`,
-      );
+      logger.warn(`Provider '${this.primary}' not configured, falling back to '${firstAvailable}'`);
       this.primary = firstAvailable;
     }
   }
@@ -128,7 +129,7 @@ export class ProviderFactory {
     } catch (error) {
       const fallback = this.getFallbackProvider();
       if (fallback) {
-        console.warn(`Primary provider failed, using fallback: ${error}`);
+        logger.warn('Primary provider failed, using fallback', { error: error instanceof Error ? error : new Error(String(error)) });
         return await fn(fallback);
       }
       throw error;

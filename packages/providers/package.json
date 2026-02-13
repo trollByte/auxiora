@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@auxiora/core": "workspace:*",
+    "@auxiora/logger": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "@google/generative-ai": "^0.24.0",
     "openai": "^4.103.0"

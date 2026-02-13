@@ -105,6 +105,7 @@ import {
 } from '@auxiora/personality';
 import { getModesDir } from '@auxiora/core';
 import { fileURLToPath } from 'node:url';
+import { getLogger } from '@auxiora/logger';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -112,6 +113,7 @@ export interface AuxioraOptions {
 }
 
 export class Auxiora {
+  private logger = getLogger('runtime');
   private config!: Config;
   private gateway!: Gateway;
   private sessions!: SessionManager;
@@ -193,7 +195,7 @@ export class Auxiora {
       try {
         await this.vault.unlock(options.vaultPassword);
       } catch (error) {
-        console.warn('Failed to unlock vault:', error instanceof Error ? error.message : error);
+        this.logger.warn('Failed to unlock vault', { error: error instanceof Error ? error : new Error(String(error)) });
       }
     }
 
@@ -201,7 +203,7 @@ export class Auxiora {
     initializeToolExecutor(async (toolName: string, params: any, context: ExecutionContext) => {
       // For now, auto-approve all tools in non-interactive mode
       // In future, could send approval request to client via WebSocket
-      console.log(`[Tools] Auto-approving ${toolName} with params:`, params);
+      this.logger.debug('Auto-approving tool', { toolName, params });
       return true;
     });
 
@@ -230,7 +232,7 @@ export class Auxiora {
         this.config.orchestration ?? { enabled: true, maxConcurrentAgents: 5, defaultTimeout: 60000, totalTimeout: 300000, allowedPatterns: ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor'], costMultiplierWarning: 3 },
       );
       setOrchestrationEngine(this.orchestrationEngine);
-      console.log('Orchestration engine initialized');
+      this.logger.info('Orchestration engine initialized');
     }
 
     // Initialize research engine (if Brave API key available)
@@ -253,9 +255,9 @@ export class Auxiora {
             fetchTimeout: this.config.research?.fetchTimeout ?? 15_000,
           });
           setResearchEngine(researchEngine);
-          console.log(`Research engine initialized (Brave Search configured${provider ? ', AI extraction enabled' : ''})`);
+          this.logger.info(`Research engine initialized (Brave Search configured${provider ? ', AI extraction enabled' : ''})`);
         } catch (err) {
-          console.warn('Failed to initialize research engine:', err);
+          this.logger.warn('Failed to initialize research engine', { error: err instanceof Error ? err : new Error(String(err)) });
         }
       }
     }
@@ -327,7 +329,7 @@ export class Auxiora {
     setClipboardMonitor(clipboardMonitor);
     setAppController(appController);
     setSystemStateMonitor(systemStateMonitor);
-    console.log('OS bridge initialized');
+    this.logger.info('OS bridge initialized');
 
     // Initialize email intelligence (engines ready; connectors needed for full functionality)
     const emailTriageEngine = new EmailTriageEngine();
@@ -348,7 +350,7 @@ export class Auxiora {
         engine: threadSummarizer,
       },
     });
-    console.log('Email intelligence initialized');
+    this.logger.info('Email intelligence initialized');
 
     // Initialize calendar intelligence (engines ready; connectors needed for full functionality)
     const scheduleAnalyzer = new ScheduleAnalyzer();
@@ -364,14 +366,14 @@ export class Auxiora {
       optimizer: scheduleOptimizer,
       meetingPrep: meetingPrepGenerator,
     });
-    console.log('Calendar intelligence initialized');
+    this.logger.info('Calendar intelligence initialized');
 
     // Initialize contacts system
     const contactGraph = new ContactGraph();
     const contextRecall = new ContextRecall(contactGraph);
     setContactGraph(contactGraph);
     setContextRecall(contextRecall);
-    console.log('Contacts system initialized');
+    this.logger.info('Contacts system initialized');
 
     // Initialize compose system
     const composeEngine = new ComposeEngine();
@@ -380,7 +382,7 @@ export class Auxiora {
     setComposeEngine(composeEngine);
     setGrammarChecker(grammarChecker);
     setLanguageDetector(languageDetector);
-    console.log('Compose system initialized');
+    this.logger.info('Compose system initialized');
 
     // Initialize voice system (if enabled and OpenAI key available)
     if (this.config.voice?.enabled) {
@@ -407,9 +409,9 @@ export class Auxiora {
           },
         });
         this.gateway.onVoiceMessage(this.handleVoiceMessage.bind(this));
-        console.log('Voice mode enabled');
+        this.logger.info('Voice mode enabled');
       } else {
-        console.warn('Voice mode enabled in config but no OPENAI_API_KEY found in vault');
+        this.logger.warn('Voice mode enabled in config but no OPENAI_API_KEY found in vault');
       }
     }
 
@@ -437,7 +439,7 @@ export class Auxiora {
       // Mount webhook routes
       const webhookRouter = this.createWebhookRouter();
       this.gateway.mountRouter(this.config.webhooks.basePath, webhookRouter);
-      console.log('Webhook listeners enabled');
+      this.logger.info('Webhook listeners enabled');
     }
 
     // Initialize dashboard (if enabled)
@@ -466,7 +468,7 @@ export class Auxiora {
               const ch = this.channels;
               if (ch) {
                 await ch.connectAll();
-                console.log('Channels connected after vault unlock');
+                this.logger.info('Channels connected after vault unlock');
               }
             }
           },
@@ -710,14 +712,14 @@ export class Auxiora {
               if (this.providers) {
                 this.initializeRouter();
                 setProviderFactory(this.providers);
-                console.log('Providers re-initialized after setup');
+                this.logger.info('Providers re-initialized after setup');
               }
               // Connect channels now that vault is unlocked with credentials
               await this.initializeChannels();
               const channels = this.channels;
               if (channels) {
                 await channels.connectAll();
-                console.log('Channels connected after setup');
+                this.logger.info('Channels connected after setup');
               }
             },
           },
@@ -757,7 +759,7 @@ export class Auxiora {
       });
       this.gateway.mountRouter('/dashboard', spaRouter as any);
 
-      console.log('Dashboard enabled at /dashboard');
+      this.logger.info('Dashboard enabled at /dashboard');
     }
 
     // Initialize plugin system (if enabled)
@@ -767,7 +769,7 @@ export class Auxiora {
       const loaded = await this.pluginLoader.loadAll();
       const successful = loaded.filter(p => p.status === 'loaded');
       if (loaded.length > 0) {
-        console.log(`Plugins: ${successful.length} loaded, ${loaded.length - successful.length} failed`);
+        this.logger.info(`Plugins: ${successful.length} loaded, ${loaded.length - successful.length} failed`);
       }
     }
 
@@ -789,7 +791,7 @@ export class Auxiora {
             this.providers.getPrimaryProvider(),
           );
         } catch {
-          console.warn('Memory extractor disabled: no AI provider available');
+          this.logger.warn('Memory extractor disabled: no AI provider available');
         }
       }
 
@@ -802,7 +804,7 @@ export class Auxiora {
         );
       }
 
-      console.log('Memory system enabled (living memory)');
+      this.logger.info('Memory system enabled (living memory)');
 
       if (this.pluginLoader) {
         this.pluginLoader.setMemoryStore(this.memoryStore);
@@ -823,7 +825,7 @@ export class Auxiora {
       await this.trustAuditTrail.load();
       this.rollbackManager = new RollbackManager(this.trustAuditTrail);
       this.trustGate = new TrustGate(this.trustEngine);
-      console.log('Trust engine initialized');
+      this.logger.info('Trust engine initialized');
     }
 
     // Initialize intent parser (if enabled)
@@ -832,14 +834,14 @@ export class Auxiora {
         confidenceThreshold: this.config.intent?.confidenceThreshold ?? 0.3,
       });
       this.actionPlanner = new ActionPlanner();
-      console.log('Intent parser initialized');
+      this.logger.info('Intent parser initialized');
     }
 
     // [P14] Initialize team / social system
     this.userManager = new UserManager();
     this.workflowEngine = new WorkflowEngine();
     this.approvalManager = new ApprovalManager();
-    console.log('Team/social system initialized');
+    this.logger.info('Team/social system initialized');
 
     // [P14] Initialize agent protocol
     const agentKeys = MessageSigner.generateKeyPair();
@@ -855,14 +857,14 @@ export class Auxiora {
       `http://${agentHost}/api/v1/agent-protocol`,
     );
     this.agentProtocol = new AgentProtocol(agentId, agentSigner, this.agentDirectory);
-    console.log('Agent protocol initialized');
+    this.logger.info('Agent protocol initialized');
 
     // [P15] Initialize ambient intelligence
     this.ambientEngine = new AmbientPatternEngine();
     this.ambientNotifications = new QuietNotificationManager();
     this.briefingGenerator = new BriefingGenerator();
     this.anticipationEngine = new AnticipationEngine();
-    console.log('Ambient intelligence initialized');
+    this.logger.info('Ambient intelligence initialized');
 
     // Initialize notification orchestrator
     this.notificationHub = new NotificationHub();
@@ -878,7 +880,7 @@ export class Auxiora {
         this.deliverToAllChannels(notification.message);
       },
     );
-    console.log('Notification orchestrator initialized');
+    this.logger.info('Notification orchestrator initialized');
 
     // Initialize autonomous workflow executor
     if (this.workflowEngine && this.trustGate && this.trustEngine && this.trustAuditTrail) {
@@ -913,7 +915,7 @@ export class Auxiora {
         },
       });
       this.autonomousExecutor.start(30_000);
-      console.log('Autonomous workflow executor started (30s tick)');
+      this.logger.info('Autonomous workflow executor started (30s tick)');
     }
 
     // Initialize connector registry and wire ambient scheduler
@@ -969,12 +971,12 @@ export class Auxiora {
         config: DEFAULT_AMBIENT_SCHEDULER_CONFIG,
       });
       this.ambientScheduler.start();
-      console.log('Ambient scheduler started');
+      this.logger.info('Ambient scheduler started');
     }
 
     // [P15] Initialize conversation engine
     this.conversationEngine = new ConversationEngine();
-    console.log('Conversation engine initialized');
+    this.logger.info('Conversation engine initialized');
 
     // [P15] Initialize screen system (with mock backends — real backends injected at desktop layer)
     const mockCaptureBackend: CaptureBackend = {
@@ -983,7 +985,7 @@ export class Auxiora {
       captureWindow: async () => ({ image: Buffer.alloc(0), timestamp: Date.now(), dimensions: { width: 0, height: 0 } }),
     };
     this.screenCapturer = new ScreenCapturer(mockCaptureBackend);
-    console.log('Screen system initialized (capture backend: mock)');
+    this.logger.info('Screen system initialized (capture backend: mock)');
   }
 
   private async initializeProviders(): Promise<void> {
@@ -1017,12 +1019,12 @@ export class Auxiora {
     const hasOllama = this.config.provider.ollama?.model;
     if (!hasAnthropic && !openaiKey && !googleKey && !hasOllama) {
       if (vaultLocked) {
-        console.warn('Vault is locked. AI providers not initialized.');
-        console.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
+        this.logger.warn('Vault is locked. AI providers not initialized.');
+        this.logger.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
       } else {
-        console.warn('No API keys found in vault. Add with: auxiora vault add ANTHROPIC_API_KEY');
-        console.warn('Or for Claude Pro/Max OAuth: auxiora vault add ANTHROPIC_OAUTH_TOKEN');
-        console.warn('Or authenticate with: claude setup-token');
+        this.logger.warn('No API keys found in vault. Add with: auxiora vault add ANTHROPIC_API_KEY');
+        this.logger.warn('Or for Claude Pro/Max OAuth: auxiora vault add ANTHROPIC_OAUTH_TOKEN');
+        this.logger.warn('Or authenticate with: claude setup-token');
       }
       return;
     }
@@ -1038,21 +1040,21 @@ export class Auxiora {
 
     if (anthropicOAuthToken) {
       const tokenPrefix = anthropicOAuthToken.substring(0, 15);
-      console.log(`Using Anthropic OAuth token from vault (${tokenPrefix}...)`);
+      this.logger.info(`Using Anthropic OAuth token from vault (${tokenPrefix}...)`);
       anthropicConfig = {
         oauthToken: anthropicOAuthToken,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
       };
     } else if (anthropicKey) {
-      console.log('Using Anthropic API key from vault');
+      this.logger.info('Using Anthropic API key from vault');
       anthropicConfig = {
         apiKey: anthropicKey,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
       };
     } else if (hasCliCredentials) {
-      console.log('Using Claude CLI credentials (~/.claude/.credentials.json)');
+      this.logger.info('Using Claude CLI credentials (~/.claude/.credentials.json)');
       anthropicConfig = {
         useCliCredentials: true,
         model: this.config.provider.anthropic.model,
@@ -1112,7 +1114,7 @@ export class Auxiora {
     const selector = new ModelSelector(availableProviders, this.config.routing);
     const costTracker = new CostTracker(this.config.routing.costLimits);
     this.modelRouter = new ModelRouter(classifier, selector, costTracker, availableProviders);
-    console.log(`Model router initialized with ${availableProviders.size} provider(s)`);
+    this.logger.info(`Model router initialized with ${availableProviders.size} provider(s)`);
   }
 
   getRouter(): ModelRouter | undefined {
@@ -1194,7 +1196,7 @@ export class Auxiora {
     // Set up channel message handler
     this.channels.onMessage(this.handleChannelMessage.bind(this));
     this.channels.onError((error, channelType) => {
-      console.error(`Channel error (${channelType}):`, error.message);
+      this.logger.error('Channel error', { channelType, error: new Error(error.message) });
     });
 
     if (this.pluginLoader) {
@@ -2138,7 +2140,7 @@ export class Auxiora {
         });
       }
 
-      console.log(`Registered ${connector.actions.length} tools for connector: ${connector.name}`);
+      this.logger.info(`Registered ${connector.actions.length} tools for connector: ${connector.name}`);
     }
   }
 
@@ -2187,7 +2189,7 @@ export class Auxiora {
       }
     } catch (error) {
       // Silent failure — don't block the response
-      console.warn('Memory extraction failed:', error instanceof Error ? error.message : error);
+      this.logger.warn('Memory extraction failed', { error: error instanceof Error ? error : new Error(String(error)) });
     }
   }
 
@@ -2284,10 +2286,10 @@ export class Auxiora {
         await this.channels.connectAll();
         const connected = this.channels.getConnectedChannels();
         if (connected.length > 0) {
-          console.log(`Connected channels: ${connected.join(', ')}`);
+          this.logger.info(`Connected channels: ${connected.join(', ')}`);
         }
       } catch (error) {
-        console.warn('Some channels failed to connect:', error);
+        this.logger.warn('Some channels failed to connect', { error: error instanceof Error ? error : new Error(String(error)) });
       }
     }
 

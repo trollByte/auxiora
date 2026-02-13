@@ -1,4 +1,7 @@
 import { audit } from '@auxiora/audit';
+import { getLogger } from '@auxiora/logger';
+
+const logger = getLogger('channels');
 import type {
   ChannelAdapter,
   ChannelType,
@@ -80,9 +83,9 @@ export class ChannelManager {
           });
 
           await adapter.connect();
-          console.log(`Connected to ${adapter.name}`);
+          logger.info(`Connected to ${adapter.name}`);
         } catch (error) {
-          console.error(`Failed to connect to ${adapter.name}:`, error);
+          logger.error(`Failed to connect to ${adapter.name}`, { error: error instanceof Error ? error : new Error(String(error)) });
           throw error;
         }
       })
@@ -90,7 +93,7 @@ export class ChannelManager {
 
     const failures = results.filter((r) => r.status === 'rejected');
     if (failures.length > 0) {
-      console.warn(`${failures.length} channel(s) failed to connect`);
+      logger.warn(`${failures.length} channel(s) failed to connect`);
     }
   }
 
