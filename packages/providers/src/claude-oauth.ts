@@ -6,6 +6,7 @@
  * 2. OAuth credentials from Claude CLI - Access token + refresh token
  */
 
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -17,8 +18,14 @@ const ANTHROPIC_SETUP_TOKEN_MIN_LENGTH = 80;
 // Claude CLI credentials file location
 const CLAUDE_CLI_CREDENTIALS_RELATIVE_PATH = '.claude/.credentials.json';
 
-// Token refresh endpoint
-const ANTHROPIC_TOKEN_REFRESH_URL = 'https://console.anthropic.com/v1/oauth/token';
+// Token refresh endpoint (must match real Claude Code)
+const ANTHROPIC_TOKEN_REFRESH_URL = 'https://platform.claude.com/v1/oauth/token';
+
+// OAuth client ID from Claude Code
+const CLAUDE_CODE_CLIENT_ID = '22422756-60c9-4084-8eb7-27705fd5cf9a';
+
+// Required OAuth scopes
+const CLAUDE_CODE_SCOPES = 'user:inference user:profile user:sessions:claude_code user:mcp_servers';
 
 export interface ClaudeOAuthCredentials {
   type: 'oauth' | 'token';
@@ -136,15 +143,19 @@ export function isCredentialsExpired(credentials: ClaudeOAuthCredentials): boole
 export async function refreshOAuthToken(
   refreshToken: string
 ): Promise<TokenRefreshResult> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+    client_id: CLAUDE_CODE_CLIENT_ID,
+    scope: CLAUDE_CODE_SCOPES,
+  });
+
   const response = await fetch(ANTHROPIC_TOKEN_REFRESH_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: JSON.stringify({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
+    body: body.toString(),
   });
 
   if (!response.ok) {
@@ -237,6 +248,74 @@ export async function getValidAccessToken(
   writeClaudeCliCredentials(refreshed, homeDir);
 
   return refreshed.accessToken;
+}
+
+// OAuth PKCE constants
+const CLAUDE_OAUTH_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
+const CLAUDE_OAUTH_AUTH_URL = 'https://claude.ai/oauth/authorize';
+const CLAUDE_OAUTH_TOKEN_URL = 'https://console.anthropic.com/v1/oauth/token';
+const CLAUDE_OAUTH_REDIRECT_URI = 'https://console.anthropic.com/oauth/code/callback';
+const CLAUDE_OAUTH_SCOPES = 'org:create_api_key user:profile user:inference';
+
+export function generatePKCE(): { verifier: string; challenge: string } {
+  const verifier = randomBytes(64).toString('base64url');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  return { verifier, challenge };
+}
+
+export function buildAuthorizationUrl(codeChallenge: string): string {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: CLAUDE_OAUTH_CLIENT_ID,
+    redirect_uri: CLAUDE_OAUTH_REDIRECT_URI,
+    scope: CLAUDE_OAUTH_SCOPES,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  });
+  return `${CLAUDE_OAUTH_AUTH_URL}?${params.toString()}`;
+}
+
+export async function exchangeCodeForTokens(
+  code: string,
+  codeVerifier: string
+): Promise<TokenRefreshResult> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    client_id: CLAUDE_OAUTH_CLIENT_ID,
+    redirect_uri: CLAUDE_OAUTH_REDIRECT_URI,
+    code_verifier: codeVerifier,
+  });
+
+  const response = await fetch(CLAUDE_OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Token exchange failed: ${response.status} ${text}`);
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  const accessToken = data.access_token;
+  const refreshToken = data.refresh_token;
+  const expiresIn = data.expires_in;
+
+  if (typeof accessToken !== 'string' || !accessToken) {
+    throw new Error('Invalid token response: missing access_token');
+  }
+
+  const expiresAt = typeof expiresIn === 'number'
+    ? Date.now() + expiresIn * 1000
+    : Date.now() + 3600 * 1000;
+
+  return {
+    accessToken,
+    refreshToken: typeof refreshToken === 'string' ? refreshToken : '',
+    expiresAt,
+  };
 }
 
 /**

@@ -19,6 +19,9 @@ export {
   validateSetupToken,
   readClaudeCliCredentials,
   resolveAnthropicApiKey,
+  generatePKCE,
+  buildAuthorizationUrl,
+  exchangeCodeForTokens,
   type ClaudeOAuthCredentials,
 } from './claude-oauth.js';
 export type {
