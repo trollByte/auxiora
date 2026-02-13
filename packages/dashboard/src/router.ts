@@ -2019,6 +2019,36 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
   });
 
+  // --- Appearance routes ---
+  const VALID_THEMES = ['nebula', 'monolith', 'signal', 'polar', 'neon', 'terra'] as const;
+
+  router.get('/appearance', (_req: Request, res: Response) => {
+    const raw = deps.vault.get('appearance.config');
+    if (!raw) {
+      res.json({ data: { theme: 'nebula' } });
+      return;
+    }
+    try {
+      res.json({ data: JSON.parse(raw) });
+    } catch {
+      res.json({ data: { theme: 'nebula' } });
+    }
+  });
+
+  router.post('/appearance', async (req: Request, res: Response) => {
+    try {
+      const { theme } = req.body as { theme: string };
+      if (!theme || !VALID_THEMES.includes(theme as (typeof VALID_THEMES)[number])) {
+        res.status(400).json({ error: `Invalid theme. Valid themes: ${VALID_THEMES.join(', ')}` });
+        return;
+      }
+      await deps.vault.add('appearance.config', JSON.stringify({ theme }));
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to save appearance config' });
+    }
+  });
+
   // --- Notification routes ---
   router.get('/notifications', (_req: Request, res: Response) => {
     const raw = deps.vault.get('notifications.recent');

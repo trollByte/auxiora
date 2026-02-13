@@ -162,6 +162,15 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
+  // Appearance
+  getAppearance: () =>
+    fetchApi<{ data: { theme: string } }>('/appearance'),
+  updateAppearance: (theme: string) =>
+    fetchApi<{ success: boolean }>('/appearance', {
+      method: 'POST',
+      body: JSON.stringify({ theme }),
+    }),
+
   // Notifications
   getNotifications: () =>
     fetchApi<{ data: any[] }>('/notifications'),
