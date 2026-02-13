@@ -64,6 +64,8 @@ export interface CompletionOptions {
   tools?: ToolDefinition[];
   /** Thinking/reasoning budget level. Default: 'off'. */
   thinkingLevel?: ThinkingLevel;
+  /** When true, don't filter Claude Code emulation tool calls — yield them as normal tool_use events. */
+  passThroughAllTools?: boolean;
 }
 
 export interface CompletionResult {
@@ -114,6 +116,8 @@ export interface ProviderConfig {
     maxTokens?: number;
     /** Read credentials from Claude CLI (~/.claude/.credentials.json) */
     useCliCredentials?: boolean;
+    /** Callback to refresh the OAuth token when expired. Returns new access token. */
+    onTokenRefresh?: () => Promise<string | null>;
   };
   openai?: {
     apiKey: string;

@@ -33,7 +33,7 @@ export function SetupConnections() {
 
   return (
     <div className="setup-page">
-      <SetupProgress currentStep={7} totalSteps={7} />
+      <SetupProgress currentStep={8} />
       <div className="setup-card">
         <h1>Connections</h1>
         <p className="subtitle">Connect external services for calendar, email, and task intelligence.</p>

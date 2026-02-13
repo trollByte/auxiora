@@ -27,6 +27,9 @@ export interface SetupDeps {
   saveConfig?: (updates: Record<string, unknown>) => Promise<void>;
   getAgentName?: () => string;
   getAgentPronouns?: () => string;
+  getAgentConfig?: () => Record<string, unknown>;
+  getSoulContent?: () => Promise<string | null>;
+  saveSoulContent?: (content: string) => Promise<void>;
   hasSoulFile?: () => Promise<boolean>;
   vaultExists?: () => Promise<boolean>;
   onSetupComplete?: () => Promise<void>;

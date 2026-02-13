@@ -31,7 +31,7 @@ export function SetupProvider() {
 
   return (
     <div className="setup-page">
-      <SetupProgress currentStep={5} />
+      <SetupProgress currentStep={6} />
       <div className="setup-card">
         <h1>AI Provider</h1>
         <p className="subtitle">Choose which AI model provider to use.</p>

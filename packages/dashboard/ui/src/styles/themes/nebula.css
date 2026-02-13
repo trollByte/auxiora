@@ -1,0 +1,90 @@
+/* nebula.css — Glassmorphism Command Center */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+[data-theme="nebula"] {
+  --bg-primary: #080b16;
+  --bg-secondary: rgba(255, 255, 255, 0.03);
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --text-primary: #f0f0f5;
+  --text-secondary: #6b7280;
+  --accent: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --accent-glow: rgba(139, 92, 246, 0.15);
+  --accent-subtle: rgba(139, 92, 246, 0.08);
+  --danger: #f43f5e;
+  --danger-hover: #e11d48;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Nebula-specific: glassmorphism cards */
+[data-theme="nebula"] .card,
+[data-theme="nebula"] .status-card,
+[data-theme="nebula"] .setup-card,
+[data-theme="nebula"] .create-form {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Nebula-specific: purple gradient background */
+[data-theme="nebula"] body {
+  background: #080b16;
+  background-image:
+    radial-gradient(ellipse 900px 700px at 85% 8%, rgba(139, 92, 246, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 500px at 75% 5%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 400px 400px at 20% 90%, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+}
+
+/* Nebula-specific: sidebar glassmorphism */
+[data-theme="nebula"] .sidebar {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Nebula-specific: nav active glow */
+[data-theme="nebula"] .nav-link.active {
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
+}
+
+/* Nebula-specific: chat input focus */
+[data-theme="nebula"] .chat-input:focus {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+/* Nebula-specific: chat message bubbles */
+[data-theme="nebula"] .chat-message.user .chat-message-bubble {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+[data-theme="nebula"] .chat-message.assistant .chat-message-bubble {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid rgba(139, 92, 246, 0.4);
+}
+
+/* Nebula-specific: selection color */
+[data-theme="nebula"] ::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: #f0f0f5;
+}
+
+/* Nebula-specific: scrollbar */
+[data-theme="nebula"] ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.15);
+}
+[data-theme="nebula"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.25);
+}

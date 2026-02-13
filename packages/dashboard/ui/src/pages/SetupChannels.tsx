@@ -96,7 +96,7 @@ export function SetupChannels() {
 
   return (
     <div className="setup-page">
-      <SetupProgress currentStep={6} />
+      <SetupProgress currentStep={7} />
       <div className="setup-card" style={{ maxWidth: 720 }}>
         <h1>Channels</h1>
         <p className="subtitle">Enable the messaging channels you want to connect.</p>

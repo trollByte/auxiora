@@ -270,6 +270,9 @@ const ModesConfigSchema = z.object({
 const AgentIdentitySchema = z.object({
   name: z.string().default('Auxiora'),
   pronouns: z.string().default('they/them'),
+  avatar: z.string().optional(),
+  vibe: z.string().max(200).optional(),
+  customInstructions: z.string().max(4000).optional(),
   personality: z.string().default('professional'),
   tone: z.object({
     warmth: z.number().min(0).max(1).default(0.6),

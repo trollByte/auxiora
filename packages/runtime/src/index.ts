@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -112,6 +112,27 @@ export interface AuxioraOptions {
   vaultPassword?: string;
 }
 
+/**
+ * Map Claude Code emulation tool calls to our actual tool names + input format.
+ * The model may call CC tools (WebSearch, Bash, etc.) since they're in the request for OAuth compat.
+ */
+function mapCCToolCall(name: string, input: any): { name: string; input: any } {
+  switch (name) {
+    case 'WebSearch':
+      return { name: 'web_browser', input: { url: `https://www.google.com/search?q=${encodeURIComponent(input.query || '')}` } };
+    case 'WebFetch':
+      return { name: 'web_browser', input: { url: input.url } };
+    case 'Bash':
+      return { name: 'bash', input: { command: input.command, timeout: input.timeout } };
+    case 'Read':
+      return { name: 'file_read', input: { path: input.file_path } };
+    case 'Write':
+      return { name: 'file_write', input: { path: input.file_path, content: input.content } };
+    default:
+      return { name, input };
+  }
+}
+
 export class Auxiora {
   private logger = getLogger('runtime');
   private config!: Config;
@@ -174,8 +195,9 @@ export class Auxiora {
   private securityFloor?: SecurityFloor;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
-   *  Used for proactive delivery (behaviors, ambient briefings). */
+   *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
   private lastActiveChannels: Map<string, string> = new Map();
+  private channelTargetsPath: string = path.join(path.dirname(getBehaviorsPath()), 'channel-targets.json');
   private orchestrationHistory: Array<{
     workflowId: string;
     pattern: string;
@@ -292,6 +314,7 @@ export class Auxiora {
           getProvider: () => this.providers.getPrimaryProvider() as any,
           sendToChannel: async (_channelType: string, _channelId: string, message: { content: string }) => {
             // Fan out to webchat + all connected channel adapters
+            // deliverToAllChannels also persists to webchat session
             this.gateway.broadcast({
               type: 'message',
               payload: { role: 'assistant', content: message.content },
@@ -300,6 +323,22 @@ export class Auxiora {
             return { success: true };
           },
           getSystemPrompt: () => this.systemPrompt,
+          executeWithTools: async (messages, systemPrompt) => {
+            const execId = `behavior-exec-${Date.now()}`;
+            // Use unique senderId so getOrCreate never reuses a stale behavior session
+            const session = await this.sessions.getOrCreate(execId, {
+              channelType: 'behavior',
+              senderId: execId,
+              clientId: execId,
+            });
+            for (const msg of messages) {
+              await this.sessions.addMessage(session.id, msg.role as 'user' | 'assistant', msg.content);
+            }
+            const provider = this.providers.getPrimaryProvider();
+            const noopChunk = () => {};
+            const result = await this.executeWithTools(session.id, messages, systemPrompt, provider, noopChunk);
+            return { content: result.response, usage: result.usage };
+          },
         },
         auditFn: (event: string, details: Record<string, unknown>) => {
           audit(event as any, details);
@@ -474,6 +513,7 @@ export class Auxiora {
           },
           behaviors: this.behaviors ? {
             list: (filter?: { type?: string; status?: string }) => this.behaviors!.list(filter as any),
+            get: (id: string) => this.behaviors!.get(id),
             create: (input: Record<string, unknown>) => this.behaviors!.create(input as any),
             update: (id: string, updates: Record<string, unknown>) => this.behaviors!.update(id, updates),
             remove: (id: string) => this.behaviors!.remove(id),
@@ -497,6 +537,39 @@ export class Auxiora {
           },
           getPlugins: () => this.pluginLoader?.listPlugins() ?? [],
           getMemories: async () => this.memoryStore?.getAll() ?? [],
+          get connectors() {
+            const reg = self.connectorRegistry;
+            const auth = self.connectorAuthManager;
+            if (!reg || !auth) return undefined;
+            return {
+              list: () => reg.list().map(c => ({
+                id: c.id, name: c.name, category: c.category,
+                auth: { type: c.auth.type },
+              })),
+              get: (id: string) => reg.get(id),
+              connect: async (connectorId: string, credentials: Record<string, string>) => {
+                const connector = reg.get(connectorId);
+                if (!connector) return null;
+                return auth.authenticate(connectorId, connector.auth, credentials);
+              },
+              disconnect: async (connectorId: string) => {
+                return auth.revokeToken(connectorId);
+              },
+              getActions: (connectorId: string) => reg.getActions(connectorId),
+              executeAction: async (connectorId: string, actionId: string, params: Record<string, unknown>) => {
+                const connector = reg.get(connectorId);
+                if (!connector) return { success: false, error: 'Connector not found' };
+                const token = auth.getToken(connectorId);
+                if (!token) return { success: false, error: 'Not authenticated' };
+                try {
+                  const data = await connector.executeAction(actionId, params, token.accessToken);
+                  return { success: true, data };
+                } catch (err: unknown) {
+                  return { success: false, error: err instanceof Error ? err.message : String(err) };
+                }
+              },
+            };
+          },
           models: this.providers ? {
             listProviders: () => {
               const result = [];
@@ -698,6 +771,20 @@ export class Auxiora {
             },
             getAgentName: () => this.config.agent?.name ?? 'Auxiora',
             getAgentPronouns: () => this.config.agent?.pronouns ?? 'they/them',
+            getAgentConfig: () => (this.config.agent ?? {}) as Record<string, unknown>,
+            getSoulContent: async () => {
+              try {
+                return await fs.readFile(getSoulPath(), 'utf-8');
+              } catch {
+                return null;
+              }
+            },
+            saveSoulContent: async (content: string) => {
+              const soulPath = getSoulPath();
+              const dir = path.dirname(soulPath);
+              await fs.mkdir(dir, { recursive: true });
+              await fs.writeFile(soulPath, content, 'utf-8');
+            },
             hasSoulFile: async () => {
               try {
                 await fs.access(getSoulPath());
@@ -1034,6 +1121,7 @@ export class Auxiora {
       apiKey?: string;
       oauthToken?: string;
       useCliCredentials?: boolean;
+      onTokenRefresh?: () => Promise<string | null>;
       model: string;
       maxTokens: number;
     } | undefined;
@@ -1041,10 +1129,24 @@ export class Auxiora {
     if (anthropicOAuthToken) {
       const tokenPrefix = anthropicOAuthToken.substring(0, 15);
       this.logger.info(`Using Anthropic OAuth token from vault (${tokenPrefix}...)`);
+      const vault = this.vault;
       anthropicConfig = {
         oauthToken: anthropicOAuthToken,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
+        onTokenRefresh: async () => {
+          const rt = vault.get('CLAUDE_OAUTH_REFRESH_TOKEN');
+          if (!rt) return null;
+          try {
+            const refreshed = await refreshOAuthToken(rt);
+            await vault.add('ANTHROPIC_OAUTH_TOKEN', refreshed.accessToken);
+            await vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', refreshed.refreshToken);
+            await vault.add('CLAUDE_OAUTH_EXPIRES_AT', String(refreshed.expiresAt));
+            return refreshed.accessToken;
+          } catch {
+            return null;
+          }
+        },
       };
     } else if (anthropicKey) {
       this.logger.info('Using Anthropic API key from vault');
@@ -1340,7 +1442,7 @@ export class Auxiora {
   }
 
   /** Build enriched prompt with auto-detection (shared by handleMessage and handleChannelMessage). */
-  private buildModeEnrichedPrompt(content: string, modeState: SessionModeState, memorySection: string | null): string {
+  private buildModeEnrichedPrompt(content: string, modeState: SessionModeState, memorySection: string | null, channelType?: string): string {
     if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
       const detection = this.modeDetector.detect(content, { currentState: modeState });
       if (detection) {
@@ -1348,10 +1450,10 @@ export class Auxiora {
         modeState.autoDetected = true;
         modeState.lastSwitchAt = Date.now();
         const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
-        return this.promptAssembler!.enrichForMessage(tempState, memorySection, this.userPreferences);
+        return this.promptAssembler!.enrichForMessage(tempState, memorySection, this.userPreferences, undefined, channelType);
       }
     }
-    return this.promptAssembler!.enrichForMessage(modeState, memorySection, this.userPreferences);
+    return this.promptAssembler!.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, channelType);
   }
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
@@ -1434,14 +1536,14 @@ export class Auxiora {
             // Restore suspended mode
             modeState.activeMode = modeState.suspendedMode;
             delete modeState.suspendedMode;
-            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences);
+            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, 'webchat');
           } else {
             // Normal mode detection
-            enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection);
+            enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection, 'webchat');
           }
         } else {
           // No security floor — normal mode detection
-          enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection);
+          enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection, 'webchat');
         }
       } else if (memorySection) {
         enrichedPrompt = this.systemPrompt + memorySection;
@@ -1692,11 +1794,12 @@ export class Auxiora {
     onChunk: (type: string, data: any) => void,
     options?: { maxToolRounds?: number; tools?: Array<{ name: string; description: string; input_schema: any }> }
   ): Promise<{ response: string; usage: { inputTokens: number; outputTokens: number } }> {
-    const maxRounds = options?.maxToolRounds ?? 5;
+    const maxRounds = options?.maxToolRounds ?? 10;
     const tools = options?.tools ?? toolRegistry.toProviderFormat();
     let currentMessages = [...messages];
     let totalUsage = { inputTokens: 0, outputTokens: 0 };
     let fullResponse = '';
+    let lastRoundHadTools = false;
 
     for (let round = 0; round < maxRounds; round++) {
       let roundResponse = '';
@@ -1706,6 +1809,7 @@ export class Auxiora {
       for await (const chunk of provider.stream(currentMessages as any, {
         systemPrompt: enrichedPrompt,
         tools: tools.length > 0 ? tools : undefined,
+        passThroughAllTools: true,
       })) {
         if (chunk.type === 'text' && chunk.content) {
           roundResponse += chunk.content;
@@ -1724,12 +1828,20 @@ export class Auxiora {
 
       totalUsage.inputTokens += roundUsage.inputTokens;
       totalUsage.outputTokens += roundUsage.outputTokens;
-      fullResponse += roundResponse;
 
-      // No tool calls — we're done
+      // No tool calls — this round's text is the final response
       if (toolUses.length === 0) {
+        fullResponse = roundResponse; // Only keep final text, not intermediate narration
+        lastRoundHadTools = false;
         break;
       }
+
+      lastRoundHadTools = true;
+
+      // Record the assistant's response (including tool use intent) in the conversation
+      const assistantContent = roundResponse || `I'll use ${toolUses.map(t => t.name).join(', ')} to help with this.`;
+      currentMessages.push({ role: 'assistant', content: assistantContent });
+      await this.sessions.addMessage(sessionId, 'assistant', assistantContent);
 
       // Execute tools and collect results
       const context: ExecutionContext = {
@@ -1740,17 +1852,22 @@ export class Auxiora {
 
       const toolResultParts: string[] = [];
       for (const toolUse of toolUses) {
+        // Map Claude Code emulation tool names to our actual tools
+        const mapped = mapCCToolCall(toolUse.name, toolUse.input);
         try {
-          const result = await toolExecutor.execute(toolUse.name, toolUse.input, context);
+          const result = await toolExecutor.execute(mapped.name, mapped.input, context);
           onChunk('tool_result', {
             tool: toolUse.name,
             success: result.success,
             output: result.output,
             error: result.error,
           });
-          toolResultParts.push(
-            `[${toolUse.name}]: ${result.success ? (result.output || 'Success') : `Error: ${result.error}`}`
-          );
+          // Truncate large tool outputs to avoid blowing context window
+          let output = result.success ? (result.output || 'Success') : `Error: ${result.error}`;
+          if (output.length > 50000) {
+            output = output.slice(0, 50000) + '\n... [truncated]';
+          }
+          toolResultParts.push(`[${toolUse.name}]: ${output}`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           onChunk('tool_result', { tool: toolUse.name, success: false, error: errorMessage });
@@ -1758,13 +1875,36 @@ export class Auxiora {
         }
       }
 
-      // Feed tool results back to AI for synthesis
+      // Append tool results directly to conversation (don't rebuild from getContextMessages
+      // which can drop messages due to token windowing)
       const toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
+      currentMessages.push({ role: 'user', content: toolResultsMessage });
       await this.sessions.addMessage(sessionId, 'user', toolResultsMessage);
+    }
 
-      // Rebuild messages with tool results for next round
-      const contextMessages = this.sessions.getContextMessages(sessionId);
-      currentMessages = contextMessages.map((m) => ({ role: m.role, content: m.content }));
+    // If the loop ended because we hit maxRounds while still using tools,
+    // do one final call WITHOUT tools to force a synthesis of all gathered info
+    if (lastRoundHadTools) {
+      let synthesisResponse = '';
+      let synthesisUsage = { inputTokens: 0, outputTokens: 0 };
+
+      currentMessages.push({ role: 'user', content: 'Now synthesize all the information gathered above into your final response. Do not call any more tools.' });
+
+      for await (const chunk of provider.stream(currentMessages as any, {
+        systemPrompt: enrichedPrompt,
+        // No tools — force text-only synthesis
+      })) {
+        if (chunk.type === 'text' && chunk.content) {
+          synthesisResponse += chunk.content;
+          onChunk('text', chunk.content);
+        } else if (chunk.type === 'done') {
+          synthesisUsage = chunk.usage || synthesisUsage;
+        }
+      }
+
+      totalUsage.inputTokens += synthesisUsage.inputTokens;
+      totalUsage.outputTokens += synthesisUsage.outputTokens;
+      fullResponse = synthesisResponse; // Replace accumulated "thinking out loud" with actual synthesis
     }
 
     return { response: fullResponse, usage: totalUsage };
@@ -1910,21 +2050,65 @@ export class Auxiora {
     }
   }
 
-  /** Deliver a proactive message to all connected channel adapters using tracked channel IDs. */
+  /** Load persisted channel targets from disk so behavior delivery survives restarts. */
+  private async loadChannelTargets(): Promise<void> {
+    try {
+      const data = await fs.readFile(this.channelTargetsPath, 'utf-8');
+      const targets = JSON.parse(data) as Record<string, string>;
+      for (const [channelType, channelId] of Object.entries(targets)) {
+        // Only load if we don't already have a fresher entry from this session
+        if (!this.lastActiveChannels.has(channelType)) {
+          this.lastActiveChannels.set(channelType, channelId);
+        }
+      }
+      this.logger.debug('Loaded channel targets', { channels: Object.keys(targets) });
+    } catch {
+      // File doesn't exist yet — that's fine
+    }
+  }
+
+  /** Persist channel targets to disk. */
+  private async saveChannelTargets(): Promise<void> {
+    try {
+      const targets: Record<string, string> = {};
+      for (const [channelType, channelId] of this.lastActiveChannels) {
+        targets[channelType] = channelId;
+      }
+      await fs.mkdir(path.dirname(this.channelTargetsPath), { recursive: true });
+      await fs.writeFile(this.channelTargetsPath, JSON.stringify(targets, null, 2), 'utf-8');
+    } catch (err) {
+      this.logger.warn('Failed to save channel targets', {
+        error: err instanceof Error ? err : new Error(String(err)),
+      });
+    }
+  }
+
+  /** Deliver a proactive message to all connected channel adapters using tracked channel IDs.
+   *  Also persists to the webchat session so messages appear in chat history. */
   private deliverToAllChannels(content: string): void {
+    // Persist to webchat session so it appears in chat history even if no one is connected
+    this.sessions.getOrCreate('webchat', { channelType: 'webchat' })
+      .then(session => this.sessions.addMessage(session.id, 'assistant', content))
+      .catch(() => { /* non-fatal */ });
+
+    // Deliver to external channel adapters (Discord, Slack, Telegram, etc.)
     if (!this.channels) return;
     for (const ct of this.channels.getConnectedChannels()) {
       const targetId = this.lastActiveChannels.get(ct);
       if (!targetId) continue;
-      this.channels.send(ct as any, targetId, { content }).catch(() => {
-        // Non-fatal: proactive channel delivery failure
+      this.channels.send(ct as any, targetId, { content }).catch((err) => {
+        this.logger.warn('Proactive channel delivery failed', {
+          channelType: ct,
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
       });
     }
   }
 
   private async handleChannelMessage(inbound: InboundMessage): Promise<void> {
-    // Track last-active channel ID for proactive delivery
+    // Track last-active channel ID for proactive delivery and persist to disk
     this.lastActiveChannels.set(inbound.channelType, inbound.channelId);
+    void this.saveChannelTargets();
 
     // Get or create session for this sender
     const session = await this.sessions.getOrCreate(
@@ -1997,12 +2181,12 @@ export class Auxiora {
           } else if (modeState.suspendedMode) {
             modeState.activeMode = modeState.suspendedMode;
             delete modeState.suspendedMode;
-            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
+            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
           } else {
-            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
+            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
           }
         } else {
-          enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection);
+          enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
         }
       } else if (channelMemorySection) {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
@@ -2292,6 +2476,9 @@ export class Auxiora {
         this.logger.warn('Some channels failed to connect', { error: error instanceof Error ? error : new Error(String(error)) });
       }
     }
+
+    // Load persisted channel targets for proactive delivery (behaviors, ambient)
+    await this.loadChannelTargets();
 
     this.running = true;
 

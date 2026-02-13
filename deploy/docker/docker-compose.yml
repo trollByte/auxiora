@@ -11,12 +11,22 @@ services:
       NODE_ENV: production
       AUXIORA_GATEWAY_HOST: "0.0.0.0"
       AUXIORA_GATEWAY_PORT: "18800"
+      AUXIORA_VAULT_PASSWORD: "${AUXIORA_VAULT_PASSWORD:-}"
       AUXIORA_DASHBOARD_ENABLED: "${AUXIORA_DASHBOARD_ENABLED:-true}"
       AUXIORA_METRICS_ENABLED: "${AUXIORA_METRICS_ENABLED:-true}"
       REDIS_URL: "${REDIS_URL:-}"
       DATABASE_URL: "${DATABASE_URL:-}"
+    # Match host UID/GID so bind-mounted files are accessible
+    user: "${AUXIORA_UID:-1000}:${AUXIORA_GID:-1000}"
     volumes:
       - auxiora-data:/data
+      # Bind-mount host vault data so the container sees your existing setup.
+      # Config: vault.enc, config.json
+      - ${AUXIORA_HOST_CONFIG:-~/.config/auxiora}:/data/config/auxiora:rw
+      # Data: sessions, behaviors, plugins
+      - ${AUXIORA_HOST_DATA:-~/.local/share/auxiora}:/data/data/auxiora:rw
+      # Workspace: SOUL.md, IDENTITY.md, memory
+      - ${AUXIORA_HOST_WORKSPACE:-~/.auxiora/workspace}:/data/.auxiora/workspace:rw
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:18800/health"]

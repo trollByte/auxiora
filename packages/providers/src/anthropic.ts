@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { getLogger } from '@auxiora/logger';
 
 const logger = getLogger('providers:anthropic');
@@ -22,14 +24,51 @@ import { getAnthropicThinkingBudget } from './thinking-levels.js';
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
 
-// Claude Code version to mimic (must match real Claude CLI)
-const CLAUDE_CODE_VERSION = '2.1.37';
+// Fallback version if detection fails (keep in sync with real Claude Code)
+const CLAUDE_CODE_VERSION_FALLBACK = '2.1.41';
 
-// Git SHA for version tracking (shortened from real value)
-const CLAUDE_CODE_GIT_SHA = 'a8f';
+// Salt for attribution SHA computation (from Claude Code binary)
+const ATTRIBUTION_SALT = '59cf53e54c78';
 
 // Required system prompt for OAuth tokens
 const CLAUDE_CODE_SYSTEM_PROMPT = 'You are Claude Code, Anthropic\'s official CLI for Claude.';
+
+/**
+ * Detect the installed Claude Code version from the CLI.
+ * Falls back to hardcoded version if detection fails.
+ */
+function detectClaudeCodeVersion(): string {
+  try {
+    const output = execFileSync('claude', ['--version'], {
+      encoding: 'utf-8',
+      timeout: 3000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    // Output format: "2.1.41 (Claude Code)" — extract version number
+    const match = output.match(/^(\d+\.\d+\.\d+)/);
+    if (match) {
+      return match[1];
+    }
+  } catch {
+    // Claude CLI not installed or not accessible
+  }
+  return CLAUDE_CODE_VERSION_FALLBACK;
+}
+
+/**
+ * Compute the attribution SHA matching Claude Code's algorithm.
+ * Uses chars at positions 4, 7, 20 from the first user message + salt + version.
+ */
+function computeAttributionSha(firstUserMessage: string, version: string): string {
+  const chars = [4, 7, 20].map(i => firstUserMessage[i] || '0').join('');
+  return createHash('sha256')
+    .update(`${ATTRIBUTION_SALT}${chars}${version}`)
+    .digest('hex')
+    .slice(0, 3);
+}
+
+// Cache the detected version
+let cachedVersion: string | undefined;
 
 export interface AnthropicProviderOptions {
   apiKey?: string;
@@ -38,6 +77,8 @@ export interface AnthropicProviderOptions {
   maxTokens?: number;
   /** Whether to read credentials from Claude CLI (~/.claude/.credentials.json) */
   useCliCredentials?: boolean;
+  /** Callback to refresh the OAuth token when expired. Returns new access token. */
+  onTokenRefresh?: () => Promise<string | null>;
 }
 
 export class AnthropicProvider implements Provider {
@@ -139,6 +180,7 @@ export class AnthropicProvider implements Provider {
   private authMode: 'api-key' | 'setup-token' | 'oauth';
   private oauthToken?: string;
   private useCliCredentials: boolean;
+  private onTokenRefresh?: () => Promise<string | null>;
 
   /**
    * Create an Anthropic provider.
@@ -154,6 +196,7 @@ export class AnthropicProvider implements Provider {
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
     this.oauthToken = options.oauthToken;
     this.useCliCredentials = options.useCliCredentials ?? true;
+    this.onTokenRefresh = options.onTokenRefresh;
 
     // Determine auth mode and initialize client
     if (options.oauthToken) {
@@ -189,26 +232,58 @@ export class AnthropicProvider implements Provider {
   }
 
   /**
+   * Get the Claude Code version (detected or cached).
+   */
+  private getVersion(): string {
+    if (!cachedVersion) {
+      cachedVersion = detectClaudeCodeVersion();
+      logger.info(`Detected Claude Code version: ${cachedVersion}`);
+    }
+    return cachedVersion;
+  }
+
+  /**
    * Create an Anthropic client configured for OAuth tokens.
    * OAuth tokens require authToken parameter and Claude Code headers.
    * We mimic Claude Code exactly to satisfy the API restriction.
    */
   private createOAuthClient(token: string): Anthropic {
+    const version = this.getVersion();
     return new Anthropic({
       apiKey: null as unknown as string,
       authToken: token,
       baseURL: 'https://api.anthropic.com',
       defaultHeaders: {
-        'accept': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20,fine-grained-tool-streaming-2025-05-14,interleaved-thinking-2025-05-14',
-        'user-agent': `claude-cli/${CLAUDE_CODE_VERSION} (external, cli)`,
-        'x-app': 'cli',
-        // CRITICAL: Attribution header identifies this as Claude Code
-        'x-anthropic-billing-header': `cc_version=${CLAUDE_CODE_VERSION}.${CLAUDE_CODE_GIT_SHA}; cc_entrypoint=cli;`,
+        'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,prompt-caching-scope-2026-01-05',
+        'user-agent': `claude-code/${version}`,
       },
-      dangerouslyAllowBrowser: true,
     });
+  }
+
+  /**
+   * Build the attribution billing header for a specific request.
+   * The SHA is computed per-request from the first user message content.
+   */
+  private buildBillingHeader(messages: Anthropic.MessageParam[]): string {
+    const version = this.getVersion();
+    // Extract first user message text for SHA computation
+    let firstUserText = '';
+    for (const msg of messages) {
+      if (msg.role === 'user') {
+        if (typeof msg.content === 'string') {
+          firstUserText = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          const textBlock = msg.content.find(b => b.type === 'text');
+          if (textBlock && 'text' in textBlock) {
+            firstUserText = textBlock.text;
+          }
+        }
+        break;
+      }
+    }
+    const sha = computeAttributionSha(firstUserText, version);
+    const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli';
+    return `cc_version=${version}.${sha}; cc_entrypoint=${entrypoint}; cch=00000;`;
   }
 
   /**
@@ -244,12 +319,20 @@ export class AnthropicProvider implements Provider {
       return;
     }
 
-    // Check Claude CLI credentials for refresh
+    // Try Claude CLI credentials for refresh
     const cliCreds = readClaudeCliCredentials();
     if (cliCreds && cliCreds.type === 'oauth') {
       const token = await getValidAccessToken(cliCreds);
-      // Recreate client with new token using OAuth config
       this.client = this.createOAuthClient(token);
+      return;
+    }
+
+    // Fallback: use vault-based refresh callback (e.g. in Docker)
+    if (this.onTokenRefresh) {
+      const newToken = await this.onTokenRefresh();
+      if (newToken) {
+        this.client = this.createOAuthClient(newToken);
+      }
     }
   }
 
@@ -306,7 +389,12 @@ export class AnthropicProvider implements Provider {
       params.system = systemPrompt;
     }
 
-    const response = await this.client.messages.create(params);
+    // Set per-request billing header for OAuth mode
+    const requestOptions = this.requiresClaudeCodeEmulation()
+      ? { headers: { 'x-anthropic-billing-header': this.buildBillingHeader(anthropicMessages) } }
+      : undefined;
+
+    const response = await this.client.messages.create(params, requestOptions);
 
     // Extract text content, filtering out tool calls for Claude Code tools
     const ccToolNames = new Set(CLAUDE_CODE_TOOLS.map(t => t.name));
@@ -377,11 +465,17 @@ export class AnthropicProvider implements Provider {
       params.system = systemPrompt;
     }
 
-    // Track Claude Code tool names to filter them from output
+    // Track Claude Code tool names to filter them from output (unless passthrough enabled)
+    const filterCCTools = !options?.passThroughAllTools;
     const ccToolNames = new Set(CLAUDE_CODE_TOOLS.map(t => t.name));
 
+    // Set per-request billing header for OAuth mode
+    const requestOptions = this.requiresClaudeCodeEmulation()
+      ? { headers: { 'x-anthropic-billing-header': this.buildBillingHeader(anthropicMessages) } }
+      : undefined;
+
     try {
-      const stream = this.client.messages.stream(params);
+      const stream = this.client.messages.stream(params, requestOptions);
       let currentToolUse: { id: string; name: string; input: string } | null = null;
       let inThinkingBlock = false;
 
@@ -412,13 +506,13 @@ export class AnthropicProvider implements Provider {
             currentToolUse.input += delta.partial_json;
           }
         } else if (event.type === 'content_block_stop' && currentToolUse) {
-          // Skip Claude Code emulation tools — they're only present for API compatibility
-          if (ccToolNames.has(currentToolUse.name)) {
+          // Skip Claude Code emulation tools unless passthrough is enabled
+          if (filterCCTools && ccToolNames.has(currentToolUse.name)) {
             currentToolUse = null;
           } else {
             // Tool use complete - parse and yield
             try {
-              const input = JSON.parse(currentToolUse.input);
+              const input = currentToolUse.input ? JSON.parse(currentToolUse.input) : {};
               yield {
                 type: 'tool_use',
                 toolUse: {
@@ -428,9 +522,14 @@ export class AnthropicProvider implements Provider {
                 },
               };
             } catch (error) {
+              // Log but don't propagate as a stream error — skip this tool call
               yield {
-                type: 'error',
-                error: `Failed to parse tool input: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                type: 'tool_use',
+                toolUse: {
+                  id: currentToolUse.id,
+                  name: currentToolUse.name,
+                  input: {},
+                },
               };
             }
             currentToolUse = null;

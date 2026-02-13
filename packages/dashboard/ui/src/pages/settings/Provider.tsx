@@ -23,8 +23,15 @@ interface CostInfo {
   warningThresholdReached: boolean;
 }
 
-const KNOWN_PROVIDERS = [
+const KNOWN_PROVIDERS: Array<{
+  id: string;
+  label: string;
+  needsKey: boolean;
+  needsEndpoint?: boolean;
+  needsOAuth?: boolean;
+}> = [
   { id: 'anthropic', label: 'Anthropic (Claude)', needsKey: true },
+  { id: 'claudeOAuth', label: 'Claude (OAuth)', needsKey: false, needsOAuth: true },
   { id: 'openai', label: 'OpenAI', needsKey: true },
   { id: 'google', label: 'Google (Gemini)', needsKey: true },
   { id: 'ollama', label: 'Ollama (Local)', needsKey: false, needsEndpoint: true },
@@ -65,6 +72,12 @@ export function SettingsProvider() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  // Claude OAuth flow state
+  const [oauthConnecting, setOauthConnecting] = useState(false);
+  const [oauthCode, setOauthCode] = useState('');
+  const [oauthWaitingForCode, setOauthWaitingForCode] = useState(false);
+  const [oauthConnected, setOauthConnected] = useState(false);
+
   // Routing state
   const [primary, setPrimary] = useState('');
   const [fallback, setFallback] = useState('');
@@ -87,6 +100,13 @@ export function SettingsProvider() {
     if (routing.primary) setPrimary(routing.primary);
     if (routing.fallback) setFallback(routing.fallback);
   }, [routing.primary, routing.fallback]);
+
+  // Check Claude OAuth status on load
+  useEffect(() => {
+    api.getClaudeOAuthStatus()
+      .then(s => setOauthConnected(s.connected))
+      .catch(err => console.error('Failed to check OAuth status:', err));
+  }, []);
 
   const configuredNames = new Set(providers.filter(p => p.available).map(p => p.name));
 
@@ -142,6 +162,56 @@ export function SettingsProvider() {
       await refresh();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartOAuth = async () => {
+    setOauthConnecting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const { authUrl } = await api.startClaudeOAuth();
+      window.open(authUrl, '_blank');
+      setOauthWaitingForCode(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start OAuth');
+    } finally {
+      setOauthConnecting(false);
+    }
+  };
+
+  const handleCompleteOAuth = async () => {
+    if (!oauthCode.trim()) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.completeClaudeOAuth(oauthCode.trim());
+      setSuccess('Claude OAuth connected successfully');
+      setOauthWaitingForCode(false);
+      setOauthCode('');
+      setOauthConnected(true);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete OAuth');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnectOAuth = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.disconnectClaudeOAuth();
+      setSuccess('Claude OAuth disconnected');
+      setOauthConnected(false);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to disconnect OAuth');
     } finally {
       setSaving(false);
     }
@@ -293,6 +363,8 @@ export function SettingsProvider() {
           {KNOWN_PROVIDERS.map(spec => {
             const providerData = providers.find(p => p.name === spec.id);
             const isConfigured = configuredNames.has(spec.id);
+            const isOAuthCard = spec.id === 'claudeOAuth';
+            const isActive = isOAuthCard ? oauthConnected : isConfigured;
             const isPrimary = routing.primary === spec.id;
             const isFallback = routing.fallback === spec.id;
             const isExpanded = expanded === spec.id;
@@ -301,13 +373,13 @@ export function SettingsProvider() {
             return (
               <div
                 key={spec.id}
-                className={`provider-card${isConfigured ? ' configured' : ''}${isExpanded ? ' expanded' : ''}`}
+                className={`provider-card${isActive ? ' configured' : ''}${isExpanded ? ' expanded' : ''}`}
                 onClick={() => handleExpand(spec.id)}
               >
                 <div className="provider-card-header">
                   <h3>
-                    <span className={`status-dot ${isConfigured ? 'active' : 'inactive'}`} />
-                    {isConfigured && providerData?.displayName ? providerData.displayName : spec.label}
+                    <span className={`status-dot ${isActive ? 'active' : 'inactive'}`} />
+                    {isActive && providerData?.displayName ? providerData.displayName : spec.label}
                   </h3>
                   <div className="provider-badges">
                     {isPrimary && <span className="badge-pill badge-primary">Primary</span>}
@@ -315,7 +387,7 @@ export function SettingsProvider() {
                   </div>
                 </div>
                 <div className="provider-model">
-                  {isConfigured
+                  {isActive
                     ? (models.length > 0
                       ? models.map(m => friendlyModelName(m)).join(', ')
                       : 'Active')
@@ -330,48 +402,129 @@ export function SettingsProvider() {
 
                 {isExpanded && (
                   <div className="provider-expand" onClick={e => e.stopPropagation()}>
-                    {spec.needsKey && (
+                    {spec.needsOAuth ? (
+                      // Claude OAuth flow
                       <>
-                        <label>API Key</label>
-                        <input
-                          type="password"
-                          value={cardApiKey}
-                          onChange={e => setCardApiKey(e.target.value)}
-                          placeholder={isConfigured ? '••••••••  (leave blank to keep)' : 'Enter API key'}
-                        />
+                        {oauthConnected ? (
+                          <>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                              Connected via Claude OAuth. Your Claude Pro/Max subscription is being used.
+                            </p>
+                            {models.length > 0 && (
+                              <>
+                                <label>Default Model</label>
+                                <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
+                                  <option value="">Keep current</option>
+                                  {models.map(m => (
+                                    <option key={m} value={m}>{friendlyModelName(m)}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
+                            <div className="provider-actions">
+                              <button
+                                className="btn-save"
+                                onClick={handleDisconnectOAuth}
+                                disabled={saving}
+                                style={{ background: 'var(--error, #e74c3c)' }}
+                              >
+                                {saving ? 'Disconnecting...' : 'Disconnect'}
+                              </button>
+                            </div>
+                          </>
+                        ) : oauthWaitingForCode ? (
+                          <>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                              Authorize in the browser tab that opened, then paste the code below.
+                            </p>
+                            <label>Authorization Code</label>
+                            <input
+                              type="text"
+                              value={oauthCode}
+                              onChange={e => setOauthCode(e.target.value)}
+                              placeholder="Paste the code from claude.ai"
+                              autoFocus
+                            />
+                            <div className="provider-actions">
+                              <button
+                                className="btn-save"
+                                onClick={handleCompleteOAuth}
+                                disabled={saving || !oauthCode.trim()}
+                              >
+                                {saving ? 'Connecting...' : 'Complete Connection'}
+                              </button>
+                              <button
+                                onClick={() => { setOauthWaitingForCode(false); setOauthCode(''); }}
+                                style={{ marginLeft: '0.5rem' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                              Connect your Claude Pro or Max subscription. No API key needed.
+                            </p>
+                            <div className="provider-actions">
+                              <button
+                                className="btn-save"
+                                onClick={handleStartOAuth}
+                                disabled={oauthConnecting}
+                              >
+                                {oauthConnecting ? 'Opening...' : 'Connect with Claude'}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      // Original API key / endpoint form
+                      <>
+                        {spec.needsKey && (
+                          <>
+                            <label>API Key</label>
+                            <input
+                              type="password"
+                              value={cardApiKey}
+                              onChange={e => setCardApiKey(e.target.value)}
+                              placeholder={isConfigured ? '••••••••  (leave blank to keep)' : 'Enter API key'}
+                            />
+                          </>
+                        )}
+                        {spec.needsEndpoint && (
+                          <>
+                            <label>Endpoint URL</label>
+                            <input
+                              type="text"
+                              value={cardEndpoint}
+                              onChange={e => setCardEndpoint(e.target.value)}
+                              placeholder={spec.id === 'ollama' ? 'http://localhost:11434' : 'https://...'}
+                            />
+                          </>
+                        )}
+                        {models.length > 0 && (
+                          <>
+                            <label>Default Model</label>
+                            <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
+                              <option value="">Keep current</option>
+                              {models.map(m => (
+                                <option key={m} value={m}>{friendlyModelName(m)}</option>
+                              ))}
+                            </select>
+                          </>
+                        )}
+                        <div className="provider-actions">
+                          <button
+                            className="btn-save"
+                            onClick={() => handleSaveProvider(spec.id)}
+                            disabled={saving || (!cardApiKey && spec.needsKey && !isConfigured && !spec.needsEndpoint)}
+                          >
+                            {saving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
                       </>
                     )}
-                    {spec.needsEndpoint && (
-                      <>
-                        <label>Endpoint URL</label>
-                        <input
-                          type="text"
-                          value={cardEndpoint}
-                          onChange={e => setCardEndpoint(e.target.value)}
-                          placeholder={spec.id === 'ollama' ? 'http://localhost:11434' : 'https://...'}
-                        />
-                      </>
-                    )}
-                    {models.length > 0 && (
-                      <>
-                        <label>Default Model</label>
-                        <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
-                          <option value="">Keep current</option>
-                          {models.map(m => (
-                            <option key={m} value={m}>{friendlyModelName(m)}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-                    <div className="provider-actions">
-                      <button
-                        className="btn-save"
-                        onClick={() => handleSaveProvider(spec.id)}
-                        disabled={saving || (!cardApiKey && spec.needsKey && !isConfigured && !spec.needsEndpoint)}
-                      >
-                        {saving ? 'Saving...' : 'Save'}
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>

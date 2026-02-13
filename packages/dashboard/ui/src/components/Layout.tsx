@@ -102,11 +102,6 @@ export function Layout() {
           <div className="nav-group">
             <div className="nav-group-label">Settings</div>
             <li>
-              <NavLink to="/settings/identity" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                Identity
-              </NavLink>
-            </li>
-            <li>
               <NavLink to="/settings/personality" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 Personality
               </NavLink>
@@ -124,6 +119,11 @@ export function Layout() {
             <li>
               <NavLink to="/settings/ambient" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 Ambient
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/settings/appearance" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Appearance
               </NavLink>
             </li>
             <li>

@@ -99,6 +99,19 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ template }),
     }),
+  getPersonalityFull: () =>
+    fetchApi<{ data: {
+      name: string; pronouns: string; avatar: string | null; vibe: string;
+      tone: { warmth: number; directness: number; humor: number; formality: number };
+      errorStyle: string; expertise: string[]; catchphrases: Record<string, string>;
+      boundaries: { neverJokeAbout: string[]; neverAdviseOn: string[] };
+      customInstructions: string; soulContent: string | null; activeTemplate: string | null;
+    } }>('/personality/full'),
+  updatePersonalityFull: (data: Record<string, unknown>) =>
+    fetchApi<{ success: boolean }>('/personality/full', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   updateProvider: (provider: string, apiKey?: string, endpoint?: string) =>
     fetchApi<{ success: boolean }>('/provider', {
       method: 'POST',
@@ -109,6 +122,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, endpoint }),
     }),
+  // Claude OAuth
+  startClaudeOAuth: () =>
+    fetchApi<{ authUrl: string }>('/provider/claude-oauth/start', { method: 'POST' }),
+  completeClaudeOAuth: (code: string) =>
+    fetchApi<{ success: boolean }>('/provider/claude-oauth/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+  disconnectClaudeOAuth: () =>
+    fetchApi<{ success: boolean }>('/provider/claude-oauth/disconnect', { method: 'POST' }),
+  getClaudeOAuthStatus: () =>
+    fetchApi<{ connected: boolean }>('/provider/claude-oauth/status'),
   updateRouting: (primary: string, fallback?: string) =>
     fetchApi<{ success: boolean }>('/provider/routing', {
       method: 'POST',
@@ -160,6 +185,15 @@ export const api = {
     fetchApi<{ success: boolean }>('/ambient/config', {
       method: 'POST',
       body: JSON.stringify(config),
+    }),
+
+  // Appearance
+  getAppearance: () =>
+    fetchApi<{ data: { theme: string } }>('/appearance'),
+  updateAppearance: (theme: string) =>
+    fetchApi<{ success: boolean }>('/appearance', {
+      method: 'POST',
+      body: JSON.stringify({ theme }),
     }),
 
   // Notifications

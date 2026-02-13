@@ -40,7 +40,7 @@ export function SetupPersonality() {
     setError('');
     try {
       await api.setupPersonality(templateId);
-      navigate('/setup/provider');
+      navigate('/setup/appearance');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to set personality');
       setLoading(false);
