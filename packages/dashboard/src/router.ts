@@ -626,6 +626,77 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ success: true });
   });
 
+  // Full personality state for the editor
+  router.get('/personality/full', async (req: Request, res: Response) => {
+    const agent = setup?.getAgentConfig?.() ?? {};
+
+    let soulContent: string | null = null;
+    if (setup?.getSoulContent) {
+      soulContent = await setup.getSoulContent();
+    }
+
+    let activeTemplate: string | null = null;
+    if (setup?.personality?.getActiveTemplate) {
+      const t = await setup.personality.getActiveTemplate();
+      activeTemplate = t?.id ?? null;
+    }
+
+    res.json({
+      data: {
+        name: (agent.name as string) ?? 'Auxiora',
+        pronouns: (agent.pronouns as string) ?? 'they/them',
+        avatar: (agent.avatar as string) ?? null,
+        vibe: (agent.vibe as string) ?? '',
+        tone: (agent.tone as Record<string, number>) ?? { warmth: 0.6, directness: 0.5, humor: 0.3, formality: 0.5 },
+        errorStyle: (agent.errorStyle as string) ?? 'professional',
+        expertise: (agent.expertise as string[]) ?? [],
+        catchphrases: (agent.catchphrases as Record<string, string>) ?? {},
+        boundaries: (agent.boundaries as Record<string, string[]>) ?? { neverJokeAbout: [], neverAdviseOn: [] },
+        customInstructions: (agent.customInstructions as string) ?? '',
+        soulContent,
+        activeTemplate,
+      },
+    });
+  });
+
+  router.put('/personality/full', async (req: Request, res: Response) => {
+    if (!setup?.saveConfig) {
+      res.status(503).json({ error: 'Setup not available' });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+
+    const agentUpdate: Record<string, unknown> = {};
+    if (typeof body.name === 'string') agentUpdate.name = body.name;
+    if (typeof body.pronouns === 'string') agentUpdate.pronouns = body.pronouns;
+    if (typeof body.avatar === 'string' || body.avatar === null) agentUpdate.avatar = body.avatar ?? undefined;
+    if (typeof body.vibe === 'string') agentUpdate.vibe = body.vibe;
+    if (typeof body.customInstructions === 'string') agentUpdate.customInstructions = body.customInstructions;
+    if (typeof body.errorStyle === 'string') agentUpdate.errorStyle = body.errorStyle;
+    if (body.tone && typeof body.tone === 'object') agentUpdate.tone = body.tone;
+    if (Array.isArray(body.expertise)) agentUpdate.expertise = body.expertise;
+    if (body.catchphrases && typeof body.catchphrases === 'object') agentUpdate.catchphrases = body.catchphrases;
+    if (body.boundaries && typeof body.boundaries === 'object') agentUpdate.boundaries = body.boundaries;
+
+    try {
+      await setup.saveConfig({ agent: agentUpdate });
+
+      if (typeof body.soulContent === 'string' && setup.saveSoulContent) {
+        await setup.saveSoulContent(body.soulContent);
+      }
+
+      if (typeof body.template === 'string' && body.template && setup.personality) {
+        await setup.personality.applyTemplate(body.template);
+      }
+
+      void audit('settings.personality', { source: 'editor', fields: Object.keys(agentUpdate) });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Current personality (match SOUL.md against templates)
   router.get('/personality', async (req: Request, res: Response) => {
     if (!setup?.personality?.getActiveTemplate) {

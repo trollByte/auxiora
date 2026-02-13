@@ -99,6 +99,19 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ template }),
     }),
+  getPersonalityFull: () =>
+    fetchApi<{ data: {
+      name: string; pronouns: string; avatar: string | null; vibe: string;
+      tone: { warmth: number; directness: number; humor: number; formality: number };
+      errorStyle: string; expertise: string[]; catchphrases: Record<string, string>;
+      boundaries: { neverJokeAbout: string[]; neverAdviseOn: string[] };
+      customInstructions: string; soulContent: string | null; activeTemplate: string | null;
+    } }>('/personality/full'),
+  updatePersonalityFull: (data: Record<string, unknown>) =>
+    fetchApi<{ success: boolean }>('/personality/full', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   updateProvider: (provider: string, apiKey?: string, endpoint?: string) =>
     fetchApi<{ success: boolean }>('/provider', {
       method: 'POST',

@@ -698,6 +698,20 @@ export class Auxiora {
             },
             getAgentName: () => this.config.agent?.name ?? 'Auxiora',
             getAgentPronouns: () => this.config.agent?.pronouns ?? 'they/them',
+            getAgentConfig: () => (this.config.agent ?? {}) as Record<string, unknown>,
+            getSoulContent: async () => {
+              try {
+                return await fs.readFile(getSoulPath(), 'utf-8');
+              } catch {
+                return null;
+              }
+            },
+            saveSoulContent: async (content: string) => {
+              const soulPath = getSoulPath();
+              const dir = path.dirname(soulPath);
+              await fs.mkdir(dir, { recursive: true });
+              await fs.writeFile(soulPath, content, 'utf-8');
+            },
             hasSoulFile: async () => {
               try {
                 await fs.access(getSoulPath());
