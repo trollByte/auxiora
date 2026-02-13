@@ -22,6 +22,8 @@ export {
   generatePKCE,
   buildAuthorizationUrl,
   exchangeCodeForTokens,
+  refreshOAuthToken,
+  writeClaudeCliCredentials,
   type ClaudeOAuthCredentials,
 } from './claude-oauth.js';
 export type {

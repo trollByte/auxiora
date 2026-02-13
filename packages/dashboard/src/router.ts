@@ -837,7 +837,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible', 'claudeOAuth'];
 
   // --- Claude OAuth PKCE flow ---
-  const pkceStates = new Map<string, { verifier: string; createdAt: number }>();
+  const pkceStates = new Map<string, { verifier: string; state: string; createdAt: number }>();
   const PKCE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   setInterval(() => {
@@ -861,18 +861,23 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
 
-    pkceStates.set(sessionId, { verifier, createdAt: Date.now() });
-    const authUrl = buildAuthorizationUrl(challenge);
+    const oauthState = crypto.randomBytes(32).toString('hex');
+    pkceStates.set(sessionId, { verifier, state: oauthState, createdAt: Date.now() });
+    const authUrl = buildAuthorizationUrl(challenge, oauthState);
     void audit('settings.provider', { provider: 'claudeOAuth', action: 'oauth-start' });
     res.json({ authUrl });
   });
 
   router.post('/provider/claude-oauth/callback', async (req: Request, res: Response) => {
-    const { code } = req.body as { code?: string };
+    let { code } = req.body as { code?: string };
     if (!code || typeof code !== 'string') {
       res.status(400).json({ error: 'Authorization code is required' });
       return;
     }
+    // Anthropic returns code as "code#state" — split to extract both parts
+    const codeParts = code.trim().split('#');
+    code = codeParts[0];
+    const codeState = codeParts[1] || '';
 
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies[COOKIE_NAME];
@@ -898,9 +903,14 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     try {
       const providersModule = '@auxiora/providers';
       const { exchangeCodeForTokens, writeClaudeCliCredentials } = await import(/* webpackIgnore: true */ providersModule);
-      const tokens = await exchangeCodeForTokens(code, pkceState.verifier);
+      const tokens = await exchangeCodeForTokens(code, pkceState.verifier, codeState || pkceState.state);
 
+      // Store all token data in vault for refresh support
       await deps.vault.add('ANTHROPIC_OAUTH_TOKEN', tokens.accessToken);
+      await deps.vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', tokens.refreshToken);
+      await deps.vault.add('CLAUDE_OAUTH_EXPIRES_AT', String(tokens.expiresAt));
+
+      // Also write to CLI credentials file if it exists (non-critical)
       writeClaudeCliCredentials(tokens);
 
       if (setup?.onSetupComplete) {
@@ -919,6 +929,8 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   router.post('/provider/claude-oauth/disconnect', async (req: Request, res: Response) => {
     try {
       await deps.vault.add('ANTHROPIC_OAUTH_TOKEN', '');
+      await deps.vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', '');
+      await deps.vault.add('CLAUDE_OAUTH_EXPIRES_AT', '');
 
       if (setup?.onSetupComplete) {
         await setup.onSetupComplete();

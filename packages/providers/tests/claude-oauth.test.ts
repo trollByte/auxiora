@@ -27,7 +27,7 @@ describe('PKCE generation', () => {
 
 describe('buildAuthorizationUrl', () => {
   it('includes all required OAuth parameters', () => {
-    const url = buildAuthorizationUrl('test-challenge-value');
+    const url = buildAuthorizationUrl('test-challenge-value', 'test-state-value');
     const parsed = new URL(url);
 
     expect(parsed.origin).toBe('https://claude.ai');
@@ -40,5 +40,6 @@ describe('buildAuthorizationUrl', () => {
     expect(parsed.searchParams.get('scope')).toContain('user:inference');
     expect(parsed.searchParams.get('code_challenge')).toBe('test-challenge-value');
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(parsed.searchParams.get('state')).toBe('test-state-value');
   });
 });

@@ -263,7 +263,7 @@ export function generatePKCE(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-export function buildAuthorizationUrl(codeChallenge: string): string {
+export function buildAuthorizationUrl(codeChallenge: string, state: string): string {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: CLAUDE_OAUTH_CLIENT_ID,
@@ -271,26 +271,27 @@ export function buildAuthorizationUrl(codeChallenge: string): string {
     scope: CLAUDE_OAUTH_SCOPES,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
+    state,
   });
   return `${CLAUDE_OAUTH_AUTH_URL}?${params.toString()}`;
 }
 
 export async function exchangeCodeForTokens(
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
+  state: string
 ): Promise<TokenRefreshResult> {
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    client_id: CLAUDE_OAUTH_CLIENT_ID,
-    redirect_uri: CLAUDE_OAUTH_REDIRECT_URI,
-    code_verifier: codeVerifier,
-  });
-
   const response = await fetch(CLAUDE_OAUTH_TOKEN_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'authorization_code',
+      code,
+      state,
+      client_id: CLAUDE_OAUTH_CLIENT_ID,
+      redirect_uri: CLAUDE_OAUTH_REDIRECT_URI,
+      code_verifier: codeVerifier,
+    }),
   });
 
   if (!response.ok) {
