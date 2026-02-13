@@ -122,6 +122,7 @@ export class PromptAssembler {
     memorySection: string | null,
     preferences?: UserPreferences,
     escalationState?: EscalationState,
+    _channelType?: string,
   ): string {
     // If escalation is active, dampen tone in the identity preamble
     let prompt: string;

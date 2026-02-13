@@ -19,6 +19,10 @@ export interface ExecutorDeps {
     message: { content: string }
   ) => Promise<{ success: boolean; error?: string }>;
   getSystemPrompt: () => string;
+  executeWithTools?: (
+    messages: Array<{ role: string; content: string }>,
+    systemPrompt: string,
+  ) => Promise<{ content: string; usage: { inputTokens: number; outputTokens: number } }>;
 }
 
 export class BehaviorExecutor {
