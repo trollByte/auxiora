@@ -372,6 +372,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/providers':
+        specifier: workspace:*
+        version: link:../providers
       express:
         specifier: ^5.1.0
         version: 5.2.1
