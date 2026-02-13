@@ -28,6 +28,9 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
+# Screenshots
+*.png
+
 # Temporary files
 *.tmp
 *.temp
