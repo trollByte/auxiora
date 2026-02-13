@@ -1,0 +1,146 @@
+/* terra.css — Warm Organic Dark */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+[data-theme="terra"] {
+  --bg-primary: #1a1612;
+  --bg-secondary: #161310;
+  --bg-card: #211d18;
+  --bg-hover: #2a2520;
+  --text-primary: #e8e0d4;
+  --text-secondary: #8a7e72;
+  --accent: #c97b5c;
+  --accent-hover: #b56a4a;
+  --accent-glow: rgba(201, 123, 92, 0.12);
+  --accent-subtle: rgba(201, 123, 92, 0.06);
+  --danger: #c75c5c;
+  --danger-hover: #b04a4a;
+  --success: #8faa7b;
+  --warning: #d4a054;
+  --border: rgba(255, 235, 200, 0.06);
+  --border-strong: rgba(255, 235, 200, 0.1);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Terra-specific: warm background with subtle gradient */
+[data-theme="terra"] body {
+  background: #1a1612;
+  background-image: linear-gradient(180deg, rgba(201, 123, 92, 0.04) 0%, #1a1612 200px);
+}
+
+/* Terra-specific: sidebar warm gradient */
+[data-theme="terra"] .sidebar {
+  background: linear-gradient(180deg, rgba(201, 123, 92, 0.04) 0%, #1a1612 200px);
+  border-right: 1px solid rgba(255, 235, 200, 0.06);
+}
+
+/* Terra-specific: serif headings */
+[data-theme="terra"] .sidebar-header h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+}
+
+[data-theme="terra"] .sidebar-header h1::before {
+  background: var(--accent);
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+}
+
+/* Terra-specific: page titles in serif */
+[data-theme="terra"] .page h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+}
+
+/* Terra-specific: warm nav group labels */
+[data-theme="terra"] .nav-group-label {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.7rem;
+  color: #5a5048;
+}
+
+/* Terra-specific: nav items */
+[data-theme="terra"] .nav-link.active {
+  background: rgba(201, 123, 92, 0.1);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* Terra-specific: warm card accents with rounded corners */
+[data-theme="terra"] .card,
+[data-theme="terra"] .status-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 235, 200, 0.08);
+}
+
+/* Terra-specific: setup card */
+[data-theme="terra"] .setup-card {
+  border-radius: 20px;
+}
+
+/* Terra-specific: chat messages */
+[data-theme="terra"] .chat-message.user .chat-message-bubble {
+  background: var(--accent);
+  color: #faf5ef;
+  box-shadow: 0 2px 8px rgba(201, 123, 92, 0.2);
+}
+
+[data-theme="terra"] .chat-message.assistant .chat-message-bubble {
+  background: var(--bg-primary);
+  border: 1px solid rgba(255, 235, 200, 0.08);
+  border-left: 3px solid var(--accent);
+}
+
+/* Terra-specific: chat headings in serif */
+[data-theme="terra"] .chat-message.assistant .chat-message-bubble h3,
+[data-theme="terra"] .chat-message.assistant .chat-message-bubble h4 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+}
+
+/* Terra-specific: chat input */
+[data-theme="terra"] .chat-input {
+  background: var(--bg-primary);
+  border-color: rgba(255, 235, 200, 0.08);
+}
+[data-theme="terra"] .chat-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201, 123, 92, 0.15);
+}
+
+/* Terra-specific: activity list */
+[data-theme="terra"] .data-table {
+  border-radius: 16px;
+}
+
+/* Terra-specific: warm scrollbar */
+[data-theme="terra"] ::-webkit-scrollbar-thumb {
+  background: rgba(201, 123, 92, 0.15);
+}
+[data-theme="terra"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 123, 92, 0.25);
+}
+
+/* Terra-specific: selection */
+[data-theme="terra"] ::selection {
+  background: rgba(201, 123, 92, 0.3);
+  color: #e8e0d4;
+}
+
+/* Terra-specific: send button */
+[data-theme="terra"] .btn-primary {
+  background: var(--accent);
+  color: #faf5ef;
+}
+[data-theme="terra"] .btn-primary:hover {
+  background: #b86e50;
+}
