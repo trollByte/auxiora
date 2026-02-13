@@ -33,6 +33,12 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
 
   // --- Auth middleware ---
   function requireAuth(req: Request, res: Response, next: NextFunction): void {
+    // OAuth callbacks are public — Google redirects here without a session cookie
+    if (req.method === 'GET' && /\/connectors\/[^/]+\/callback/.test(req.path)) {
+      next();
+      return;
+    }
+
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies[COOKIE_NAME];
 
@@ -454,7 +460,43 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
     const id = String(req.params.id);
-    const updates = req.body;
+    const { action, status, cron, timezone, intervalMinutes, condition, runAt } = req.body as {
+      action?: string;
+      status?: string;
+      cron?: string;
+      timezone?: string;
+      intervalMinutes?: number;
+      condition?: string;
+      runAt?: string;
+    };
+
+    // Transform flat frontend fields into nested Behavior structure
+    const updates: Record<string, unknown> = {};
+    if (action !== undefined) updates.action = action;
+    if (status !== undefined) updates.status = status;
+    if (cron !== undefined) {
+      updates.schedule = { cron, timezone: timezone || 'UTC' };
+    } else if (timezone !== undefined) {
+      // Fetch current to preserve existing cron
+      const current = await deps.behaviors.get(id);
+      if (current?.schedule) {
+        updates.schedule = { ...current.schedule, timezone };
+      }
+    }
+    if (intervalMinutes !== undefined || condition !== undefined) {
+      const current = await deps.behaviors.get(id);
+      updates.polling = {
+        intervalMs: intervalMinutes !== undefined ? intervalMinutes * 60_000 : current?.polling?.intervalMs,
+        condition: condition !== undefined ? condition : current?.polling?.condition,
+      };
+    }
+    if (runAt !== undefined) {
+      const ts = new Date(runAt).getTime();
+      if (!isNaN(ts)) {
+        updates.delay = { fireAt: ts };
+      }
+    }
+
     const result = await deps.behaviors.update(id, updates);
     if (!result) {
       res.status(404).json({ error: 'Behavior not found' });
@@ -792,7 +834,109 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     replicate: 'REPLICATE_API_TOKEN',
   };
 
-  const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible'];
+  const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible', 'claudeOAuth'];
+
+  // --- Claude OAuth PKCE flow ---
+  const pkceStates = new Map<string, { verifier: string; createdAt: number }>();
+  const PKCE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, state] of pkceStates) {
+      if (now - state.createdAt > PKCE_TTL_MS) {
+        pkceStates.delete(key);
+      }
+    }
+  }, 60_000);
+
+  router.post('/provider/claude-oauth/start', async (req: Request, res: Response) => {
+    const providersModule = '@auxiora/providers';
+    const { generatePKCE, buildAuthorizationUrl } = await import(/* webpackIgnore: true */ providersModule);
+    const { verifier, challenge } = generatePKCE();
+
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies[COOKIE_NAME];
+    if (!sessionId) {
+      res.status(401).json({ error: 'No session' });
+      return;
+    }
+
+    pkceStates.set(sessionId, { verifier, createdAt: Date.now() });
+    const authUrl = buildAuthorizationUrl(challenge);
+    void audit('settings.provider', { provider: 'claudeOAuth', action: 'oauth-start' });
+    res.json({ authUrl });
+  });
+
+  router.post('/provider/claude-oauth/callback', async (req: Request, res: Response) => {
+    const { code } = req.body as { code?: string };
+    if (!code || typeof code !== 'string') {
+      res.status(400).json({ error: 'Authorization code is required' });
+      return;
+    }
+
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies[COOKIE_NAME];
+    if (!sessionId) {
+      res.status(401).json({ error: 'No session' });
+      return;
+    }
+
+    const pkceState = pkceStates.get(sessionId);
+    if (!pkceState) {
+      res.status(400).json({ error: 'No pending OAuth flow. Click "Connect" to start again.' });
+      return;
+    }
+
+    if (Date.now() - pkceState.createdAt > PKCE_TTL_MS) {
+      pkceStates.delete(sessionId);
+      res.status(400).json({ error: 'OAuth flow expired. Click "Connect" to start again.' });
+      return;
+    }
+
+    pkceStates.delete(sessionId);
+
+    try {
+      const providersModule = '@auxiora/providers';
+      const { exchangeCodeForTokens, writeClaudeCliCredentials } = await import(/* webpackIgnore: true */ providersModule);
+      const tokens = await exchangeCodeForTokens(code, pkceState.verifier);
+
+      await deps.vault.add('ANTHROPIC_OAUTH_TOKEN', tokens.accessToken);
+      writeClaudeCliCredentials(tokens);
+
+      if (setup?.onSetupComplete) {
+        await setup.onSetupComplete();
+      }
+
+      void audit('settings.provider', { provider: 'claudeOAuth', action: 'oauth-complete' });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Token exchange failed';
+      logger.error(`Claude OAuth callback failed: ${msg}`);
+      res.status(400).json({ error: msg });
+    }
+  });
+
+  router.post('/provider/claude-oauth/disconnect', async (req: Request, res: Response) => {
+    try {
+      await deps.vault.add('ANTHROPIC_OAUTH_TOKEN', '');
+
+      if (setup?.onSetupComplete) {
+        await setup.onSetupComplete();
+      }
+
+      void audit('settings.provider', { provider: 'claudeOAuth', action: 'disconnect' });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Disconnect failed';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  router.get('/provider/claude-oauth/status', (_req: Request, res: Response) => {
+    const hasToken = deps.vault.has('ANTHROPIC_OAUTH_TOKEN') &&
+                     deps.vault.get('ANTHROPIC_OAUTH_TOKEN') !== '';
+    res.json({ connected: hasToken });
+  });
 
   router.post('/provider/configure', async (req: Request, res: Response) => {
     const { provider, apiKey, endpoint } = req.body as { provider?: string; apiKey?: string; endpoint?: string };

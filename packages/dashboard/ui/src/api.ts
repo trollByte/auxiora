@@ -122,6 +122,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, endpoint }),
     }),
+  // Claude OAuth
+  startClaudeOAuth: () =>
+    fetchApi<{ authUrl: string }>('/provider/claude-oauth/start', { method: 'POST' }),
+  completeClaudeOAuth: (code: string) =>
+    fetchApi<{ success: boolean }>('/provider/claude-oauth/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+  disconnectClaudeOAuth: () =>
+    fetchApi<{ success: boolean }>('/provider/claude-oauth/disconnect', { method: 'POST' }),
+  getClaudeOAuthStatus: () =>
+    fetchApi<{ connected: boolean }>('/provider/claude-oauth/status'),
   updateRouting: (primary: string, fallback?: string) =>
     fetchApi<{ success: boolean }>('/provider/routing', {
       method: 'POST',
