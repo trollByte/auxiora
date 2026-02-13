@@ -1701,3 +1701,234 @@ body {
 
   .theme-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Personality Editor ─── */
+.personality-editor .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.editor-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.editor-section h3 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.field-hint {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-top: 0.15rem;
+}
+
+/* Tone sliders */
+.tone-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tone-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.tone-label {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tone-value {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tone-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tone-extreme {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  min-width: 4rem;
+}
+
+.tone-extreme:last-child {
+  text-align: right;
+}
+
+.slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Tag input */
+.tag-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  min-height: 38px;
+  align-items: center;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+}
+
+.tag-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  min-width: 80px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+/* Catchphrase grid */
+.catchphrase-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.catchphrase-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.catchphrase-label {
+  min-width: 5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.catchphrase-row input {
+  flex: 1;
+}
+
+/* Custom instructions / SOUL editor */
+.custom-instructions-textarea,
+.soul-editor-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.soul-editor-textarea {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+}
+
+/* Section toggle */
+.section-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.section-toggle:hover {
+  color: var(--text-primary);
+}
+
+/* Editor footer */
+.editor-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 1rem 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  text-align: right;
+}
