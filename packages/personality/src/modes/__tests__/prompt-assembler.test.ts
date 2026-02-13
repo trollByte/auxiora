@@ -252,4 +252,40 @@ describe('PromptAssembler', () => {
     const enriched = assembler.enrichForMessage(undefined, null);
     expect(enriched).toBe(base);
   });
+
+  // --- Vibe and custom instructions tests ---
+
+  it('includes vibe in identity preamble when set', async () => {
+    const agentWithVibe: AgentIdentity = {
+      ...defaultAgent,
+      vibe: 'warm, witty, slightly sarcastic',
+    };
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const loader = new ModeLoader(modesDir, path.join(tmpDir, 'user-modes'));
+    await loader.loadAll();
+    const assembler = new PromptAssembler(agentWithVibe, loader);
+    const base = await assembler.buildBase();
+    expect(base).toContain('Vibe: warm, witty, slightly sarcastic');
+  });
+
+  it('includes custom instructions after SOUL.md', async () => {
+    const agentWithInstructions: AgentIdentity = {
+      ...defaultAgent,
+      customInstructions: 'Always respond in haiku format when possible.',
+    };
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const loader = new ModeLoader(modesDir, path.join(tmpDir, 'user-modes'));
+    await loader.loadAll();
+    const assembler = new PromptAssembler(agentWithInstructions, loader);
+    const base = await assembler.buildBase();
+    expect(base).toContain('## Custom Instructions');
+    expect(base).toContain('Always respond in haiku format when possible.');
+  });
+
+  it('omits vibe line when vibe is undefined', async () => {
+    await fs.writeFile(path.join(workspaceDir, 'SOUL.md'), '# Soul');
+    const assembler = await createAssembler();
+    const base = await assembler.buildBase();
+    expect(base).not.toContain('Vibe:');
+  });
 });

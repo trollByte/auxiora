@@ -50,6 +50,11 @@ export class PromptAssembler {
       // No SOUL.md
     }
 
+    // Custom instructions from config
+    if (this.agent.customInstructions) {
+      parts.push(`## Custom Instructions\n${this.agent.customInstructions}`);
+    }
+
     // 4. AGENTS.md
     try {
       const agents = await fs.readFile(getAgentsPath(), 'utf-8');
@@ -225,6 +230,10 @@ export class PromptAssembler {
   private buildIdentityPreamble(agent: AgentIdentity): string {
     const lines: string[] = ['# Agent Identity'];
     lines.push(`You are ${agent.name} (${agent.pronouns}).`);
+
+    if (agent.vibe) {
+      lines.push(`Vibe: ${agent.vibe}`);
+    }
 
     lines.push('');
     lines.push('## Personality');
