@@ -7,8 +7,7 @@ import { Chat } from './pages/Chat';
 import { Behaviors } from './pages/Behaviors';
 import { Webhooks } from './pages/Webhooks';
 import { AuditLog } from './pages/AuditLog';
-import { SettingsIdentity } from './pages/settings/Identity';
-import { SettingsPersonality } from './pages/settings/Personality';
+import { PersonalityEditor } from './pages/settings/PersonalityEditor';
 import { SettingsProvider } from './pages/settings/Provider';
 import { SettingsChannels } from './pages/settings/Channels';
 import { SettingsSecurity } from './pages/settings/Security';
@@ -46,8 +45,8 @@ export function App() {
         <Route path="chat" element={<Chat />} />
         <Route path="behaviors" element={<Behaviors />} />
         <Route path="webhooks" element={<Webhooks />} />
-        <Route path="settings/identity" element={<SettingsIdentity />} />
-        <Route path="settings/personality" element={<SettingsPersonality />} />
+        <Route path="settings/personality" element={<PersonalityEditor />} />
+        <Route path="settings/identity" element={<Navigate to="/settings/personality" replace />} />
         <Route path="settings/provider" element={<SettingsProvider />} />
         <Route path="settings/channels" element={<SettingsChannels />} />
         <Route path="settings/ambient" element={<SettingsAmbient />} />
