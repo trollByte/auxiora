@@ -35,6 +35,23 @@ deploy/docker/Dockerfile
 dist/
 installers/
 
+# Tauri / Rust build artifacts (biggest offender — ~3GB+)
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/
+packages/desktop/dist-webview/
+
+# Cargo lock not needed in Docker
+packages/desktop/src-tauri/Cargo.lock
+
+# Dashboard pre-built UI (rebuilt from source)
+packages/dashboard/dist-ui/
+
+# Demo files
+demo-*.html
+
+# Docs/plans (not needed at runtime)
+docs/
+
 # Miscellaneous
 *.log
 *.tgz

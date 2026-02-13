@@ -23,8 +23,10 @@ LABEL org.opencontainers.image.title="Auxiora" \
 
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
-RUN addgroup -g 1001 -S auxiora && \
-    adduser -S auxiora -u 1001 -G auxiora
+# Create /data with open permissions — the actual UID is set at runtime
+# via docker-compose `user:` to match the host user's UID/GID.
+RUN mkdir -p /data/config /data/data /data/state /data/.auxiora/workspace && \
+    chmod -R 777 /data
 
 WORKDIR /app
 
@@ -42,11 +44,14 @@ RUN find packages -type d -name src -exec rm -rf {} + 2>/dev/null; \
 
 RUN pnpm install --frozen-lockfile --prod
 
-USER auxiora
-
 ENV NODE_ENV=production
 ENV AUXIORA_GATEWAY_HOST=0.0.0.0
 ENV AUXIORA_GATEWAY_PORT=18800
+# Point all XDG paths and HOME into the /data volume so state persists
+ENV HOME=/data
+ENV XDG_CONFIG_HOME=/data/config
+ENV XDG_DATA_HOME=/data/data
+ENV XDG_STATE_HOME=/data/state
 
 EXPOSE 18800
 
