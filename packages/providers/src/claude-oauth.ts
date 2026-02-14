@@ -155,6 +155,7 @@ export async function refreshOAuthToken(
 /**
  * Refresh an OAuth token obtained via the dashboard's PKCE flow.
  * Uses the same client ID and endpoint that issued the original token.
+ * Omits scope — the server uses the originally granted scopes.
  */
 export async function refreshPKCEOAuthToken(
   refreshToken: string
@@ -162,7 +163,6 @@ export async function refreshPKCEOAuthToken(
   return doTokenRefresh(refreshToken, {
     clientId: CLAUDE_OAUTH_CLIENT_ID,
     tokenUrl: CLAUDE_OAUTH_TOKEN_URL,
-    scope: CLAUDE_OAUTH_SCOPES,
   });
 }
 
@@ -171,14 +171,16 @@ export async function refreshPKCEOAuthToken(
  */
 async function doTokenRefresh(
   refreshToken: string,
-  opts: { clientId: string; tokenUrl: string; scope: string },
+  opts: { clientId: string; tokenUrl: string; scope?: string },
 ): Promise<TokenRefreshResult> {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
     client_id: opts.clientId,
-    scope: opts.scope,
   });
+  if (opts.scope) {
+    body.set('scope', opts.scope);
+  }
 
   const response = await fetch(opts.tokenUrl, {
     method: 'POST',

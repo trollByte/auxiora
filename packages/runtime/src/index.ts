@@ -1144,19 +1144,29 @@ export class Auxiora {
         maxTokens: this.config.provider.anthropic.maxTokens,
         onTokenRefresh: async () => {
           const rt = vault.get('CLAUDE_OAUTH_REFRESH_TOKEN');
-          if (!rt) return null;
+          if (!rt) {
+            this.logger.warn('No refresh token in vault — cannot auto-refresh. Re-authenticate via Dashboard > Settings > Provider.');
+            return null;
+          }
+          this.logger.info('Attempting OAuth token refresh...');
           // Try PKCE client first (dashboard OAuth flow), then CLI client
-          for (const refreshFn of [refreshPKCEOAuthToken, refreshOAuthToken]) {
+          const methods = [
+            { name: 'PKCE', fn: refreshPKCEOAuthToken },
+            { name: 'CLI', fn: refreshOAuthToken },
+          ];
+          for (const method of methods) {
             try {
-              const refreshed = await refreshFn(rt);
+              const refreshed = await method.fn(rt);
               await vault.add('ANTHROPIC_OAUTH_TOKEN', refreshed.accessToken);
               await vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', refreshed.refreshToken);
               await vault.add('CLAUDE_OAUTH_EXPIRES_AT', String(refreshed.expiresAt));
+              this.logger.info(`OAuth token refreshed via ${method.name} client`);
               return refreshed.accessToken;
-            } catch {
-              // Try next refresh method
+            } catch (err) {
+              this.logger.warn(`${method.name} token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
             }
           }
+          this.logger.error('All token refresh methods failed. Re-authenticate via Dashboard > Settings > Provider.', { error: new Error('Token refresh exhausted') });
           return null;
         },
       };
