@@ -15,10 +15,12 @@ export function SettingsAppearance() {
       .then(res => {
         const t = res.data.theme as ThemeId;
         setServerTheme(t);
-        setTheme(t);
       })
-      .catch(() => {});
-  }, [setTheme]);
+      .catch(() => {
+        // If server has no saved theme, treat current theme as the baseline
+        setServerTheme(theme);
+      });
+  }, []);
 
   const hasChanges = serverTheme !== null && theme !== serverTheme;
 

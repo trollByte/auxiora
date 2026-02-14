@@ -22,6 +22,7 @@ import { SetupConnections } from './pages/SetupConnections';
 import { SetupComplete } from './pages/SetupComplete';
 import { SetupAppearance } from './pages/SetupAppearance';
 import { SettingsAppearance } from './pages/settings/Appearance';
+import { SettingsConnections } from './pages/SettingsConnections';
 import { SettingsAmbient } from './pages/SettingsAmbient';
 import { SettingsNotifications } from './pages/SettingsNotifications';
 
@@ -49,6 +50,7 @@ export function App() {
         <Route path="settings/identity" element={<Navigate to="/settings/personality" replace />} />
         <Route path="settings/provider" element={<SettingsProvider />} />
         <Route path="settings/channels" element={<SettingsChannels />} />
+        <Route path="settings/connections" element={<SettingsConnections />} />
         <Route path="settings/ambient" element={<SettingsAmbient />} />
         <Route path="settings/appearance" element={<SettingsAppearance />} />
         <Route path="settings/notifications" element={<SettingsNotifications />} />
