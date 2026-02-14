@@ -139,18 +139,48 @@ export function isCredentialsExpired(credentials: ClaudeOAuthCredentials): boole
 
 /**
  * Refresh an OAuth token using the refresh token.
+ * Uses the Claude Code CLI's OAuth client by default.
+ * For tokens obtained via the dashboard PKCE flow, use refreshPKCEOAuthToken instead.
  */
 export async function refreshOAuthToken(
   refreshToken: string
 ): Promise<TokenRefreshResult> {
+  return doTokenRefresh(refreshToken, {
+    clientId: CLAUDE_CODE_CLIENT_ID,
+    tokenUrl: ANTHROPIC_TOKEN_REFRESH_URL,
+    scope: CLAUDE_CODE_SCOPES,
+  });
+}
+
+/**
+ * Refresh an OAuth token obtained via the dashboard's PKCE flow.
+ * Uses the same client ID and endpoint that issued the original token.
+ */
+export async function refreshPKCEOAuthToken(
+  refreshToken: string
+): Promise<TokenRefreshResult> {
+  return doTokenRefresh(refreshToken, {
+    clientId: CLAUDE_OAUTH_CLIENT_ID,
+    tokenUrl: CLAUDE_OAUTH_TOKEN_URL,
+    scope: CLAUDE_OAUTH_SCOPES,
+  });
+}
+
+/**
+ * Internal: perform a token refresh against the given OAuth endpoint.
+ */
+async function doTokenRefresh(
+  refreshToken: string,
+  opts: { clientId: string; tokenUrl: string; scope: string },
+): Promise<TokenRefreshResult> {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
-    client_id: CLAUDE_CODE_CLIENT_ID,
-    scope: CLAUDE_CODE_SCOPES,
+    client_id: opts.clientId,
+    scope: opts.scope,
   });
 
-  const response = await fetch(ANTHROPIC_TOKEN_REFRESH_URL, {
+  const response = await fetch(opts.tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

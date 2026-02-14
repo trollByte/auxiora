@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -1145,15 +1145,19 @@ export class Auxiora {
         onTokenRefresh: async () => {
           const rt = vault.get('CLAUDE_OAUTH_REFRESH_TOKEN');
           if (!rt) return null;
-          try {
-            const refreshed = await refreshOAuthToken(rt);
-            await vault.add('ANTHROPIC_OAUTH_TOKEN', refreshed.accessToken);
-            await vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', refreshed.refreshToken);
-            await vault.add('CLAUDE_OAUTH_EXPIRES_AT', String(refreshed.expiresAt));
-            return refreshed.accessToken;
-          } catch {
-            return null;
+          // Try PKCE client first (dashboard OAuth flow), then CLI client
+          for (const refreshFn of [refreshPKCEOAuthToken, refreshOAuthToken]) {
+            try {
+              const refreshed = await refreshFn(rt);
+              await vault.add('ANTHROPIC_OAUTH_TOKEN', refreshed.accessToken);
+              await vault.add('CLAUDE_OAUTH_REFRESH_TOKEN', refreshed.refreshToken);
+              await vault.add('CLAUDE_OAUTH_EXPIRES_AT', String(refreshed.expiresAt));
+              return refreshed.accessToken;
+            } catch {
+              // Try next refresh method
+            }
           }
+          return null;
         },
       };
     } else if (anthropicKey) {

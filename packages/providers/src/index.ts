@@ -23,6 +23,7 @@ export {
   buildAuthorizationUrl,
   exchangeCodeForTokens,
   refreshOAuthToken,
+  refreshPKCEOAuthToken,
   writeClaudeCliCredentials,
   type ClaudeOAuthCredentials,
 } from './claude-oauth.js';
