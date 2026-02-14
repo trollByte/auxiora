@@ -1122,6 +1122,7 @@ export class Auxiora {
       oauthToken?: string;
       useCliCredentials?: boolean;
       onTokenRefresh?: () => Promise<string | null>;
+      tokenExpiresAt?: number;
       model: string;
       maxTokens: number;
     } | undefined;
@@ -1130,8 +1131,15 @@ export class Auxiora {
       const tokenPrefix = anthropicOAuthToken.substring(0, 15);
       this.logger.info(`Using Anthropic OAuth token from vault (${tokenPrefix}...)`);
       const vault = this.vault;
+      const expiresAtStr = vault.get('CLAUDE_OAUTH_EXPIRES_AT');
+      const tokenExpiresAt = expiresAtStr ? Number(expiresAtStr) : undefined;
+      if (tokenExpiresAt) {
+        const minutesLeft = Math.round((tokenExpiresAt - Date.now()) / 60000);
+        this.logger.info(`OAuth token expires in ${minutesLeft} minutes`);
+      }
       anthropicConfig = {
         oauthToken: anthropicOAuthToken,
+        tokenExpiresAt,
         model: this.config.provider.anthropic.model,
         maxTokens: this.config.provider.anthropic.maxTokens,
         onTokenRefresh: async () => {

@@ -118,6 +118,8 @@ export interface ProviderConfig {
     useCliCredentials?: boolean;
     /** Callback to refresh the OAuth token when expired. Returns new access token. */
     onTokenRefresh?: () => Promise<string | null>;
+    /** When the current OAuth token expires (epoch ms). Used for proactive refresh. */
+    tokenExpiresAt?: number;
   };
   openai?: {
     apiKey: string;

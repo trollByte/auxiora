@@ -79,6 +79,8 @@ export interface AnthropicProviderOptions {
   useCliCredentials?: boolean;
   /** Callback to refresh the OAuth token when expired. Returns new access token. */
   onTokenRefresh?: () => Promise<string | null>;
+  /** When the current OAuth token expires (epoch ms). Used for proactive refresh. */
+  tokenExpiresAt?: number;
 }
 
 export class AnthropicProvider implements Provider {
@@ -181,6 +183,7 @@ export class AnthropicProvider implements Provider {
   private oauthToken?: string;
   private useCliCredentials: boolean;
   private onTokenRefresh?: () => Promise<string | null>;
+  private tokenExpiresAt?: number;
 
   /**
    * Create an Anthropic provider.
@@ -197,6 +200,7 @@ export class AnthropicProvider implements Provider {
     this.oauthToken = options.oauthToken;
     this.useCliCredentials = options.useCliCredentials ?? true;
     this.onTokenRefresh = options.onTokenRefresh;
+    this.tokenExpiresAt = options.tokenExpiresAt;
 
     // Determine auth mode and initialize client
     if (options.oauthToken) {
@@ -312,19 +316,35 @@ export class AnthropicProvider implements Provider {
   }
 
   /**
-   * Refresh credentials if using OAuth and tokens are expired.
+   * Check if the current OAuth token is near expiry (within 5 minutes).
+   */
+  private isTokenExpiringSoon(): boolean {
+    if (!this.tokenExpiresAt) return false;
+    return Date.now() >= this.tokenExpiresAt - 5 * 60 * 1000;
+  }
+
+  /**
+   * Refresh credentials if using OAuth/setup-token and tokens are expired or expiring soon.
+   * Both 'oauth' and 'setup-token' modes use OAuth tokens that expire.
    */
   private async ensureValidCredentials(): Promise<void> {
-    if (this.authMode !== 'oauth') {
-      return;
-    }
+    // API keys don't expire
+    if (this.authMode === 'api-key') return;
 
-    // Try Claude CLI credentials for refresh
+    // If we know the expiry time and it's not close, skip refresh
+    if (this.tokenExpiresAt && !this.isTokenExpiringSoon()) return;
+
+    // Try Claude CLI credentials for refresh (host environment)
     const cliCreds = readClaudeCliCredentials();
     if (cliCreds && cliCreds.type === 'oauth') {
-      const token = await getValidAccessToken(cliCreds);
-      this.client = this.createOAuthClient(token);
-      return;
+      try {
+        const token = await getValidAccessToken(cliCreds);
+        this.client = this.createOAuthClient(token);
+        this.tokenExpiresAt = cliCreds.expiresAt;
+        return;
+      } catch (err) {
+        logger.warn('CLI credential refresh failed, trying vault callback', { error: err instanceof Error ? err : new Error(String(err)) });
+      }
     }
 
     // Fallback: use vault-based refresh callback (e.g. in Docker)
@@ -332,8 +352,40 @@ export class AnthropicProvider implements Provider {
       const newToken = await this.onTokenRefresh();
       if (newToken) {
         this.client = this.createOAuthClient(newToken);
+        // Token was just refreshed; assume ~1 hour validity
+        this.tokenExpiresAt = Date.now() + 3600 * 1000;
+        logger.info('OAuth token refreshed via callback');
       }
     }
+  }
+
+  /**
+   * Refresh the token after a 401 error and return true if successful.
+   */
+  private async handleAuthError(): Promise<boolean> {
+    if (this.authMode === 'api-key') return false;
+
+    logger.warn('Got 401 from API, attempting token refresh');
+
+    // Force refresh by clearing expiry so ensureValidCredentials doesn't skip
+    this.tokenExpiresAt = 0;
+
+    try {
+      await this.ensureValidCredentials();
+      return true;
+    } catch (err) {
+      logger.error('Token refresh after 401 failed', { error: err instanceof Error ? err : new Error(String(err)) });
+      return false;
+    }
+  }
+
+  /**
+   * Check if an error is a 401 authentication error.
+   */
+  private isAuthError(error: unknown): boolean {
+    if (error instanceof Anthropic.AuthenticationError) return true;
+    if (error instanceof Error && error.message.includes('401')) return true;
+    return false;
   }
 
   async complete(
@@ -343,6 +395,21 @@ export class AnthropicProvider implements Provider {
     // Refresh credentials if needed
     await this.ensureValidCredentials();
 
+    try {
+      return await this.doComplete(messages, options);
+    } catch (error) {
+      // On 401, refresh token and retry once
+      if (this.isAuthError(error) && await this.handleAuthError()) {
+        return await this.doComplete(messages, options);
+      }
+      throw error;
+    }
+  }
+
+  private async doComplete(
+    messages: ChatMessage[],
+    options?: CompletionOptions
+  ): Promise<CompletionResult> {
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages, options);
 
     // Build request parameters
@@ -397,7 +464,6 @@ export class AnthropicProvider implements Provider {
     const response = await this.client.messages.create(params, requestOptions);
 
     // Extract text content, filtering out tool calls for Claude Code tools
-    const ccToolNames = new Set(CLAUDE_CODE_TOOLS.map(t => t.name));
     const content = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
@@ -421,6 +487,25 @@ export class AnthropicProvider implements Provider {
     // Refresh credentials if needed
     await this.ensureValidCredentials();
 
+    try {
+      yield* this.doStream(messages, options);
+    } catch (error) {
+      // On 401 before any chunks were yielded, refresh and retry
+      if (this.isAuthError(error) && await this.handleAuthError()) {
+        yield* this.doStream(messages, options);
+      } else {
+        yield {
+          type: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    }
+  }
+
+  private async *doStream(
+    messages: ChatMessage[],
+    options?: CompletionOptions
+  ): AsyncGenerator<StreamChunk, void, unknown> {
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages, options);
 
     // Build request parameters
@@ -474,82 +559,75 @@ export class AnthropicProvider implements Provider {
       ? { headers: { 'x-anthropic-billing-header': this.buildBillingHeader(anthropicMessages) } }
       : undefined;
 
-    try {
-      const stream = this.client.messages.stream(params, requestOptions);
-      let currentToolUse: { id: string; name: string; input: string } | null = null;
-      let inThinkingBlock = false;
+    const stream = this.client.messages.stream(params, requestOptions);
+    let currentToolUse: { id: string; name: string; input: string } | null = null;
+    let inThinkingBlock = false;
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_start') {
-          const block = event.content_block;
-          if (block.type === 'tool_use') {
-            // Start collecting tool use
-            currentToolUse = {
-              id: block.id,
-              name: block.name,
-              input: '',
-            };
-            inThinkingBlock = false;
-          } else if ((block as any).type === 'thinking') {
-            inThinkingBlock = true;
-          } else {
-            inThinkingBlock = false;
-          }
-        } else if (event.type === 'content_block_delta') {
-          const delta = event.delta;
-          if ('text' in delta) {
-            yield { type: 'text', content: delta.text };
-          } else if ((delta as any).thinking && inThinkingBlock) {
-            yield { type: 'thinking', content: (delta as any).thinking };
-          } else if ('partial_json' in delta && currentToolUse) {
-            // Accumulate tool input
-            currentToolUse.input += delta.partial_json;
-          }
-        } else if (event.type === 'content_block_stop' && currentToolUse) {
-          // Skip Claude Code emulation tools unless passthrough is enabled
-          if (filterCCTools && ccToolNames.has(currentToolUse.name)) {
-            currentToolUse = null;
-          } else {
-            // Tool use complete - parse and yield
-            try {
-              const input = currentToolUse.input ? JSON.parse(currentToolUse.input) : {};
-              yield {
-                type: 'tool_use',
-                toolUse: {
-                  id: currentToolUse.id,
-                  name: currentToolUse.name,
-                  input,
-                },
-              };
-            } catch (error) {
-              // Log but don't propagate as a stream error — skip this tool call
-              yield {
-                type: 'tool_use',
-                toolUse: {
-                  id: currentToolUse.id,
-                  name: currentToolUse.name,
-                  input: {},
-                },
-              };
-            }
-            currentToolUse = null;
-          }
-        } else if (event.type === 'message_stop') {
-          const finalMessage = await stream.finalMessage();
-          yield {
-            type: 'done',
-            usage: {
-              inputTokens: finalMessage.usage.input_tokens,
-              outputTokens: finalMessage.usage.output_tokens,
-            },
+    for await (const event of stream) {
+      if (event.type === 'content_block_start') {
+        const block = event.content_block;
+        if (block.type === 'tool_use') {
+          // Start collecting tool use
+          currentToolUse = {
+            id: block.id,
+            name: block.name,
+            input: '',
           };
+          inThinkingBlock = false;
+        } else if ((block as any).type === 'thinking') {
+          inThinkingBlock = true;
+        } else {
+          inThinkingBlock = false;
         }
+      } else if (event.type === 'content_block_delta') {
+        const delta = event.delta;
+        if ('text' in delta) {
+          yield { type: 'text', content: delta.text };
+        } else if ((delta as any).thinking && inThinkingBlock) {
+          yield { type: 'thinking', content: (delta as any).thinking };
+        } else if ('partial_json' in delta && currentToolUse) {
+          // Accumulate tool input
+          currentToolUse.input += delta.partial_json;
+        }
+      } else if (event.type === 'content_block_stop' && currentToolUse) {
+        // Skip Claude Code emulation tools unless passthrough is enabled
+        if (filterCCTools && ccToolNames.has(currentToolUse.name)) {
+          currentToolUse = null;
+        } else {
+          // Tool use complete - parse and yield
+          try {
+            const input = currentToolUse.input ? JSON.parse(currentToolUse.input) : {};
+            yield {
+              type: 'tool_use',
+              toolUse: {
+                id: currentToolUse.id,
+                name: currentToolUse.name,
+                input,
+              },
+            };
+          } catch {
+            // Log but don't propagate as a stream error — skip this tool call
+            yield {
+              type: 'tool_use',
+              toolUse: {
+                id: currentToolUse.id,
+                name: currentToolUse.name,
+                input: {},
+              },
+            };
+          }
+          currentToolUse = null;
+        }
+      } else if (event.type === 'message_stop') {
+        const finalMessage = await stream.finalMessage();
+        yield {
+          type: 'done',
+          usage: {
+            inputTokens: finalMessage.usage.input_tokens,
+            outputTokens: finalMessage.usage.output_tokens,
+          },
+        };
       }
-    } catch (error) {
-      yield {
-        type: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
     }
   }
 
