@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
 export const THEME_IDS = ['nebula', 'monolith', 'signal', 'polar', 'neon', 'terra'] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
@@ -36,11 +36,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return stored && THEME_IDS.includes(stored) ? stored : 'nebula';
   });
 
-  const setTheme = (id: ThemeId) => {
+  const setTheme = useCallback((id: ThemeId) => {
     setThemeState(id);
     localStorage.setItem('auxiora-theme', id);
     document.documentElement.setAttribute('data-theme', id);
-  };
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
