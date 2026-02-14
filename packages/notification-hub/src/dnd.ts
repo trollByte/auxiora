@@ -46,8 +46,8 @@ export class DoNotDisturbManager {
     return false;
   }
 
-  filter(notifications: Notification[]): Notification[] {
-    if (!this.isActive()) {
+  filter(notifications: Notification[], now?: Date): Notification[] {
+    if (!this.isActive(now)) {
       return notifications;
     }
 

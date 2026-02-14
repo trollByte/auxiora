@@ -106,7 +106,9 @@ describe('DoNotDisturbManager', () => {
         makeNotification({ priority: 'important', title: 'Important' }),
       ];
 
-      const filtered = dnd.filter(notifications);
+      // Use explicit time within DND window to avoid flakiness
+      const noon = new Date(2025, 0, 1, 12, 0);
+      const filtered = dnd.filter(notifications, noon);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].title).toBe('Urgent');
     });
@@ -126,7 +128,8 @@ describe('DoNotDisturbManager', () => {
         makeNotification({ priority: 'low', title: 'Low' }),
       ];
 
-      const filtered = dnd.filter(notifications);
+      const noon = new Date(2025, 0, 1, 12, 0);
+      const filtered = dnd.filter(notifications, noon);
       expect(filtered).toHaveLength(0);
     });
 
