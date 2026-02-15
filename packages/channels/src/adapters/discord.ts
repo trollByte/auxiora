@@ -47,7 +47,7 @@ export class DiscordAdapter implements ChannelAdapter {
   }
 
   private setupEventHandlers(): void {
-    this.client.on('clientReady', () => {
+    this.client.on('ready', () => {
       audit('channel.connected', {
         channelType: 'discord',
         username: this.client.user?.tag,
@@ -100,7 +100,7 @@ export class DiscordAdapter implements ChannelAdapter {
       this.errorHandler?.(error);
     });
 
-    this.client.on('disconnect', () => {
+    this.client.on('shardDisconnect', () => {
       this.connected = false;
       audit('channel.disconnected', { channelType: 'discord' });
     });
