@@ -964,7 +964,7 @@ body {
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
   color: var(--text-muted);
-  background: var(--bg);
+  background: var(--bg-primary);
   border-radius: var(--radius);
   border: 1px dashed var(--border);
 }
@@ -1890,7 +1890,7 @@ body {
 }
 
 /* ─── Personality Editor ─── */
-.personality-editor .page-header {
+.page .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1900,7 +1900,7 @@ body {
 .editor-section {
   margin-bottom: 2rem;
   padding: 1.5rem;
-  background: var(--surface);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -2000,7 +2000,7 @@ body {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--surface);
+  border: 2px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
@@ -2012,7 +2012,7 @@ body {
   padding: 0.4rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--bg-primary);
   min-height: 38px;
   align-items: center;
 }
@@ -2086,8 +2086,16 @@ body {
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--bg-primary);
   color: var(--text-primary);
+  transition: border-color var(--transition-fast);
+}
+
+.custom-instructions-textarea:focus,
+.soul-editor-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .soul-editor-textarea {
@@ -2114,8 +2122,34 @@ body {
 .editor-footer {
   position: sticky;
   bottom: 0;
-  padding: 1rem 0;
-  background: var(--bg);
+  padding: 1rem 1.5rem;
+  background: var(--bg-primary);
   border-top: 1px solid var(--border);
   text-align: right;
+  margin: 0 -1.5rem;
+}
+
+/* Form inputs inside editor-section (for elements not covered by .settings-form) */
+.editor-section input[type="text"],
+.editor-section select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast);
+}
+
+.editor-section input[type="text"]:focus,
+.editor-section select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.editor-section input[type="text"]::placeholder {
+  color: var(--text-secondary);
 }

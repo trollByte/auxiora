@@ -316,7 +316,7 @@ export function PersonalityEditor() {
 
   if (loadError) {
     return (
-      <div className="personality-editor">
+      <div className="page">
         <div className="error">Failed to load personality data: {loadError}</div>
       </div>
     );
@@ -324,7 +324,7 @@ export function PersonalityEditor() {
 
   if (!serverData) {
     return (
-      <div className="personality-editor">
+      <div className="page">
         <p>Loading personality settings...</p>
       </div>
     );
@@ -332,7 +332,7 @@ export function PersonalityEditor() {
 
   const saveButton = (
     <button
-      className="btn-primary"
+      className="settings-btn"
       onClick={handleSave}
       disabled={saving || !dirty}
     >
@@ -341,7 +341,7 @@ export function PersonalityEditor() {
   );
 
   return (
-    <div className="personality-editor">
+    <div className="page">
       {/* Header */}
       <div className="page-header">
         <h2>Personality Editor</h2>
@@ -351,6 +351,7 @@ export function PersonalityEditor() {
       {success && <div className="settings-success">{success}</div>}
       {error && <div className="error">{error}</div>}
 
+      <div className="settings-form">
       {/* Section 1: Identity */}
       <div className="editor-section">
         <h3>Identity</h3>
@@ -570,6 +571,7 @@ export function PersonalityEditor() {
           {saveButton}
         </div>
       )}
+      </div>{/* end settings-form */}
     </div>
   );
 }
