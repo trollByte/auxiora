@@ -9,6 +9,12 @@ interface ChatMessage {
   model?: string;
 }
 
+interface ChatThread {
+  id: string;
+  title: string;
+  updatedAt: number;
+}
+
 interface ModelSelection {
   provider: string;
   model: string;
@@ -17,6 +23,12 @@ interface ModelSelection {
 interface SlashCommand {
   command: string;
   description: string;
+}
+
+interface ContextMenuState {
+  chatId: string;
+  x: number;
+  y: number;
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -39,7 +51,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
 /** Turn a raw model ID into a friendly display name */
 function friendlyModelName(id: string): string {
-  // Anthropic — order matters: more specific prefixes first
   if (id.startsWith('claude-opus-4-6'))      return 'Claude Opus 4.6';
   if (id.startsWith('claude-sonnet-4-5'))    return 'Claude Sonnet 4.5';
   if (id.startsWith('claude-haiku-4-5'))     return 'Claude Haiku 4.5';
@@ -48,15 +59,25 @@ function friendlyModelName(id: string): string {
   if (id.startsWith('claude-3-5-haiku'))     return 'Claude Haiku 3.5';
   if (id.startsWith('claude-3-5-sonnet'))    return 'Claude Sonnet 3.5';
   if (id.startsWith('claude-3-opus'))        return 'Claude Opus 3';
-  // OpenAI
   if (id === 'gpt-4o')        return 'GPT-4o';
   if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
   if (id === 'gpt-4-turbo')   return 'GPT-4 Turbo';
   if (id.startsWith('o1'))    return id.toUpperCase();
   if (id.startsWith('o3'))    return id.toUpperCase();
-  // Google
   if (id.startsWith('gemini-'))return id.replace('gemini-', 'Gemini ');
   return id;
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 /**
@@ -65,47 +86,32 @@ function friendlyModelName(id: string): string {
  * Only our own markdown transforms produce HTML tags, so XSS is prevented.
  */
 function renderMarkdown(text: string): string {
-  // Step 1: HTML-escape ALL input to prevent XSS
   let html = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // Step 2: Apply markdown patterns (only our safe transforms produce HTML)
   html = html
-    // Code blocks (``` ... ```) — with optional language label header
     .replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang: string, code: string) => {
       const header = lang
         ? `<div class="code-header"><span class="code-lang">${lang}</span><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent)">Copy</button></div>`
         : `<div class="code-header"><button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('code').textContent)">Copy</button></div>`;
       return `<div class="code-block">${header}<pre><code>${code}</code></pre></div>`;
     })
-    // Inline code
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Headings
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    // Bold + italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    // Bold
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Horizontal rule
     .replace(/^---$/gm, '<hr/>')
-    // Unordered lists
     .replace(/^[-*] (.+)$/gm, '<li>$1</li>');
 
-  // Wrap consecutive <li> in <ul>
   html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-
-  // Paragraphs: double newline = paragraph break
   html = html.replace(/\n\n+/g, '</p><p>');
-  // Single newlines = line break
   html = html.replace(/\n/g, '<br/>');
 
-  // Wrap in paragraph, clean up empty/misplaced tags
   html = `<p>${html}</p>`;
   html = html
     .replace(/<p><\/p>/g, '')
@@ -134,36 +140,70 @@ export function Chat() {
   const [acIndex, setAcIndex] = useState(0);
   const [acOpen, setAcOpen] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  // Multi-chat state
+  const [chats, setChats] = useState<ChatThread[]>([]);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const acRef = useRef<HTMLDivElement>(null);
+  const chatIdRef = useRef<string | null>(null);
   const { data: status } = useApi(() => api.getStatus(), []);
   const { data: modelsData } = useApi(() => api.getModels(), []);
   const { data: identityData } = useApi(() => api.getIdentity(), []);
   const { data: personalityData } = useApi(() => api.getPersonality(), []);
 
-  // Load chat history from server on mount
+  // Keep chatIdRef in sync
   useEffect(() => {
-    api.getSessionMessages().then(res => {
+    chatIdRef.current = chatId;
+  }, [chatId]);
+
+  // Load chat list on mount
+  useEffect(() => {
+    api.getChats().then(res => {
       if (res.data && res.data.length > 0) {
+        setChats(res.data.map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt })));
+        // Select the most recent chat
+        setChatId(res.data[0].id);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Load messages when chatId changes
+  useEffect(() => {
+    if (!chatId) {
+      setMessages([]);
+      setHistoryLoaded(true);
+      return;
+    }
+    setHistoryLoaded(false);
+    api.getChatMessages(chatId).then(res => {
+      if (res.data) {
         setMessages(res.data.map(m => ({
           id: m.id,
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })));
+      } else {
+        setMessages([]);
       }
       setHistoryLoaded(true);
-      // Jump to bottom instantly after history loads (no smooth animation)
       requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView();
       });
     }).catch(() => {
+      setMessages([]);
       setHistoryLoaded(true);
     });
-  }, []);
+  }, [chatId]);
 
   // Detect mode changes from assistant messages
   useEffect(() => {
@@ -191,13 +231,11 @@ export function Chat() {
     return SLASH_COMMANDS.filter(c => c.command.startsWith(q));
   }, [input]);
 
-  // Open/close autocomplete based on matches
   useEffect(() => {
     setAcOpen(acMatches.length > 0 && input.startsWith('/'));
     setAcIndex(0);
   }, [acMatches, input]);
 
-  // Scroll selected item into view
   useEffect(() => {
     if (!acOpen || !acRef.current) return;
     const item = acRef.current.children[acIndex] as HTMLElement | undefined;
@@ -211,6 +249,14 @@ export function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => setContextMenu(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [contextMenu]);
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -269,6 +315,26 @@ export function Chat() {
             currentResponseRef.current = '';
             break;
           }
+          case 'chat_created':
+            // Server created a new chat for this message
+            if (msg.payload?.chatId) {
+              setChatId(msg.payload.chatId);
+              // Refresh chat list
+              api.getChats().then(res => {
+                if (res.data) {
+                  setChats(res.data.map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt })));
+                }
+              }).catch(() => {});
+            }
+            break;
+          case 'chat_titled':
+            // Server auto-titled a chat
+            if (msg.payload?.chatId && msg.payload?.title) {
+              setChats(prev => prev.map(c =>
+                c.id === msg.payload.chatId ? { ...c, title: msg.payload.title } : c
+              ));
+            }
+            break;
           case 'error':
             setStreaming(false);
             currentResponseRef.current = '';
@@ -289,7 +355,6 @@ export function Chat() {
     };
   }, []);
 
-  // Build model options from providers data
   const providerGroups: Array<{ provider: string; displayName: string; models: string[] }> = [];
   if (modelsData?.providers) {
     for (const p of modelsData.providers) {
@@ -327,6 +392,9 @@ export function Chat() {
       payload.provider = selectedModel.provider;
       payload.model = selectedModel.model;
     }
+    if (chatIdRef.current) {
+      payload.chatId = chatIdRef.current;
+    }
 
     wsRef.current.send(JSON.stringify({
       type: 'message',
@@ -335,133 +403,278 @@ export function Chat() {
     }));
   };
 
+  const handleNewChat = async () => {
+    try {
+      const res = await api.createNewChat();
+      const newChat = res.data;
+      setChats(prev => [{ id: newChat.id, title: newChat.title, updatedAt: newChat.updatedAt }, ...prev]);
+      setChatId(newChat.id);
+      setMessages([]);
+      setHistoryLoaded(true);
+      inputRef.current?.focus();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleRenameSubmit = async (id: string) => {
+    if (!editTitle.trim()) {
+      setEditingChatId(null);
+      return;
+    }
+    try {
+      await api.renameChat(id, editTitle.trim());
+      setChats(prev => prev.map(c => c.id === id ? { ...c, title: editTitle.trim() } : c));
+    } catch {
+      // ignore
+    }
+    setEditingChatId(null);
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    try {
+      await api.deleteChatThread(id);
+      setChats(prev => prev.filter(c => c.id !== id));
+      if (chatId === id) {
+        setChatId(null);
+        setMessages([]);
+      }
+    } catch {
+      // ignore
+    }
+    setContextMenu(null);
+  };
+
+  const handleArchiveChat = async (id: string) => {
+    try {
+      await api.archiveChat(id);
+      setChats(prev => prev.filter(c => c.id !== id));
+      if (chatId === id) {
+        setChatId(null);
+        setMessages([]);
+      }
+    } catch {
+      // ignore
+    }
+    setContextMenu(null);
+  };
+
   const modeLabel = activeMode === 'auto' ? 'Auto' : activeMode === 'off' ? 'Off' : activeMode.charAt(0).toUpperCase() + activeMode.slice(1);
   const agentName = identityData?.data?.name ?? 'Auxiora';
   const templateName = personalityData?.data?.template?.name ?? null;
 
+  // renderMarkdown already HTML-escapes all input before applying transforms,
+  // so only our safe markdown patterns produce HTML tags (no XSS risk).
+  const renderMessageHtml = (content: string) => ({ __html: renderMarkdown(content) });
+
   return (
     <div className="page">
       <h2>Chat</h2>
-      <div className="chat-container">
-        <div className="chat-status">
-          <span className="chat-status-left">
-            <span className="chat-status-dot" data-connected={connected} />
-            <span className="chat-agent-name">{agentName}</span>
-            <span className="chat-status-sep" />
-            <span className="chat-status-label">Mode: <strong>{modeLabel}</strong></span>
-            {templateName && (
-              <>
-                <span className="chat-status-sep" />
-                <span className="chat-status-label">Personality: <strong>{templateName}</strong></span>
-              </>
-            )}
-          </span>
-          <div className="model-selector">
-            <select
-              value={selectedModel ? `${selectedModel.provider}/${selectedModel.model}` : ''}
-              onChange={e => handleModelChange(e.target.value)}
+      <div className="chat-layout">
+        {/* Sidebar */}
+        <div className={`chat-sidebar${sidebarOpen ? '' : ' closed'}`}>
+          <div className="chat-sidebar-header">
+            <button className="new-chat-btn" onClick={handleNewChat}>+ New Chat</button>
+            <button
+              className="sidebar-toggle"
+              onClick={() => setSidebarOpen(v => !v)}
+              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
             >
-              <option value="">Auto (router)</option>
-              {providerGroups.map(g => (
-                <optgroup key={g.provider} label={g.displayName}>
-                  {g.models.map(m => (
-                    <option key={`${g.provider}/${m}`} value={`${g.provider}/${m}`}>
-                      {friendlyModelName(m)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              {sidebarOpen ? '\u00AB' : '\u00BB'}
+            </button>
           </div>
-        </div>
-        <div className="chat-messages">
-          {!historyLoaded && (
-            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-              Loading...
-            </div>
-          )}
-          {historyLoaded && messages.length === 0 && (
-            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-              Send a message to start chatting
-            </div>
-          )}
-          {messages.map(msg => (
-            <div key={msg.id} className={`chat-message ${msg.role}`}>
-              {msg.role === 'assistant'
-                ? <div className="chat-markdown" dangerouslySetInnerHTML={{
-                    // Safe: renderMarkdown HTML-escapes all input before applying
-                    // markdown transforms — only our transforms produce HTML tags
-                    __html: renderMarkdown(msg.content),
-                  }} />
-                : msg.content
-              }
-              {msg.model && (
-                <div className="model-label">{msg.model}</div>
+          {sidebarOpen && (
+            <div className="chat-sidebar-list">
+              {chats.map(c => (
+                <div
+                  key={c.id}
+                  className={`chat-sidebar-item${chatId === c.id ? ' active' : ''}`}
+                  onClick={() => {
+                    if (editingChatId !== c.id) {
+                      setChatId(c.id);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ chatId: c.id, x: e.clientX, y: e.clientY });
+                  }}
+                >
+                  {editingChatId === c.id ? (
+                    <input
+                      className="chat-rename-input"
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenameSubmit(c.id);
+                        if (e.key === 'Escape') setEditingChatId(null);
+                      }}
+                      onBlur={() => handleRenameSubmit(c.id)}
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <span className="chat-sidebar-title">{c.title}</span>
+                      <span className="chat-sidebar-time">{formatRelativeTime(c.updatedAt)}</span>
+                    </>
+                  )}
+                </div>
+              ))}
+              {chats.length === 0 && (
+                <div className="chat-sidebar-empty">No chats yet</div>
               )}
             </div>
-          ))}
-          <div ref={messagesEndRef} />
+          )}
         </div>
-        <div className="chat-input-area">
-          <div className="chat-input-wrapper">
-            {acOpen && acMatches.length > 0 && (
-              <div className="slash-autocomplete" ref={acRef}>
-                {acMatches.map((cmd, i) => (
-                  <div
-                    key={cmd.command}
-                    className={`slash-ac-item${i === acIndex ? ' selected' : ''}`}
-                    onMouseEnter={() => setAcIndex(i)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setInput(cmd.command);
-                      setAcOpen(false);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    <span className="slash-ac-cmd">{cmd.command}</span>
-                    <span className="slash-ac-desc">{cmd.description}</span>
-                  </div>
-                ))}
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <div
+            className="chat-context-menu"
+            style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x }}
+          >
+            <button onClick={() => {
+              const chat = chats.find(c => c.id === contextMenu.chatId);
+              setEditTitle(chat?.title ?? '');
+              setEditingChatId(contextMenu.chatId);
+              setContextMenu(null);
+            }}>Rename</button>
+            <button onClick={() => handleArchiveChat(contextMenu.chatId)}>Archive</button>
+            <button className="danger" onClick={() => handleDeleteChat(contextMenu.chatId)}>Delete</button>
+          </div>
+        )}
+
+        {/* Chat area */}
+        <div className="chat-container">
+          <div className="chat-status">
+            <span className="chat-status-left">
+              <span className="chat-status-dot" data-connected={connected} />
+              <span className="chat-agent-name">{agentName}</span>
+              <span className="chat-status-sep" />
+              <span className="chat-status-label">Mode: <strong>{modeLabel}</strong></span>
+              {templateName && (
+                <>
+                  <span className="chat-status-sep" />
+                  <span className="chat-status-label">Personality: <strong>{templateName}</strong></span>
+                </>
+              )}
+            </span>
+            <span className="chat-status-right">
+              <button
+                className="sidebar-toggle-inline"
+                onClick={() => setSidebarOpen(v => !v)}
+                title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+              >
+                {sidebarOpen ? '\u2630' : '\u2630'}
+              </button>
+              <div className="model-selector">
+                <select
+                  value={selectedModel ? `${selectedModel.provider}/${selectedModel.model}` : ''}
+                  onChange={e => handleModelChange(e.target.value)}
+                >
+                  <option value="">Auto (router)</option>
+                  {providerGroups.map(g => (
+                    <optgroup key={g.provider} label={g.displayName}>
+                      {g.models.map(m => (
+                        <option key={`${g.provider}/${m}`} value={`${g.provider}/${m}`}>
+                          {friendlyModelName(m)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </span>
+          </div>
+          <div className="chat-messages">
+            {!chatId && (
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                Select a chat or create a new one
               </div>
             )}
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (acOpen && acMatches.length > 0) {
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setAcIndex(i => (i + 1) % acMatches.length);
-                    return;
-                  }
-                  if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setAcIndex(i => (i - 1 + acMatches.length) % acMatches.length);
-                    return;
-                  }
-                  if (e.key === 'Tab' || (e.key === 'Enter' && acMatches.length > 1)) {
-                    e.preventDefault();
-                    setInput(acMatches[acIndex].command);
-                    setAcOpen(false);
-                    return;
-                  }
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    setAcOpen(false);
-                    return;
-                  }
+            {chatId && !historyLoaded && (
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                Loading...
+              </div>
+            )}
+            {chatId && historyLoaded && messages.length === 0 && (
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                Send a message to start chatting
+              </div>
+            )}
+            {messages.map(msg => (
+              <div key={msg.id} className={`chat-message ${msg.role}`}>
+                {msg.role === 'assistant'
+                  ? <div className="chat-markdown" dangerouslySetInnerHTML={renderMessageHtml(msg.content)} />
+                  : msg.content
                 }
-                if (e.key === 'Enter') sendMessage();
-              }}
-              placeholder={connected ? 'Type / for commands...' : 'Connecting...'}
-              disabled={!connected || streaming}
-            />
+                {msg.model && (
+                  <div className="model-label">{msg.model}</div>
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
           </div>
-          <button onClick={sendMessage} disabled={!connected || streaming || !input.trim()}>
-            Send
-          </button>
+          <div className="chat-input-area">
+            <div className="chat-input-wrapper">
+              {acOpen && acMatches.length > 0 && (
+                <div className="slash-autocomplete" ref={acRef}>
+                  {acMatches.map((cmd, i) => (
+                    <div
+                      key={cmd.command}
+                      className={`slash-ac-item${i === acIndex ? ' selected' : ''}`}
+                      onMouseEnter={() => setAcIndex(i)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setInput(cmd.command);
+                        setAcOpen(false);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <span className="slash-ac-cmd">{cmd.command}</span>
+                      <span className="slash-ac-desc">{cmd.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (acOpen && acMatches.length > 0) {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setAcIndex(i => (i + 1) % acMatches.length);
+                      return;
+                    }
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setAcIndex(i => (i - 1 + acMatches.length) % acMatches.length);
+                      return;
+                    }
+                    if (e.key === 'Tab' || (e.key === 'Enter' && acMatches.length > 1)) {
+                      e.preventDefault();
+                      setInput(acMatches[acIndex].command);
+                      setAcOpen(false);
+                      return;
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setAcOpen(false);
+                      return;
+                    }
+                  }
+                  if (e.key === 'Enter') sendMessage();
+                }}
+                placeholder={!chatId ? 'Select or create a chat...' : connected ? 'Type / for commands...' : 'Connecting...'}
+                disabled={!connected || streaming || !chatId}
+              />
+            </div>
+            <button onClick={sendMessage} disabled={!connected || streaming || !input.trim() || !chatId}>
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>
