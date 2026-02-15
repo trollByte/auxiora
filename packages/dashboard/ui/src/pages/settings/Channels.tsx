@@ -3,12 +3,23 @@ import { useApi } from '../../hooks/useApi';
 import { api } from '../../api';
 
 const AVAILABLE_CHANNELS = [
-  { type: 'discord', label: 'Discord', fields: [{ key: 'botToken', label: 'Bot Token' }] },
-  { type: 'telegram', label: 'Telegram', fields: [{ key: 'botToken', label: 'Bot Token' }] },
-  { type: 'slack', label: 'Slack', fields: [{ key: 'botToken', label: 'Bot Token' }, { key: 'appToken', label: 'App Token' }] },
-  { type: 'twilio', label: 'Twilio', fields: [{ key: 'accountSid', label: 'Account SID' }, { key: 'authToken', label: 'Auth Token' }] },
-  { type: 'matrix', label: 'Matrix', fields: [{ key: 'accessToken', label: 'Access Token' }] },
-  { type: 'email', label: 'Email', fields: [{ key: 'password', label: 'Password' }] },
+  { type: 'discord', label: 'Discord', fields: [{ key: 'botToken', label: 'Bot Token', secret: true }] },
+  { type: 'telegram', label: 'Telegram', fields: [{ key: 'botToken', label: 'Bot Token', secret: true }] },
+  { type: 'slack', label: 'Slack', fields: [{ key: 'botToken', label: 'Bot Token', secret: true }, { key: 'appToken', label: 'App Token', secret: true }] },
+  { type: 'twilio', label: 'Twilio', fields: [{ key: 'accountSid', label: 'Account SID', secret: false }, { key: 'authToken', label: 'Auth Token', secret: true }] },
+  { type: 'matrix', label: 'Matrix', fields: [{ key: 'accessToken', label: 'Access Token', secret: true }] },
+  {
+    type: 'email',
+    label: 'Email',
+    fields: [
+      { key: 'imapHost', label: 'IMAP Host', secret: false },
+      { key: 'imapPort', label: 'IMAP Port', secret: false },
+      { key: 'smtpHost', label: 'SMTP Host', secret: false },
+      { key: 'smtpPort', label: 'SMTP Port', secret: false },
+      { key: 'email', label: 'Email Address', secret: false },
+      { key: 'password', label: 'Password (App Password for Gmail)', secret: true },
+    ],
+  },
 ];
 
 interface ChannelState {
@@ -104,7 +115,7 @@ export function SettingsChannels() {
                     <div key={f.key}>
                       <label>{f.label}</label>
                       <input
-                        type="password"
+                        type={f.secret ? 'password' : 'text'}
                         value={state.credentials[f.key] ?? ''}
                         onChange={(e) => updateCredential(ch.type, f.key, e.target.value)}
                         placeholder={isConnected ? '(configured)' : `Enter ${f.label.toLowerCase()}`}
