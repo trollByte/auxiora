@@ -1274,6 +1274,22 @@ export class Auxiora {
     let twilioAccountSid: string | undefined;
     let twilioAuthToken: string | undefined;
     let twilioPhoneNumber: string | undefined;
+    let emailAddress: string | undefined;
+    let emailPassword: string | undefined;
+    let emailImapHost: string | undefined;
+    let emailImapPort: string | undefined;
+    let emailSmtpHost: string | undefined;
+    let emailSmtpPort: string | undefined;
+    let matrixAccessToken: string | undefined;
+    let matrixHomeserverUrl: string | undefined;
+    let matrixUserId: string | undefined;
+    let signalCliEndpoint: string | undefined;
+    let signalPhoneNumber: string | undefined;
+    let teamsAppId: string | undefined;
+    let teamsAppPassword: string | undefined;
+    let whatsappPhoneNumberId: string | undefined;
+    let whatsappAccessToken: string | undefined;
+    let whatsappVerifyToken: string | undefined;
 
     try {
       discordToken = this.vault.get('DISCORD_BOT_TOKEN');
@@ -1283,6 +1299,22 @@ export class Auxiora {
       twilioAccountSid = this.vault.get('TWILIO_ACCOUNT_SID');
       twilioAuthToken = this.vault.get('TWILIO_AUTH_TOKEN');
       twilioPhoneNumber = this.vault.get('TWILIO_PHONE_NUMBER');
+      emailAddress = this.vault.get('EMAIL_ADDRESS');
+      emailPassword = this.vault.get('EMAIL_PASSWORD');
+      emailImapHost = this.vault.get('EMAIL_IMAP_HOST');
+      emailImapPort = this.vault.get('EMAIL_IMAP_PORT');
+      emailSmtpHost = this.vault.get('EMAIL_SMTP_HOST');
+      emailSmtpPort = this.vault.get('EMAIL_SMTP_PORT');
+      matrixAccessToken = this.vault.get('MATRIX_ACCESS_TOKEN');
+      matrixHomeserverUrl = this.vault.get('MATRIX_HOMESERVER_URL');
+      matrixUserId = this.vault.get('MATRIX_USER_ID');
+      signalCliEndpoint = this.vault.get('SIGNAL_CLI_ENDPOINT');
+      signalPhoneNumber = this.vault.get('SIGNAL_PHONE_NUMBER');
+      teamsAppId = this.vault.get('TEAMS_APP_ID');
+      teamsAppPassword = this.vault.get('TEAMS_APP_PASSWORD');
+      whatsappPhoneNumberId = this.vault.get('WHATSAPP_PHONE_NUMBER_ID');
+      whatsappAccessToken = this.vault.get('WHATSAPP_ACCESS_TOKEN');
+      whatsappVerifyToken = this.vault.get('WHATSAPP_VERIFY_TOKEN');
     } catch {
       // Vault is locked
       return;
@@ -1292,7 +1324,12 @@ export class Auxiora {
       (this.config.channels.discord.enabled && discordToken) ||
       (this.config.channels.telegram.enabled && telegramToken) ||
       (this.config.channels.slack.enabled && slackBotToken && slackAppToken) ||
-      (this.config.channels.twilio.enabled && twilioAccountSid && twilioAuthToken);
+      (this.config.channels.twilio.enabled && twilioAccountSid && twilioAuthToken) ||
+      (this.config.channels.email.enabled && emailAddress && emailPassword && emailImapHost && emailSmtpHost) ||
+      (this.config.channels.matrix.enabled && matrixAccessToken && matrixHomeserverUrl) ||
+      (this.config.channels.signal.enabled && signalCliEndpoint && signalPhoneNumber) ||
+      (this.config.channels.teams.enabled && teamsAppId && teamsAppPassword) ||
+      (this.config.channels.whatsapp.enabled && whatsappPhoneNumberId && whatsappAccessToken && whatsappVerifyToken);
 
     if (!hasAnyChannel) {
       return;
@@ -1325,6 +1362,49 @@ export class Auxiora {
               accountSid: twilioAccountSid,
               authToken: twilioAuthToken,
               phoneNumber: twilioPhoneNumber,
+            }
+          : undefined,
+      email:
+        this.config.channels.email.enabled && emailAddress && emailPassword && emailImapHost && emailSmtpHost
+          ? {
+              imapHost: emailImapHost,
+              imapPort: Number(emailImapPort) || 993,
+              smtpHost: emailSmtpHost,
+              smtpPort: Number(emailSmtpPort) || 465,
+              email: emailAddress,
+              password: emailPassword,
+              pollInterval: this.config.channels.email.pollInterval,
+            }
+          : undefined,
+      matrix:
+        this.config.channels.matrix.enabled && matrixAccessToken && matrixHomeserverUrl && matrixUserId
+          ? {
+              homeserverUrl: matrixHomeserverUrl,
+              userId: matrixUserId,
+              accessToken: matrixAccessToken,
+              autoJoinRooms: this.config.channels.matrix.autoJoinRooms,
+            }
+          : undefined,
+      signal:
+        this.config.channels.signal.enabled && signalCliEndpoint && signalPhoneNumber
+          ? {
+              signalCliEndpoint,
+              phoneNumber: signalPhoneNumber,
+            }
+          : undefined,
+      teams:
+        this.config.channels.teams.enabled && teamsAppId && teamsAppPassword
+          ? {
+              microsoftAppId: teamsAppId,
+              microsoftAppPassword: teamsAppPassword,
+            }
+          : undefined,
+      whatsapp:
+        this.config.channels.whatsapp.enabled && whatsappPhoneNumberId && whatsappAccessToken && whatsappVerifyToken
+          ? {
+              phoneNumberId: whatsappPhoneNumberId,
+              accessToken: whatsappAccessToken,
+              verifyToken: whatsappVerifyToken,
             }
           : undefined,
     });

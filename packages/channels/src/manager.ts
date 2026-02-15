@@ -14,6 +14,11 @@ import { DiscordAdapter, type DiscordAdapterConfig } from './adapters/discord.js
 import { TelegramAdapter, type TelegramAdapterConfig } from './adapters/telegram.js';
 import { SlackAdapter, type SlackAdapterConfig } from './adapters/slack.js';
 import { TwilioAdapter, type TwilioAdapterConfig } from './adapters/twilio.js';
+import { EmailAdapter, type EmailAdapterConfig } from './adapters/email.js';
+import { MatrixAdapter, type MatrixAdapterConfig } from './adapters/matrix.js';
+import { SignalAdapter, type SignalAdapterConfig } from './adapters/signal.js';
+import { TeamsAdapter, type TeamsAdapterConfig } from './adapters/teams.js';
+import { WhatsAppAdapter, type WhatsAppAdapterConfig } from './adapters/whatsapp.js';
 import { GoogleChatAdapter, type GoogleChatAdapterConfig } from './adapters/googlechat.js';
 import { BlueBubblesAdapter, type BlueBubblesAdapterConfig } from './adapters/bluebubbles.js';
 import { ZaloAdapter, type ZaloAdapterConfig } from './adapters/zalo.js';
@@ -23,6 +28,11 @@ export interface ChannelManagerConfig {
   telegram?: TelegramAdapterConfig;
   slack?: SlackAdapterConfig;
   twilio?: TwilioAdapterConfig;
+  email?: EmailAdapterConfig;
+  matrix?: MatrixAdapterConfig;
+  signal?: SignalAdapterConfig;
+  teams?: TeamsAdapterConfig;
+  whatsapp?: WhatsAppAdapterConfig;
   googlechat?: GoogleChatAdapterConfig;
   bluebubbles?: BlueBubblesAdapterConfig;
   zalo?: ZaloAdapterConfig;
@@ -57,6 +67,26 @@ export class ChannelManager {
 
     if (config.bluebubbles?.serverUrl && config.bluebubbles?.password) {
       this.adapters.set('bluebubbles', new BlueBubblesAdapter(config.bluebubbles));
+    }
+
+    if (config.email?.imapHost && config.email?.smtpHost && config.email?.email && config.email?.password) {
+      this.adapters.set('email', new EmailAdapter(config.email));
+    }
+
+    if (config.matrix?.homeserverUrl && config.matrix?.accessToken) {
+      this.adapters.set('matrix', new MatrixAdapter(config.matrix));
+    }
+
+    if (config.signal?.signalCliEndpoint && config.signal?.phoneNumber) {
+      this.adapters.set('signal', new SignalAdapter(config.signal));
+    }
+
+    if (config.teams?.microsoftAppId && config.teams?.microsoftAppPassword) {
+      this.adapters.set('teams', new TeamsAdapter(config.teams));
+    }
+
+    if (config.whatsapp?.phoneNumberId && config.whatsapp?.accessToken && config.whatsapp?.verifyToken) {
+      this.adapters.set('whatsapp', new WhatsAppAdapter(config.whatsapp));
     }
 
     if (config.zalo?.oaAccessToken && config.zalo?.oaSecretKey) {
