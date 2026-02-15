@@ -36,6 +36,7 @@ export interface SessionConfig {
   autoSave: boolean;
   compactionEnabled: boolean;
   dbPath?: string;
+  sessionsDir?: string;
 }
 
 export interface Chat {

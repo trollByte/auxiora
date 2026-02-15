@@ -21,7 +21,7 @@ export class SessionManager {
 
   constructor(config: SessionConfig) {
     this.config = config;
-    this.sessionsDir = getSessionsDir();
+    this.sessionsDir = config.sessionsDir ?? getSessionsDir();
     const dbPath = config.dbPath ?? path.join(this.sessionsDir, 'sessions.db');
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
     this.db = new SessionDatabase(dbPath);
@@ -31,7 +31,57 @@ export class SessionManager {
   }
 
   async initialize(): Promise<void> {
-    // Migration from JSON files happens in Task 4
+    // Migrate legacy JSON session files to SQLite
+    let files: string[];
+    try {
+      files = fs.readdirSync(this.sessionsDir).filter(f => f.endsWith('.json'));
+    } catch {
+      return; // Directory doesn't exist or not readable
+    }
+
+    if (files.length === 0) return;
+
+    const migratedDir = path.join(this.sessionsDir, 'migrated');
+    fs.mkdirSync(migratedDir, { recursive: true });
+
+    for (const file of files) {
+      const filePath = path.join(this.sessionsDir, file);
+      try {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(raw) as {
+          id: string;
+          messages: Array<{ id: string; role: string; content: string; timestamp: number; tokens?: { input?: number; output?: number } }>;
+          metadata: { channelType: string; senderId?: string; createdAt: number; lastActiveAt: number };
+        };
+
+        const title = data.metadata.channelType === 'webchat' ? 'New Chat' : `${data.metadata.channelType} session`;
+        this.db.insertChatWithId(
+          data.id,
+          title,
+          data.metadata.channelType,
+          data.metadata.createdAt,
+          data.metadata.lastActiveAt,
+          data.metadata.senderId,
+        );
+
+        for (const msg of data.messages) {
+          this.db.addMessage(
+            data.id,
+            msg.id,
+            msg.role,
+            msg.content,
+            msg.timestamp,
+            msg.tokens?.input,
+            msg.tokens?.output,
+          );
+        }
+
+        // Move original to migrated/
+        fs.renameSync(filePath, path.join(migratedDir, file));
+      } catch {
+        // Skip corrupt files — leave them in place
+      }
+    }
   }
 
   async create(metadata: Partial<SessionMetadata> & { channelType: string }): Promise<Session> {
