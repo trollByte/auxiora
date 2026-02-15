@@ -8,70 +8,129 @@ Auxiora is a security-first personal AI assistant that runs on your own devices,
 
 ---
 
-## Features
+## Install
 
-- 🔐 **Encrypted Vault** — AES-256-GCM with Argon2id key derivation. No plaintext secrets.
-- 🔒 **Zero-Trust by Default** — Unknown senders get a pairing code, not AI access.
-- 📋 **Tamper-Evident Logs** — Chained hashes detect modifications.
-- 🤖 **Model Agnostic** — Claude, GPT, Gemini, local LLMs. Your choice.
-- 💬 **Multi-Platform** — Discord, Telegram, Slack, WebChat, more coming.
-- 🖥️ **Cross-Platform** — macOS, Linux, Windows 11 (native, no WSL).
-- 🧠 **Personality System** — SOUL.md defines who your assistant is.
+Pick whichever method you prefer — they all give you the same `auxiora` command.
+
+### npm (all platforms)
+
+```bash
+npm install -g auxiora
+```
+
+### Homebrew (macOS)
+
+```bash
+brew install auxiora/tap/auxiora
+```
+
+### apt (Debian / Ubuntu)
+
+```bash
+curl -fsSL https://apt.auxiora.dev/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/auxiora.gpg
+echo "deb [signed-by=/usr/share/keyrings/auxiora.gpg] https://apt.auxiora.dev stable main" | sudo tee /etc/apt/sources.list.d/auxiora.list
+sudo apt update && sudo apt install auxiora
+```
+
+### Shell script (Linux / macOS)
+
+```bash
+curl -fsSL https://auxiora.dev/install.sh | bash
+```
+
+After installation, Auxiora starts automatically and opens the setup wizard in your browser.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install globally
-npm install -g auxiora
+# Start the assistant (opens dashboard in browser)
+auxiora start
 
-# Initialize the vault (creates encrypted credential store)
+# Or set up interactively
+auxiora init
+
+# Add an API key to the encrypted vault
 auxiora vault add ANTHROPIC_API_KEY
 
-# Start the gateway
-auxiora gateway start
-
-# Open WebChat
-open http://localhost:18789
+# Check system health
+auxiora doctor
 ```
+
+---
+
+## Features
+
+### Core
+
+- **Encrypted Vault** — AES-256-GCM with Argon2id key derivation. No plaintext secrets, ever.
+- **Zero-Trust by Default** — Unknown senders get a pairing code, not AI access.
+- **Tamper-Evident Logs** — Chained SHA-256 hashes detect modifications.
+- **Trust Levels** — 5-level autonomy system (0=None to 4=Full Autonomy) across 9 domains.
+
+### AI Providers
+
+Model-agnostic with 10+ providers:
+
+Anthropic (Claude) | OpenAI (GPT) | Google (Gemini) | Groq | Ollama | DeepSeek | Cohere | X AI (Grok) | Replicate | Any OpenAI-compatible API (vLLM, etc.)
+
+Includes streaming, tool use, thinking levels, and intelligent model routing with cost tracking.
+
+### Messaging Channels
+
+12 platforms supported:
+
+Discord | Telegram | Slack | Microsoft Teams | WhatsApp | Signal | Email (SMTP) | Matrix | Google Chat | Zalo | BlueBubbles (iMessage) | Twilio (SMS)
+
+### Service Connectors
+
+8 integrations for proactive assistance:
+
+GitHub | Notion | Linear | Google Workspace (Calendar, Gmail, Drive) | Microsoft 365 (Outlook, OneDrive) | Home Assistant | Social Media (X, LinkedIn, Reddit) | Custom via connector SDK
+
+### Intelligence
+
+- **Personality System** — SOUL.md with 8 interaction modes, tone controls, voice profiles, and a marketplace.
+- **Memory** — Semantic, temporal, and entity-based partitions with pattern detection.
+- **Behaviors** — Scheduled tasks (cron), monitors (conditional polling), and one-shot reminders.
+- **Ambient Mode** — Proactive briefings, pattern anticipation, and quiet notifications.
+- **Browser Control** — Headless Chromium automation with SSRF protection.
+- **Voice Mode** — STT (Whisper), TTS (OpenAI, ElevenLabs), wake-word detection, real-time conversation.
+- **Research Agent** — Brave Search integration, citation tracking, multi-source synthesis.
+
+### Apps
+
+- **Web Dashboard** — Setup wizard, chat, behavior management, settings, personality editor.
+- **Desktop App** — Tauri-based with menu bar, global hotkeys, push-to-talk overlay.
+- **Daemon** — Cross-platform background service (launchd, systemd, Task Scheduler).
 
 ---
 
 ## Vault
 
-All credentials are stored in an encrypted vault using:
+All credentials are stored in an encrypted vault:
+
 - **AES-256-GCM** — Authenticated encryption
 - **Argon2id** — Memory-hard key derivation (64MB, resistant to GPU attacks)
 - **Secure memory zeroing** — Keys cleared from RAM after use
 
 ```bash
-# See what secrets are needed and what's configured
-auxiora vault secrets  # Show all known secret names
-auxiora vault status   # Check what's configured vs missing
-
-# Add a credential
-auxiora vault add DISCORD_BOT_TOKEN
-
-# List stored credentials (names only, never values)
-auxiora vault list
-
-# Remove a credential
-auxiora vault remove DISCORD_BOT_TOKEN
-
-# Get a credential (prints to stdout for scripting)
-auxiora vault get ANTHROPIC_API_KEY
+auxiora vault add ANTHROPIC_API_KEY    # Add a credential
+auxiora vault list                     # List stored names (never values)
+auxiora vault status                   # Check configured vs missing
+auxiora vault remove DISCORD_BOT_TOKEN # Remove a credential
+auxiora vault get ANTHROPIC_API_KEY    # Print value (for scripting)
 ```
 
 ### Required Secrets
 
 | Secret | Purpose |
 |--------|---------|
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key (or OPENAI_API_KEY) |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key (or any provider key) |
 | `DISCORD_BOT_TOKEN` | Discord bot token (if using Discord) |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token (if using Telegram) |
 | `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN` | Slack tokens (if using Slack) |
-| `TWILIO_*` | Twilio credentials (if using SMS/WhatsApp) |
 
 Vault location:
 - **macOS**: `~/Library/Application Support/auxiora/vault.enc`
@@ -80,98 +139,116 @@ Vault location:
 
 ---
 
-## Personality Customization
+## Personality
 
-Auxiora's personality is defined by markdown files in `~/.auxiora/workspace/`:
+Auxiora's personality is defined by SOUL.md with fine-grained controls:
 
 ```bash
-# Copy templates
-mkdir -p ~/.auxiora/workspace
-cp templates/*.md ~/.auxiora/workspace/
-
-# Edit your personality
-$EDITOR ~/.auxiora/workspace/SOUL.md
-$EDITOR ~/.auxiora/workspace/USER.md
+auxiora personality list       # Show available templates
+auxiora personality set <name> # Apply a personality template
 ```
+
+### Tone Controls
+
+| Parameter | Range | Description |
+|-----------|-------|-------------|
+| Warmth | 0–1 | Cold/clinical to warm/friendly |
+| Directness | 0–1 | Diplomatic to blunt |
+| Humor | 0–1 | Serious to playful |
+| Formality | 0–1 | Casual to formal |
+
+### Interaction Modes
+
+8 modes auto-detected from context or manually selected:
+
+`operator` | `analyst` | `advisor` | `writer` | `socratic` | `legal` | `roast` | `companion`
 
 ### Personality Files
 
 - **`SOUL.md`** — Core personality, principles, interaction style
+- **`USER.md`** — Your preferences, workflows, context
 - **`AGENTS.md`** — Tool capabilities and permissions (optional)
 - **`IDENTITY.md`** — System identity and operational context (optional)
-- **`USER.md`** — Your preferences, workflows, context (recommended)
 
-See [`templates/README.md`](templates/README.md) for detailed customization guide.
+Edit via the dashboard personality editor or directly in `~/.auxiora/workspace/`.
 
 ---
 
-## Daemon Management
+## Behaviors
 
-Run Auxiora as a background service:
+Proactive automation without external cron jobs:
 
 ```bash
-# Install as system daemon
-auxiora daemon install
-
-# Start the daemon
-auxiora daemon start
-
-# Check status
-auxiora daemon status
-
-# Stop the daemon
-auxiora daemon stop
-
-# Restart
-auxiora daemon restart
-
-# Uninstall
-auxiora daemon uninstall
+auxiora behaviors list                        # Show all behaviors
+auxiora behaviors create --type scheduled     # Create scheduled task
+auxiora behaviors create --type monitor       # Create conditional monitor
+auxiora behaviors create --type reminder      # Create one-shot reminder
+auxiora behaviors pause <id>                  # Pause a behavior
 ```
 
-Platform support:
-- **macOS**: launchd (`~/Library/LaunchAgents`)
-- **Linux**: systemd user service (`~/.config/systemd/user`)
-- **Windows**: Task Scheduler
+| Type | Description | Example |
+|------|-------------|---------|
+| **Scheduled** | Cron-based recurring tasks | Daily standup summary at 9am |
+| **Monitor** | Conditional polling (60s–24h) | Alert when GitHub PR is approved |
+| **Reminder** | One-shot at a specific time | "Remind me to call dentist at 3pm" |
+
+Auto-pauses after 3 consecutive failures. Max 50 active monitors.
+
+---
+
+## Daemon
+
+Run as a background service:
+
+```bash
+auxiora daemon install    # Install system service
+auxiora daemon start      # Start
+auxiora daemon status     # Check status
+auxiora daemon stop       # Stop
+auxiora daemon restart    # Restart
+auxiora daemon uninstall  # Remove service
+```
+
+| Platform | Backend |
+|----------|---------|
+| macOS | launchd (`~/Library/LaunchAgents`) |
+| Linux | systemd user service (`~/.config/systemd/user`) |
+| Windows | Task Scheduler |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Auxiora Architecture                    │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │ Discord  │  │ Telegram │  │  Slack   │  │  WebChat │    │
-│  │ Adapter  │  │ Adapter  │  │ Adapter  │  │    UI    │    │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘    │
-│       └──────────────┴──────────────┴──────────────┘         │
-│                           │                                  │
-│  ┌────────────────────────▼────────────────────────────┐    │
-│  │              Gateway (HTTP + WebSocket)              │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────────────┐   │    │
-│  │  │  Router  │ │ Sessions │ │   Rate Limiter    │   │    │
-│  │  │& Pairing │ │ Manager  │ │ & Input Sanitizer │   │    │
-│  │  └──────────┘ └──────────┘ └───────────────────┘   │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                           │                                  │
-│  ┌────────────────────────▼────────────────────────────┐    │
-│  │                Agent Runtime                         │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐            │    │
-│  │  │ Provider │ │Personality│ │  Tools   │            │    │
-│  │  │ Factory  │ │ (SOUL.md) │ │  System  │            │    │
-│  │  └──────────┘ └──────────┘ └──────────┘            │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                           │                                  │
-│  ┌────────────────────────▼────────────────────────────┐    │
-│  │              Security Layer                          │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────────────┐   │    │
-│  │  │  Vault   │ │  Audit   │ │   Prompt Injection │   │    │
-│  │  │ (AES256) │ │  Logger  │ │     Detection      │   │    │
-│  │  └──────────┘ └──────────┘ └───────────────────┘   │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        Auxiora Architecture                          │
+│                                                                      │
+│  Channels                                                            │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌───────┐  │
+│  │Discord │ │Telegram│ │ Slack  │ │ Teams  │ │WebChat │ │ +7    │  │
+│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └──┬────┘  │
+│      └──────────┴──────────┴──────────┴──────────┴─────────┘        │
+│                              │                                       │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │               Gateway (HTTP + WebSocket)                      │   │
+│  │  Router │ Sessions │ Rate Limiter │ Pairing │ Auth            │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │                    Agent Runtime                               │   │
+│  │  Providers │ Personality │ Tools │ Memory │ Behaviors          │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │                  Intelligence Layer                            │   │
+│  │  Browser │ Voice │ Ambient │ Research │ Connectors             │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │                   Security Layer                               │   │
+│  │  Vault (AES-256) │ Audit Logger │ Trust System │ Sandboxing   │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -179,14 +256,11 @@ Platform support:
 ## Security Philosophy
 
 1. **Vault over .env files.** Environment variables leak into process listings, crash dumps, and child processes.
-
 2. **DM pairing by default.** Unknown senders never get processed. They get a pairing code. You approve explicitly.
-
 3. **Tamper-evident audit logs.** Every security event is logged with a chained hash. Modifications break the chain.
-
-4. **Loopback binding by default.** The gateway binds to 127.0.0.1. Exposing to 0.0.0.0 requires explicit config.
-
+4. **Loopback binding by default.** The gateway binds to 127.0.0.1. Exposing to 0.0.0.0 requires explicit config + TLS.
 5. **Secrets never touch the model.** Credentials are injected at tool execution time, never in prompts.
+6. **Trust before autonomy.** Every autonomous action requires an appropriate trust level. Actions are audited with reasoning.
 
 ---
 
@@ -198,14 +272,19 @@ git clone https://github.com/trollByte/auxiora.git
 cd auxiora
 
 # Install dependencies
-npm install
+pnpm install
 
-# Build
-npm run build
+# Build all packages
+pnpm build
 
-# Run CLI
-node dist/cli/index.js vault list
+# Run tests
+pnpm test
+
+# Type-check
+pnpm typecheck
 ```
+
+The monorepo uses pnpm workspaces with 60+ packages under `packages/`.
 
 ---
 
@@ -215,22 +294,30 @@ node dist/cli/index.js vault list
 - [x] Tamper-evident audit logging
 - [x] Gateway with WebSocket + HTTP
 - [x] Session manager with persistence
-- [x] AI provider abstraction (Claude, GPT)
-- [x] Discord adapter
-- [x] Telegram adapter
-- [x] Slack adapter
-- [x] Twilio adapter (SMS)
-- [x] Personality system (SOUL.md with templates)
-- [x] WebChat UI
-- [x] Cross-platform daemon (launchd, systemd, Task Scheduler)
-- [ ] Proactive behaviors (cron, webhooks)
-- [ ] Tool system with sandboxing
+- [x] AI provider abstraction (10+ providers)
+- [x] Messaging channels (12 platforms)
+- [x] Personality system with modes and tone controls
+- [x] WebChat UI and dashboard
+- [x] Cross-platform daemon
+- [x] Proactive behaviors (scheduled, monitors, reminders)
+- [x] Browser automation
+- [x] Voice mode (STT/TTS with wake-word)
+- [x] Memory system with pattern detection
+- [x] Service connectors (GitHub, Notion, Linear, etc.)
+- [x] Ambient intelligence
+- [x] Trust/autonomy system
+- [x] Desktop app (Tauri)
+- [x] Multi-chat system
+- [x] Easy cross-platform installation (npm, Homebrew, apt)
+- [ ] Plugin marketplace
+- [ ] Mobile app
+- [ ] Cloud sync and multi-tenancy
 
 ---
 
 ## License
 
-ISC
+Apache-2.0
 
 ---
 

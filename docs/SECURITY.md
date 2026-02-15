@@ -48,6 +48,29 @@ Model never sees:  The actual token value
 
 This prevents prompt injection attacks from extracting credentials via the AI's responses.
 
+### 4. Trust Before Autonomy
+
+Auxiora uses a 5-level trust system to gate autonomous actions:
+
+| Level | Name | Behavior |
+|-------|------|----------|
+| 0 | None | No autonomous action allowed |
+| 1 | Inform | Agent describes what it would do |
+| 2 | Suggest | Agent proposes action, user approves |
+| 3 | Act & Report | Agent acts, then reports what it did |
+| 4 | Full Autonomy | Agent acts silently |
+
+Trust is scoped across 9 domains (messaging, files, web, shell, finance, calendar, email, integrations, system). Each domain can have a different trust level. Trust changes are evidence-based with full audit trail and rollback capability.
+
+### 5. Browser SSRF Protection
+
+Browser automation includes multiple layers of protection against server-side request forgery:
+
+- Numeric IP validation (prevents hex/octal/decimal IP bypass)
+- Blocked protocols: `file:`, `javascript:`, `data:`, `blob:`
+- URL allowlist/blocklist configuration
+- 10 concurrent page limit per session
+
 ---
 
 ## Credential Vault
@@ -267,6 +290,9 @@ For tools that execute code (bash, scripts, etc.):
 | Audit log tampering | Chained hashes |
 | Brute force attacks | Rate limiting + Argon2id |
 | Network exposure | Loopback default + TLS required |
+| Unauthorized autonomous actions | Trust levels per domain |
+| SSRF via browser automation | Numeric IP validation + protocol blocking |
+| Excessive autonomy escalation | Evidence-based trust changes with rollback |
 
 ### Out of Scope (Trust Boundaries)
 
