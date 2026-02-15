@@ -1660,6 +1660,15 @@ export class Auxiora {
         void this.extractAndLearn(content, fullResponse, session.id);
       }
 
+      // Auto-title webchat chats after first exchange
+      if (
+        fullResponse &&
+        session.metadata.channelType === 'webchat' &&
+        session.messages.length <= 3
+      ) {
+        void this.generateChatTitle(session.id, content, fullResponse, client);
+      }
+
       // Send done signal
       this.sendToClient(client, {
         type: 'done',
@@ -1695,6 +1704,40 @@ export class Auxiora {
         id: requestId,
         payload: { message: `Error: ${errorMessage}` },
       });
+    }
+  }
+
+  private async generateChatTitle(
+    chatId: string,
+    userMessage: string,
+    assistantResponse: string,
+    client: ClientConnection,
+  ): Promise<void> {
+    try {
+      // Check if the chat is still titled "New Chat"
+      const chat = this.sessions.listChats().find(c => c.id === chatId);
+      if (!chat || chat.title !== 'New Chat') return;
+
+      const provider = this.providers?.getPrimaryProvider();
+      if (!provider) return;
+
+      const titlePrompt = 'Generate a very short title (3-6 words, no quotes, no punctuation at end) for this conversation. Reply with ONLY the title.';
+      const result = await provider.complete([
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: assistantResponse.slice(0, 500) },
+        { role: 'user', content: titlePrompt },
+      ], { maxTokens: 30 });
+
+      const title = result.content.trim().replace(/^["']|["']$/g, '').slice(0, 60);
+      if (title) {
+        this.sessions.renameChat(chatId, title);
+        this.sendToClient(client, {
+          type: 'chat_titled',
+          payload: { chatId, title },
+        });
+      }
+    } catch {
+      // Non-fatal — chat keeps "New Chat" title
     }
   }
 
