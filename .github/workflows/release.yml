@@ -540,3 +540,39 @@ jobs:
           git add Formula/auxiora.rb
           git commit -m "Update auxiora to ${VERSION}"
           git push
+
+  # ------------------------------------------------------------------
+  # Job 8: Update apt repository
+  # ------------------------------------------------------------------
+  apt-update:
+    name: apt Repository Update
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: server-packages
+          path: artifacts/
+
+      - name: Update apt repository
+        env:
+          APT_TOKEN: ${{ secrets.APT_REPO_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          DEB_FILE=$(ls artifacts/*.deb | head -1)
+
+          git clone "https://x-access-token:${APT_TOKEN}@github.com/auxiora/apt.git" apt-repo
+          bash deploy/apt/update-repo.sh "$DEB_FILE" apt-repo
+
+          cd apt-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update auxiora to ${VERSION}"
+          git push
