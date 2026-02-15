@@ -16,10 +16,11 @@ RUN pnpm -r build
 # Stage 2: Production
 FROM node:22-alpine AS production
 
+ARG VERSION=dev
 LABEL org.opencontainers.image.title="Auxiora" \
       org.opencontainers.image.description="Security-first self-hosted AI assistant" \
-      org.opencontainers.image.version="2.0.0" \
-      org.opencontainers.image.source="https://github.com/auxiora/auxiora"
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.source="https://github.com/trollbyte/auxiora"
 
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
@@ -58,5 +59,8 @@ EXPOSE 18800
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:18800/health || exit 1
 
-ENTRYPOINT ["node", "packages/cli/dist/index.js"]
+COPY deploy/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["start"]

@@ -38,6 +38,14 @@ sudo apt update && sudo apt install auxiora
 curl -fsSL https://auxiora.dev/install.sh | bash
 ```
 
+### Docker
+
+```bash
+docker run -d --name auxiora -p 18800:18800 -v auxiora-data:/data ghcr.io/trollbyte/auxiora
+```
+
+Open `http://localhost:18800/dashboard` to complete setup. See [`deploy/docker/docker-compose.yml`](deploy/docker/docker-compose.yml) for a full production setup with environment variables.
+
 After installation, Auxiora starts automatically and opens the setup wizard in your browser.
 
 ---
