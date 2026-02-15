@@ -196,6 +196,31 @@ export const api = {
       body: JSON.stringify({ theme }),
     }),
 
+  // Chat management
+  getChats: (archived?: boolean) => {
+    const qs = archived ? '?archived=true' : '';
+    return fetchApi<{ data: any[]; total: number }>(`/chats${qs}`);
+  },
+  createNewChat: (title?: string) =>
+    fetchApi<{ data: any }>('/chats', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
+  getChatMessages: (chatId: string) =>
+    fetchApi<{ data: Array<{ id: string; role: string; content: string; timestamp: number }> }>(`/chats/${chatId}/messages`),
+  renameChat: (chatId: string, title: string) =>
+    fetchApi<{ data: any }>(`/chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    }),
+  archiveChat: (chatId: string) =>
+    fetchApi<{ data: any }>(`/chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ archived: true }),
+    }),
+  deleteChatThread: (chatId: string) =>
+    fetchApi<{ data: any }>(`/chats/${chatId}`, { method: 'DELETE' }),
+
   // Notifications
   getNotifications: () =>
     fetchApi<{ data: any[] }>('/notifications'),
