@@ -91,118 +91,111 @@ export function SettingsConnections() {
   }
 
   return (
-    <div className="settings-page">
-      <h1>Connections</h1>
-      <p className="subtitle">Connect external services for email, calendar, and file intelligence.</p>
+    <div className="page">
+      <h2>Connections</h2>
+      <div className="settings-form">
+        {success && <div className="settings-success" onClick={() => setSuccess('')}>{success}</div>}
+        {error && <div className="error">{error}</div>}
 
-      {error && <div className="error-banner">{error}</div>}
-      {success && <div className="success-banner" onClick={() => setSuccess('')}>{success}</div>}
+        {CONNECTORS.map(connector => {
+          const state = states[connector.id];
+          const isConnected = state?.connected;
+          const hasCredentials = state?.hasCredentials;
 
-      {CONNECTORS.map(connector => {
-        const state = states[connector.id];
-        const isConnected = state?.connected;
-        const hasCredentials = state?.hasCredentials;
-
-        return (
-          <div key={connector.id} className="settings-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3>{connector.name}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0' }}>
-                  {connector.description}
-                </p>
-              </div>
-              <span style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '1rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                background: isConnected ? 'var(--success-bg, #dcfce7)' : 'var(--muted-bg, #f3f4f6)',
-                color: isConnected ? 'var(--success-text, #166534)' : 'var(--text-secondary)',
-              }}>
-                {state?.loading ? 'Checking...' : isConnected ? 'Connected' : 'Not connected'}
-              </span>
-            </div>
-
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary, #9ca3af)', margin: '0.5rem 0' }}>
-              Enables: {connector.scopes}
-            </p>
-
-            {isConnected ? (
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                {state?.expiresAt && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', alignSelf: 'center' }}>
-                    Token expires: {new Date(state.expiresAt).toLocaleDateString()}
+          return (
+            <div key={connector.id} className="settings-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3>{connector.name}</h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    {connector.description}
                   </span>
-                )}
-                <button type="button" className="btn-secondary" onClick={() => handleStartOAuth(connector.id)}>
-                  Reconnect
-                </button>
-                <button type="button" className="btn-danger" onClick={() => handleDisconnect(connector.id)}>
-                  Disconnect
-                </button>
-              </div>
-            ) : hasCredentials ? (
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="button" className="btn-primary" onClick={() => handleStartOAuth(connector.id)}>
-                  Connect
-                </button>
-                <button type="button" className="btn-secondary" onClick={() => setShowSetup(connector.id)}>
-                  Update Credentials
-                </button>
-              </div>
-            ) : (
-              <div style={{ marginTop: '1rem' }}>
-                {showSetup !== connector.id ? (
-                  <button type="button" className="btn-primary" onClick={() => setShowSetup(connector.id)}>
-                    Set Up
-                  </button>
-                ) : null}
-              </div>
-            )}
-
-            {showSetup === connector.id && (
-              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--surface-bg, #f9fafb)', borderRadius: '0.5rem' }}>
-                <h4 style={{ margin: '0 0 0.75rem' }}>Setup Instructions</h4>
-                <ol style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', margin: '0 0 1rem' }}>
-                  {connector.instructions.map((step, i) => (
-                    <li key={i} style={{ marginBottom: '0.35rem' }}>
-                      {step.replace('{callbackUrl}', callbackUrl)}
-                    </li>
-                  ))}
-                </ol>
-
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary, #9ca3af)', marginBottom: '1rem', wordBreak: 'break-all' }}>
-                  Redirect URI: <code style={{ background: 'var(--code-bg, #e5e7eb)', padding: '0.15rem 0.35rem', borderRadius: '0.25rem' }}>{callbackUrl}</code>
                 </div>
+                <span className={isConnected ? 'badge badge-green' : 'badge badge-gray'}>
+                  {state?.loading ? 'Checking...' : isConnected ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
 
-                <label>Client ID</label>
-                <input
-                  type="text"
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  placeholder="your-client-id.apps.googleusercontent.com"
-                />
-                <label>Client Secret</label>
-                <input
-                  type="password"
-                  value={clientSecret}
-                  onChange={(e) => setClientSecret(e.target.value)}
-                  placeholder="GOCSPX-..."
-                />
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <button type="button" className="btn-primary" onClick={() => handleSaveCredentials(connector.id)}>
-                    Save & Connect
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.5rem 0' }}>
+                Enables: {connector.scopes}
+              </p>
+
+              {isConnected ? (
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
+                  {state?.expiresAt && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Token expires: {new Date(state.expiresAt).toLocaleDateString()}
+                    </span>
+                  )}
+                  <button type="button" className="btn-sm" onClick={() => handleStartOAuth(connector.id)}>
+                    Reconnect
                   </button>
-                  <button type="button" className="btn-secondary" onClick={() => { setShowSetup(null); setError(''); }}>
-                    Cancel
+                  <button type="button" className="btn-sm btn-danger" onClick={() => handleDisconnect(connector.id)}>
+                    Disconnect
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+              ) : hasCredentials ? (
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button type="button" className="settings-btn" onClick={() => handleStartOAuth(connector.id)}>
+                    Connect
+                  </button>
+                  <button type="button" className="btn-sm" onClick={() => setShowSetup(connector.id)}>
+                    Update Credentials
+                  </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: '1rem' }}>
+                  {showSetup !== connector.id ? (
+                    <button type="button" className="settings-btn" onClick={() => setShowSetup(connector.id)}>
+                      Set Up
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
+              {showSetup === connector.id && (
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-hover)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', fontFamily: 'var(--font-display)', fontWeight: 600 }}>Setup Instructions</h4>
+                  <ol style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', margin: '0 0 1rem' }}>
+                    {connector.instructions.map((step, i) => (
+                      <li key={i} style={{ marginBottom: '0.35rem' }}>
+                        {step.replace('{callbackUrl}', callbackUrl)}
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1rem', wordBreak: 'break-all' }}>
+                    Redirect URI: <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--accent-subtle)', color: 'var(--accent)', padding: '0.15rem 0.35rem', borderRadius: '4px', fontSize: '0.82em' }}>{callbackUrl}</code>
+                  </div>
+
+                  <label>Client ID</label>
+                  <input
+                    type="text"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    placeholder="your-client-id.apps.googleusercontent.com"
+                  />
+                  <label>Client Secret</label>
+                  <input
+                    type="password"
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    placeholder="GOCSPX-..."
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button type="button" className="settings-btn" onClick={() => handleSaveCredentials(connector.id)}>
+                      Save & Connect
+                    </button>
+                    <button type="button" className="btn-sm" onClick={() => { setShowSetup(null); setError(''); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
