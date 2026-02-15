@@ -133,6 +133,11 @@ function mapCCToolCall(name: string, input: any): { name: string; input: any } {
   }
 }
 
+const ACTIVITY_EVENT_PREFIXES = [
+  'behavior.', 'message.', 'channel.', 'webhook.',
+  'system.', 'auth.login', 'auth.logout',
+];
+
 export class Auxiora {
   private logger = getLogger('runtime');
   private config!: Config;
@@ -305,6 +310,20 @@ export class Auxiora {
       },
     });
     this.gateway.onMessage(this.handleMessage.bind(this));
+
+    // Stream curated audit events to dashboard via WebSocket
+    const auditLogger = getAuditLogger();
+    auditLogger.onEntry = (entry) => {
+      const isActivityEvent = ACTIVITY_EVENT_PREFIXES.some(
+        (prefix) => entry.event.startsWith(prefix)
+      );
+      if (isActivityEvent) {
+        this.gateway.broadcast(
+          { type: 'activity', payload: entry },
+          (client) => client.authenticated
+        );
+      }
+    };
 
     // Initialize behavior system
     if (this.providers) {
