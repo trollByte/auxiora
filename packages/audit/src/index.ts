@@ -193,6 +193,7 @@ export class AuditLogger {
   private sequence: number = 0;
   private prevHash: string = '0'.repeat(64); // Genesis hash
   private initialized: boolean = false;
+  public onEntry?: (entry: AuditEntry) => void;
 
   constructor(logPath?: string) {
     this.logPath = logPath ?? getAuditLogPath();
@@ -252,6 +253,7 @@ export class AuditLogger {
     this.prevHash = hash;
 
     await fs.appendFile(this.logPath, JSON.stringify(entry) + '\n', 'utf-8');
+    this.onEntry?.(entry);
 
     // Set permissions on first write
     if (this.sequence === 1 && !isWindows()) {
