@@ -166,13 +166,19 @@ export function Chat() {
     chatIdRef.current = chatId;
   }, [chatId]);
 
-  // Load chat list on mount
+  // Load chat list on mount — auto-create first chat if none exist
   useEffect(() => {
-    api.getChats().then(res => {
+    api.getChats().then(async res => {
       if (res.data && res.data.length > 0) {
         setChats(res.data.map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt })));
-        // Select the most recent chat
         setChatId(res.data[0].id);
+      } else {
+        // No chats yet — create one automatically
+        const newRes = await api.createNewChat();
+        const c = newRes.data;
+        setChats([{ id: c.id, title: c.title, updatedAt: c.updatedAt }]);
+        setChatId(c.id);
+        setHistoryLoaded(true);
       }
     }).catch(() => {});
   }, []);
