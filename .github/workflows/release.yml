@@ -44,7 +44,42 @@ jobs:
         run: pnpm test
 
   # ------------------------------------------------------------------
-  # Job 2: Build and push Docker image to GHCR
+  # Job 2: Publish CLI package to npm
+  # ------------------------------------------------------------------
+  npm-publish:
+    name: npm Publish
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Publish to npm
+        run: cd packages/cli && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Job 3: Build and push Docker image to GHCR
   # ------------------------------------------------------------------
   docker:
     name: Docker Image
@@ -452,3 +487,92 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Job 7: Update Homebrew tap formula
+  # ------------------------------------------------------------------
+  homebrew-update:
+    name: Homebrew Tap Update
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download tarball artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: server-packages
+          path: artifacts/
+
+      - name: Update Homebrew formula
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+
+          # Calculate SHA256 for available tarballs
+          SHA_LINUX_X64=$(sha256sum artifacts/auxiora-${VERSION}-linux-x64.tar.gz | cut -d' ' -f1)
+
+          # Read template and replace placeholders
+          FORMULA=$(cat deploy/homebrew/auxiora.rb)
+          FORMULA="${FORMULA//VERSION_PLACEHOLDER/$VERSION}"
+          FORMULA="${FORMULA//SHA256_PLACEHOLDER_LINUX_X64/$SHA_LINUX_X64}"
+
+          # TODO: When multi-platform tarballs are built, compute these too:
+          # SHA_DARWIN_ARM64=$(sha256sum artifacts/auxiora-${VERSION}-darwin-arm64.tar.gz | cut -d' ' -f1)
+          # SHA_DARWIN_X64=$(sha256sum artifacts/auxiora-${VERSION}-darwin-x64.tar.gz | cut -d' ' -f1)
+          # SHA_LINUX_ARM64=$(sha256sum artifacts/auxiora-${VERSION}-linux-arm64.tar.gz | cut -d' ' -f1)
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_DARWIN_ARM64/$SHA_DARWIN_ARM64}"
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_DARWIN_X64/$SHA_DARWIN_X64}"
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_LINUX_ARM64/$SHA_LINUX_ARM64}"
+
+          # Clone tap repo and update formula
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/auxiora/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          echo "$FORMULA" > tap/Formula/auxiora.rb
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/auxiora.rb
+          git commit -m "Update auxiora to ${VERSION}"
+          git push
+
+  # ------------------------------------------------------------------
+  # Job 8: Update apt repository
+  # ------------------------------------------------------------------
+  apt-update:
+    name: apt Repository Update
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: server-packages
+          path: artifacts/
+
+      - name: Update apt repository
+        env:
+          APT_TOKEN: ${{ secrets.APT_REPO_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          DEB_FILE=$(ls artifacts/*.deb | head -1)
+
+          git clone "https://x-access-token:${APT_TOKEN}@github.com/auxiora/apt.git" apt-repo
+          bash deploy/apt/update-repo.sh "$DEB_FILE" apt-repo
+
+          cd apt-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update auxiora to ${VERSION}"
+          git push

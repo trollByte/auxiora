@@ -280,6 +280,39 @@ do_install() {
     echo ""
     echo "  Or add that line to your shell profile (~/.bashrc, ~/.zshrc, etc.)."
     echo ""
+    # Add to PATH for auto-start below
+    export PATH="${bin_dir}:$PATH"
+  fi
+
+  # -- Auto-start -----------------------------------------------------------
+  info "Starting Auxiora..."
+  echo ""
+
+  if command_exists auxiora; then
+    auxiora start &
+    AUXIORA_PID=$!
+
+    # Wait for health check (up to 30 seconds)
+    for i in $(seq 1 30); do
+      if curl -sf "http://localhost:${AUXIORA_PORT:-18800}/health" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+
+    success "Auxiora is running! Opening dashboard..."
+
+    # Open browser
+    DASHBOARD_URL="http://localhost:${AUXIORA_PORT:-18800}/dashboard"
+    if command_exists open; then
+      open "$DASHBOARD_URL"
+    elif command_exists xdg-open; then
+      xdg-open "$DASHBOARD_URL"
+    else
+      info "Open your browser to: $DASHBOARD_URL"
+    fi
+  else
+    warn "Could not find auxiora in PATH. Run: auxiora start"
   fi
 }
 
