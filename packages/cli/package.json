@@ -1,13 +1,25 @@
 {
-  "name": "@auxiora/cli",
+  "name": "auxiora",
   "version": "1.2.1",
-  "description": "CLI for Auxiora AI assistant",
+  "description": "Self-hosted AI assistant — install and run with a single command",
+  "keywords": ["ai", "assistant", "self-hosted", "chatbot", "llm"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/auxiora/auxiora.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://auxiora.dev",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "auxiora": "dist/index.js"
   },
+  "files": [
+    "dist/",
+    "bin/"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
