@@ -332,6 +332,8 @@ export class Auxiora {
         executorDeps: {
           getProvider: () => this.providers.getPrimaryProvider() as any,
           sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
+            this.logger.info('sendToChannel called', { channelType, channelId, hasChannels: !!this.channels });
+
             // Always broadcast to webchat + persist
             this.gateway.broadcast({
               type: 'message',
@@ -339,19 +341,23 @@ export class Auxiora {
             });
             this.persistToWebchat(message.content);
 
-            // Targeted delivery to the behavior's specified channel
-            if (channelType && channelType !== 'webchat' && this.channels) {
-              const targetId = channelId
-                || this.lastActiveChannels.get(channelType)
-                || this.channels.getDefaultChannelId(channelType as any);
-              if (targetId) {
-                const result = await this.channels.send(channelType as any, targetId, { content: message.content });
-                if (!result.success) return result;
+            // Deliver to all connected external channels
+            if (this.channels) {
+              const connected = this.channels.getConnectedChannels();
+              this.logger.info('Connected channels for delivery', { connected });
+
+              for (const ct of connected) {
+                const targetId = this.lastActiveChannels.get(ct)
+                  ?? this.channels.getDefaultChannelId(ct);
+                this.logger.info('Channel delivery target', { channel: ct, targetId, fromLastActive: this.lastActiveChannels.get(ct) });
+                if (!targetId) continue;
+                const result = await this.channels.send(ct as any, targetId, { content: message.content });
+                if (!result.success) {
+                  this.logger.warn('Channel delivery failed', { channel: ct, targetId, error: new Error(result.error ?? 'unknown') });
+                }
               }
             }
 
-            // Fan out to other connected channels (excluding the one we just targeted)
-            this.deliverToAllChannels(message.content, channelType || undefined);
             return { success: true };
           },
           getSystemPrompt: () => this.systemPrompt,
