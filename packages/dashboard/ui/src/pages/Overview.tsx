@@ -1,6 +1,8 @@
 import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
+import { ActivityFeed } from '../components/ActivityFeed';
+import { BehaviorHealth } from '../components/BehaviorHealth';
 
 export function Overview() {
   const { data: status, refresh } = useApi(() => api.getStatus(), []);
@@ -8,12 +10,13 @@ export function Overview() {
   usePolling(() => { refresh(); refreshModels(); });
 
   const s = status?.data;
-  const providerCount = models?.providers?.filter((p: any) => p.available).length ?? 0;
   const primaryProvider = models?.providers?.find((p: any) => p.available)?.displayName ?? 'None';
 
   return (
     <div className="page">
       <h2>Mission Control</h2>
+
+      {/* Quick status strip */}
       <div className="status-grid">
         <div className="status-card">
           <h3>Connections</h3>
@@ -26,19 +29,19 @@ export function Overview() {
           <div className="sub">{s?.activeModel?.model ?? 'unknown'}</div>
         </div>
         <div className="status-card">
-          <h3>Behaviors</h3>
-          <div className="value">{s?.activeBehaviors ?? 0}</div>
-          <div className="sub">{s?.totalBehaviors ?? 0} total</div>
-        </div>
-        <div className="status-card">
-          <h3>Webhooks</h3>
-          <div className="value">{s?.webhooks ?? 0}</div>
-          <div className="sub">Registered listeners</div>
-        </div>
-        <div className="status-card">
           <h3>Uptime</h3>
           <div className="value">{s ? formatUptime(s.uptime) : '-'}</div>
           <div className="sub">Since last restart</div>
+        </div>
+      </div>
+
+      {/* Main two-column layout */}
+      <div className="mc-columns">
+        <div className="mc-left">
+          <BehaviorHealth />
+        </div>
+        <div className="mc-right">
+          <ActivityFeed />
         </div>
       </div>
     </div>
