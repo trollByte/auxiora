@@ -1492,11 +1492,12 @@ export class Auxiora {
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
     const { id: requestId, payload } = message;
-    const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel } | undefined;
+    const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel; chatId?: string } | undefined;
     const content = msgPayload?.content;
     const modelOverride = msgPayload?.model;
     const providerOverride = msgPayload?.provider;
     const thinkingLevel = msgPayload?.thinkingLevel;
+    const chatId = msgPayload?.chatId;
 
     if (!content || typeof content !== 'string') {
       this.sendToClient(client, {
@@ -1513,12 +1514,27 @@ export class Auxiora {
       return;
     }
 
-    // Get or create session
-    const session = await this.sessions.getOrCreate(client.id, {
-      channelType: client.channelType,
-      clientId: client.id,
-      senderId: client.senderId,
-    });
+    // Get or create session — use chatId if provided (multi-chat), otherwise legacy behavior
+    let session;
+    if (chatId) {
+      const existing = await this.sessions.get(chatId);
+      if (existing) {
+        session = existing;
+      } else {
+        session = await this.sessions.create({ channelType: 'webchat', clientId: client.id });
+        this.sendToClient(client, {
+          type: 'chat_created',
+          id: requestId,
+          payload: { chatId: session.id },
+        });
+      }
+    } else {
+      session = await this.sessions.getOrCreate(client.id, {
+        channelType: client.channelType,
+        clientId: client.id,
+        senderId: client.senderId,
+      });
+    }
 
     // Add user message
     await this.sessions.addMessage(session.id, 'user', content);
