@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { password as passwordPrompt } from '@inquirer/prompts';
+import open from 'open';
 import { startAuxiora, type Auxiora } from '@auxiora/runtime';
 
 let auxiora: Auxiora | null = null;
@@ -17,6 +18,7 @@ export function createStartCommand(): Command {
     .description('Start the Auxiora gateway')
     .option('-p, --password <password>', 'Vault password (or set AUXIORA_VAULT_PASSWORD env var)')
     .option('--no-vault', 'Start without unlocking the vault')
+    .option('--no-browser', 'Do not auto-open browser')
     .action(async (options) => {
       let vaultPassword: string | undefined;
 
@@ -61,6 +63,25 @@ export function createStartCommand(): Command {
 
       try {
         auxiora = await startAuxiora({ vaultPassword });
+
+        const port = process.env.AUXIORA_GATEWAY_PORT || '18800';
+        const dashboardUrl = `http://localhost:${port}/dashboard`;
+
+        console.log('');
+        console.log('  ╔══════════════════════════════════════════════╗');
+        console.log(`  ║  Auxiora is running!                         ║`);
+        console.log(`  ║  Dashboard: ${dashboardUrl.padEnd(33)}║`);
+        console.log('  ╚══════════════════════════════════════════════╝');
+        console.log('');
+
+        // Auto-open browser if interactive TTY and not explicitly disabled
+        if (process.stdin.isTTY && !process.env.AUXIORA_NO_BROWSER && options.browser !== false) {
+          try {
+            await open(dashboardUrl);
+          } catch {
+            // Non-fatal — user can open manually
+          }
+        }
 
         // Keep process running
         process.stdin.resume();
