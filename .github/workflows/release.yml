@@ -487,3 +487,56 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Job 7: Update Homebrew tap formula
+  # ------------------------------------------------------------------
+  homebrew-update:
+    name: Homebrew Tap Update
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download tarball artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: server-packages
+          path: artifacts/
+
+      - name: Update Homebrew formula
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+
+          # Calculate SHA256 for available tarballs
+          SHA_LINUX_X64=$(sha256sum artifacts/auxiora-${VERSION}-linux-x64.tar.gz | cut -d' ' -f1)
+
+          # Read template and replace placeholders
+          FORMULA=$(cat deploy/homebrew/auxiora.rb)
+          FORMULA="${FORMULA//VERSION_PLACEHOLDER/$VERSION}"
+          FORMULA="${FORMULA//SHA256_PLACEHOLDER_LINUX_X64/$SHA_LINUX_X64}"
+
+          # TODO: When multi-platform tarballs are built, compute these too:
+          # SHA_DARWIN_ARM64=$(sha256sum artifacts/auxiora-${VERSION}-darwin-arm64.tar.gz | cut -d' ' -f1)
+          # SHA_DARWIN_X64=$(sha256sum artifacts/auxiora-${VERSION}-darwin-x64.tar.gz | cut -d' ' -f1)
+          # SHA_LINUX_ARM64=$(sha256sum artifacts/auxiora-${VERSION}-linux-arm64.tar.gz | cut -d' ' -f1)
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_DARWIN_ARM64/$SHA_DARWIN_ARM64}"
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_DARWIN_X64/$SHA_DARWIN_X64}"
+          # FORMULA="${FORMULA//SHA256_PLACEHOLDER_LINUX_ARM64/$SHA_LINUX_ARM64}"
+
+          # Clone tap repo and update formula
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/auxiora/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          echo "$FORMULA" > tap/Formula/auxiora.rb
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/auxiora.rb
+          git commit -m "Update auxiora to ${VERSION}"
+          git push
