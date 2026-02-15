@@ -22,7 +22,7 @@ export function SetupComplete() {
             Open Chat
           </button>
           <button className="setup-btn-secondary" onClick={() => { window.location.href = '/dashboard'; }}>
-            Go to Dashboard
+            Go to Mission Control
           </button>
         </div>
       </div>

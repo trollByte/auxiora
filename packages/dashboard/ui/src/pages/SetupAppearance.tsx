@@ -28,7 +28,7 @@ export function SetupAppearance() {
       <SetupProgress currentStep={5} />
       <div className="setup-card" style={{ maxWidth: 720 }}>
         <h1>Appearance</h1>
-        <p className="subtitle">Choose a visual theme for your dashboard. You can change this later in settings.</p>
+        <p className="subtitle">Choose a visual theme for Mission Control. You can change this later in settings.</p>
         <ThemeSelector />
         {error && <p className="error">{error}</p>}
         <button

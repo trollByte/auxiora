@@ -65,7 +65,7 @@ export function Layout() {
             </li>
             <li>
               <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
-                Dashboard
+                Mission Control
               </NavLink>
             </li>
           </div>

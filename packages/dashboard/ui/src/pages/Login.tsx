@@ -44,13 +44,13 @@ export function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>{agentName} Dashboard</h1>
+        <h1>{agentName} Mission Control</h1>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Dashboard password"
+            placeholder="Password"
             autoFocus
           />
           <button type="submit" disabled={loading}>

@@ -33,7 +33,7 @@ export function SettingsSecurity() {
     setDashSaving(true);
     try {
       await api.changeDashboardPassword(dashOld, dashNew);
-      setDashSuccess('Dashboard password changed');
+      setDashSuccess('Mission Control password changed');
       setDashOld('');
       setDashNew('');
       setDashConfirm('');
@@ -74,7 +74,7 @@ export function SettingsSecurity() {
       <h2>Security</h2>
 
       <div className="settings-section">
-        <h3>Change Dashboard Password</h3>
+        <h3>Change Mission Control Password</h3>
         <form className="settings-form" onSubmit={handleDashboardPassword}>
           <label>Current Password</label>
           <input type="password" value={dashOld} onChange={(e) => setDashOld(e.target.value)} />

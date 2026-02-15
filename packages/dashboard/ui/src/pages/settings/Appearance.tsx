@@ -43,7 +43,7 @@ export function SettingsAppearance() {
     <div className="page">
       <h2>Appearance</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-        Choose your dashboard theme. Changes preview instantly.
+        Choose your theme. Changes preview instantly.
       </p>
       <ThemeSelector />
       {hasChanges && (

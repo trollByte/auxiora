@@ -31,10 +31,10 @@ export function SetupDashboardPassword() {
     <div className="setup-page">
       <SetupProgress currentStep={2} />
       <div className="setup-card">
-        <h1>Dashboard Password</h1>
-        <p className="subtitle">This password protects your dashboard. You'll use it to log in.</p>
+        <h1>Mission Control Password</h1>
+        <p className="subtitle">This password protects Mission Control. You'll use it to log in.</p>
         <form onSubmit={handleSubmit}>
-          <label>Dashboard password</label>
+          <label>Password</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
           <PasswordStrength password={password} />
           <label>Confirm password</label>

@@ -13,7 +13,7 @@ export function Overview() {
 
   return (
     <div className="page">
-      <h2>Dashboard</h2>
+      <h2>Mission Control</h2>
       <div className="status-grid">
         <div className="status-card">
           <h3>Connections</h3>
