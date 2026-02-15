@@ -607,6 +607,63 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: messages });
   });
 
+  // Chat management
+  router.get('/chats', (req: Request, res: Response) => {
+    if (!deps.sessions?.listChats) {
+      res.json({ data: [], total: 0 });
+      return;
+    }
+    const archived = req.query.archived === 'true';
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const chats = deps.sessions.listChats({ archived, limit, offset });
+    res.json({ data: chats, total: chats.length });
+  });
+
+  router.post('/chats', (req: Request, res: Response) => {
+    if (!deps.sessions?.createChat) {
+      res.status(503).json({ error: 'Sessions not available' });
+      return;
+    }
+    const { title } = req.body as { title?: string };
+    const chat = deps.sessions.createChat(title);
+    res.status(201).json({ data: chat });
+  });
+
+  router.get('/chats/:id/messages', (req: Request, res: Response) => {
+    if (!deps.sessions?.getChatMessages) {
+      res.json({ data: [] });
+      return;
+    }
+    const messages = deps.sessions.getChatMessages(String(req.params.id));
+    res.json({ data: messages });
+  });
+
+  router.patch('/chats/:id', (req: Request, res: Response) => {
+    if (!deps.sessions) {
+      res.status(503).json({ error: 'Sessions not available' });
+      return;
+    }
+    const chatId = String(req.params.id);
+    const { title, archived } = req.body as { title?: string; archived?: boolean };
+    if (title !== undefined && deps.sessions.renameChat) {
+      deps.sessions.renameChat(chatId, title);
+    }
+    if (archived === true && deps.sessions.archiveChat) {
+      deps.sessions.archiveChat(chatId);
+    }
+    res.json({ data: { ok: true } });
+  });
+
+  router.delete('/chats/:id', (req: Request, res: Response) => {
+    if (!deps.sessions?.deleteChat) {
+      res.status(503).json({ error: 'Sessions not available' });
+      return;
+    }
+    deps.sessions.deleteChat(String(req.params.id));
+    res.json({ data: { deleted: true } });
+  });
+
   // Audit
   router.get('/audit', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 100;

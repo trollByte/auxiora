@@ -244,6 +244,12 @@ export interface DashboardDeps {
   // --- Chat session history ---
   sessions?: {
     getWebchatMessages(): Promise<Array<{ id: string; role: string; content: string; timestamp: number }>>;
+    listChats(options?: { archived?: boolean; limit?: number; offset?: number }): Array<{ id: string; title: string; channel: string; createdAt: number; updatedAt: number; archived: boolean }>;
+    createChat(title?: string): { id: string; title: string; channel: string; createdAt: number; updatedAt: number; archived: boolean };
+    renameChat(chatId: string, title: string): void;
+    archiveChat(chatId: string): void;
+    deleteChat(chatId: string): void;
+    getChatMessages(chatId: string): Array<{ id: string; role: string; content: string; timestamp: number }>;
   };
 }
 

@@ -129,7 +129,7 @@ export class SessionDatabase {
       'SELECT * FROM chats WHERE sender_id = ? AND channel = ? ORDER BY updated_at DESC LIMIT 1',
     ).get(senderId, channel) as Record<string, unknown> | undefined;
     if (row) {
-      this.db.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').run(Date.now(), row.id);
+      this.db.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').run(Date.now(), row.id as string);
       return this.rowToChat(row);
     }
     return this.createChat(`${channel} session`, channel, senderId);

@@ -648,6 +648,18 @@ export class Auxiora {
                 .filter(m => m.role === 'user' || m.role === 'assistant')
                 .map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
             },
+            listChats: (options?: { archived?: boolean; limit?: number; offset?: number }) =>
+              this.sessions.listChats(options),
+            createChat: (title?: string) =>
+              this.sessions.createChat(title),
+            renameChat: (chatId: string, title: string) =>
+              this.sessions.renameChat(chatId, title),
+            archiveChat: (chatId: string) =>
+              this.sessions.archiveChat(chatId),
+            deleteChat: (chatId: string) =>
+              this.sessions.deleteChat(chatId),
+            getChatMessages: (chatId: string) =>
+              this.sessions.getChatMessages(chatId),
           },
           get trust() {
             return self.trustEngine && self.trustAuditTrail && self.rollbackManager ? {
