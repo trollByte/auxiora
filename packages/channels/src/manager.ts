@@ -186,6 +186,10 @@ export class ChannelManager {
     return adapter.startTyping(channelId);
   }
 
+  getDefaultChannelId(channelType: ChannelType): string | undefined {
+    return this.adapters.get(channelType)?.getDefaultChannelId?.();
+  }
+
   getAdapter<T extends ChannelAdapter>(type: ChannelType): T | undefined {
     return this.adapters.get(type) as T | undefined;
   }

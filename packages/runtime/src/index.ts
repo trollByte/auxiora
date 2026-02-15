@@ -312,14 +312,27 @@ export class Auxiora {
         storePath: getBehaviorsPath(),
         executorDeps: {
           getProvider: () => this.providers.getPrimaryProvider() as any,
-          sendToChannel: async (_channelType: string, _channelId: string, message: { content: string }) => {
-            // Fan out to webchat + all connected channel adapters
-            // deliverToAllChannels also persists to webchat session
+          sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
+            // Always broadcast to webchat + persist
             this.gateway.broadcast({
               type: 'message',
               payload: { role: 'assistant', content: message.content },
             });
-            this.deliverToAllChannels(message.content);
+            this.persistToWebchat(message.content);
+
+            // Targeted delivery to the behavior's specified channel
+            if (channelType && channelType !== 'webchat' && this.channels) {
+              const targetId = channelId
+                || this.lastActiveChannels.get(channelType)
+                || this.channels.getDefaultChannelId(channelType as any);
+              if (targetId) {
+                const result = await this.channels.send(channelType as any, targetId, { content: message.content });
+                if (!result.success) return result;
+              }
+            }
+
+            // Fan out to other connected channels (excluding the one we just targeted)
+            this.deliverToAllChannels(message.content, channelType || undefined);
             return { success: true };
           },
           getSystemPrompt: () => this.systemPrompt,
@@ -2256,18 +2269,25 @@ export class Auxiora {
     }
   }
 
-  /** Deliver a proactive message to all connected channel adapters using tracked channel IDs.
-   *  Also persists to the webchat session so messages appear in chat history. */
-  private deliverToAllChannels(content: string): void {
-    // Persist to webchat session so it appears in chat history even if no one is connected
+  /** Persist a message to the webchat session so it appears in chat history. */
+  private persistToWebchat(content: string): void {
     this.sessions.getOrCreate('webchat', { channelType: 'webchat' })
       .then(session => this.sessions.addMessage(session.id, 'assistant', content))
       .catch(() => { /* non-fatal */ });
+  }
+
+  /** Deliver a proactive message to all connected channel adapters using tracked channel IDs.
+   *  Also persists to the webchat session so messages appear in chat history.
+   *  @param exclude - channel type to skip (already delivered by targeted send) */
+  private deliverToAllChannels(content: string, exclude?: string): void {
+    this.persistToWebchat(content);
 
     // Deliver to external channel adapters (Discord, Slack, Telegram, etc.)
     if (!this.channels) return;
     for (const ct of this.channels.getConnectedChannels()) {
-      const targetId = this.lastActiveChannels.get(ct);
+      if (ct === exclude) continue;
+      const targetId = this.lastActiveChannels.get(ct)
+        ?? this.channels.getDefaultChannelId(ct);
       if (!targetId) continue;
       this.channels.send(ct as any, targetId, { content }).catch((err) => {
         this.logger.warn('Proactive channel delivery failed', {

@@ -222,6 +222,13 @@ export class DiscordAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  getDefaultChannelId(): string | undefined {
+    const textChannel = this.client.channels.cache.find(
+      (ch) => ch.type === DiscordChannelType.GuildText
+    );
+    return textChannel?.id;
+  }
+
   async startTyping(channelId: string): Promise<() => void> {
     // Use cache (populated by messageCreate) to avoid extra API call
     const channel = this.client.channels.cache.get(channelId);
