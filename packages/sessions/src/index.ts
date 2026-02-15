@@ -5,4 +5,6 @@ export type {
   SessionMetadata,
   Message,
   MessageRole,
+  Chat,
+  ListChatsOptions,
 } from './types.js';

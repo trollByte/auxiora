@@ -35,4 +35,21 @@ export interface SessionConfig {
   ttlMinutes: number;
   autoSave: boolean;
   compactionEnabled: boolean;
+  dbPath?: string;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  channel: string;
+  createdAt: number;
+  updatedAt: number;
+  archived: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ListChatsOptions {
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
 }
