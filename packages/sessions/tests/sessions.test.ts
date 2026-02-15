@@ -1,38 +1,31 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { SessionManager } from '../src/manager.js';
 
 const testDir = path.join(os.tmpdir(), 'auxiora-sessions-test-' + Date.now());
 
-// Mock the sessions directory
-const originalGetSessionsDir = await import('@auxiora/core').then((m) => m.getSessionsDir);
-
 describe('SessionManager', () => {
   let manager: SessionManager;
 
   beforeEach(async () => {
-    await fs.mkdir(testDir, { recursive: true });
+    fs.mkdirSync(testDir, { recursive: true });
 
-    // Create manager with test config
     manager = new SessionManager({
       maxContextTokens: 10000,
       ttlMinutes: 60,
       autoSave: true,
       compactionEnabled: true,
+      dbPath: path.join(testDir, 'sessions.db'),
     });
-
-    // Override sessions directory
-    // @ts-ignore
-    manager['sessionsDir'] = testDir;
 
     await manager.initialize();
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     manager.destroy();
-    await fs.rm(testDir, { recursive: true, force: true });
+    fs.rmSync(testDir, { recursive: true, force: true });
   });
 
   describe('create', () => {
@@ -43,14 +36,6 @@ describe('SessionManager', () => {
       expect(session.messages).toEqual([]);
       expect(session.metadata.channelType).toBe('webchat');
       expect(session.metadata.createdAt).toBeDefined();
-    });
-
-    it('should save session to disk', async () => {
-      const session = await manager.create({ channelType: 'discord' });
-
-      const filePath = path.join(testDir, `${session.id}.json`);
-      const exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
     });
   });
 
@@ -113,16 +98,12 @@ describe('SessionManager', () => {
     it('should return messages within token limit', async () => {
       const session = await manager.create({ channelType: 'webchat' });
 
-      // Add messages with increasing content
       for (let i = 0; i < 10; i++) {
         await manager.addMessage(session.id, 'user', 'x'.repeat(100));
         await manager.addMessage(session.id, 'assistant', 'y'.repeat(100));
       }
 
-      // Limit to ~500 chars (125 tokens roughly)
       const context = manager.getContextMessages(session.id, 125);
-
-      // Should get fewer than all messages
       expect(context.length).toBeLessThan(20);
       expect(context.length).toBeGreaterThan(0);
     });
@@ -142,15 +123,11 @@ describe('SessionManager', () => {
 
     it('should delete session', async () => {
       const session = await manager.create({ channelType: 'webchat' });
-      const filePath = path.join(testDir, `${session.id}.json`);
 
       await manager.delete(session.id);
 
       const retrieved = await manager.get(session.id);
       expect(retrieved).toBeNull();
-
-      const exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(false);
     });
   });
 
@@ -162,6 +139,49 @@ describe('SessionManager', () => {
 
       const active = manager.getActiveSessions();
       expect(active).toHaveLength(3);
+    });
+  });
+
+  describe('chat management', () => {
+    it('should create and list chats', () => {
+      manager.createChat('Chat 1');
+      manager.createChat('Chat 2');
+
+      const chats = manager.listChats();
+      expect(chats).toHaveLength(2);
+    });
+
+    it('should rename a chat', () => {
+      const chat = manager.createChat('Old Name');
+      manager.renameChat(chat.id, 'New Name');
+
+      const chats = manager.listChats();
+      expect(chats.find(c => c.id === chat.id)?.title).toBe('New Name');
+    });
+
+    it('should archive and restore visibility', () => {
+      manager.createChat('Active');
+      const toArchive = manager.createChat('Archive Me');
+      manager.archiveChat(toArchive.id);
+
+      expect(manager.listChats()).toHaveLength(1);
+      expect(manager.listChats({ archived: true })).toHaveLength(2);
+    });
+
+    it('should delete a chat permanently', () => {
+      const chat = manager.createChat('Delete Me');
+      manager.deleteChat(chat.id);
+
+      expect(manager.listChats()).toHaveLength(0);
+    });
+
+    it('should get messages for a specific chat', async () => {
+      const chat = manager.createChat('Test Chat');
+      await manager.addMessage(chat.id, 'user', 'Hello from chat');
+
+      const messages = manager.getChatMessages(chat.id);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Hello from chat');
     });
   });
 });
