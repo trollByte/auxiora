@@ -85,7 +85,7 @@ import { ContactGraph, ContextRecall } from '@auxiora/contacts';
 import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compose';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
-import type { IntrospectionSources, AutoFixActions } from '@auxiora/introspection';
+import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
 import { setMemoryStore } from '@auxiora/tools';
@@ -1199,7 +1199,7 @@ export class Auxiora {
     await this.capabilityCatalog.rebuild();
 
     const initialHealth = { overall: 'healthy' as const, subsystems: [], issues: [], lastCheck: new Date().toISOString() };
-    this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog.getCatalog(), initialHealth);
+    this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog.getCatalog(), initialHealth, this.getSelfAwarenessContext());
 
     const autoFixActions: AutoFixActions = {
       reconnectChannel: async () => false,
@@ -1211,7 +1211,7 @@ export class Auxiora {
 
     this.healthMonitor = new HealthMonitorImpl(introspectionSources, autoFixActions);
     this.healthMonitor.onChange((state) => {
-      this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog!.getCatalog(), state);
+      this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog!.getCatalog(), state, this.getSelfAwarenessContext());
       this.gateway.broadcast({ type: 'health_update', payload: state }, (client) => client.authenticated);
     });
     this.healthMonitor.start(30_000);
@@ -1718,6 +1718,24 @@ export class Auxiora {
     this.systemPrompt = engine === 'the-architect'
       ? this.architectPrompt
       : this.standardPrompt;
+    // Rebuild self-awareness fragment so the AI knows its personality changed
+    if (this.capabilityCatalog && this.healthMonitor) {
+      this.capabilityPromptFragment = generatePromptFragment(
+        this.capabilityCatalog.getCatalog(),
+        this.healthMonitor.getHealthState(),
+        this.getSelfAwarenessContext(),
+      );
+    }
+  }
+
+  private getSelfAwarenessContext(): SelfAwarenessContext {
+    const primary = this.config.provider.primary;
+    const providerConfig = (this.config.provider as Record<string, any>)[primary];
+    return {
+      defaultModel: this.config.routing?.defaultModel ?? providerConfig?.model,
+      primaryProvider: primary,
+      personalityEngine: this.config.agent.personality ?? 'standard',
+    };
   }
 
   /** Append Architect context modifier when active, returning context metadata. */

@@ -7,84 +7,84 @@ import type { CorrectionStore } from './correction-store.js';
 
 const DOMAIN_SIGNALS: Record<ContextDomain, ContextSignal> = {
   security_review: {
-    keywords: ['vulnerability', 'CVE', 'threat', 'exploit', 'patch', 'audit', 'compliance', 'penetration', 'firewall', 'incident', 'breach', 'SIEM', 'SOC', 'CTEM', 'attack surface', 'zero-day', 'Qualys', 'CrowdStrike', 'Splunk', 'Wiz', 'TORQ'],
-    patterns: ['review this security', 'is this secure', 'how would an attacker', 'what are the risks', 'FCA audit', 'threat model'],
-    confidence_threshold: 0.6,
+    keywords: ['vulnerability', 'CVE', 'threat', 'exploit', 'patch', 'audit', 'compliance', 'penetration', 'firewall', 'incident', 'breach', 'SIEM', 'SOC', 'CTEM', 'attack surface', 'zero-day', 'Qualys', 'CrowdStrike', 'Splunk', 'Wiz', 'TORQ', 'security', 'encryption', 'authentication', 'authorization'],
+    patterns: ['review this security', 'is this secure', 'how would an attacker', 'what are the risks', 'FCA audit', 'threat model', 'security posture', 'attack vector'],
+    confidence_threshold: 0.35,
   },
   code_engineering: {
-    keywords: ['function', 'API', 'deploy', 'refactor', 'test', 'build', 'pipeline', 'CI/CD', 'container', 'microservice', 'endpoint', 'typescript', 'python', 'rust', 'terraform'],
-    patterns: ['write a function', 'debug this', 'optimize this code', 'implement', 'how should I structure'],
-    confidence_threshold: 0.7,
+    keywords: ['function', 'API', 'deploy', 'refactor', 'test', 'build', 'pipeline', 'CI/CD', 'container', 'microservice', 'endpoint', 'typescript', 'python', 'rust', 'terraform', 'code', 'programming', 'variable', 'database', 'query', 'git', 'commit', 'branch', 'server', 'backend', 'frontend'],
+    patterns: ['write a function', 'debug this', 'optimize this code', 'implement', 'how should I structure', 'write code', 'fix the code', 'add a feature'],
+    confidence_threshold: 0.35,
   },
   architecture_design: {
-    keywords: ['architecture', 'design', 'system', 'scalability', 'ADR', 'microservice', 'monolith', 'event-driven', 'CNAPP', 'platform'],
-    patterns: ['how should we architect', 'what pattern should', 'design decision', 'trade-offs between', 'should we use X or Y'],
-    confidence_threshold: 0.7,
+    keywords: ['architecture', 'design', 'system', 'scalability', 'ADR', 'microservice', 'monolith', 'event-driven', 'CNAPP', 'platform', 'infrastructure', 'distributed', 'load balancer', 'service mesh'],
+    patterns: ['how should we architect', 'what pattern should', 'design decision', 'trade-offs between', 'should we use X or Y', 'system design'],
+    confidence_threshold: 0.35,
   },
   debugging: {
-    keywords: ['error', 'bug', 'crash', 'failed', 'broken', 'stack trace', 'exception', 'undefined', 'null', 'timeout'],
-    patterns: ['why is this', 'not working', 'getting an error', 'keeps failing', 'can you fix'],
-    confidence_threshold: 0.7,
+    keywords: ['error', 'bug', 'crash', 'failed', 'broken', 'stack trace', 'exception', 'undefined', 'null', 'timeout', 'fix', 'issue', 'problem', 'wrong', 'unexpected'],
+    patterns: ['why is this', 'not working', 'getting an error', 'keeps failing', 'can you fix', 'what went wrong', "doesn't work"],
+    confidence_threshold: 0.35,
   },
   team_leadership: {
-    keywords: ['team', 'hire', 'performance', 'culture', 'morale', 'feedback', 'promotion', 'development', 'retention', 'onboarding'],
-    patterns: ['how do I handle', 'my team is', 'should I tell them', 'managing', 'struggling with their performance'],
-    confidence_threshold: 0.65,
+    keywords: ['team', 'hire', 'performance', 'culture', 'morale', 'feedback', 'promotion', 'development', 'retention', 'onboarding', 'manage', 'leadership', 'report', 'standup'],
+    patterns: ['how do I handle', 'my team is', 'should I tell them', 'managing', 'struggling with their performance', 'lead my team'],
+    confidence_threshold: 0.35,
   },
   one_on_one: {
-    keywords: ['1:1', 'one-on-one', 'check-in', 'career', 'growth', 'feedback for', 'coaching'],
-    patterns: ['meeting with my', 'how do I give feedback', 'they seem disengaged', 'want to develop them'],
-    confidence_threshold: 0.7,
+    keywords: ['1:1', 'one-on-one', 'check-in', 'career', 'growth', 'feedback for', 'coaching', 'mentoring', 'direct report'],
+    patterns: ['meeting with my', 'how do I give feedback', 'they seem disengaged', 'want to develop them', 'prep for my 1:1'],
+    confidence_threshold: 0.35,
   },
   sales_pitch: {
-    keywords: ['pitch', 'proposal', 'sell', 'demo', 'close', 'deal', 'prospect', 'value prop', 'objection', 'ROI'],
-    patterns: ['how do I sell', 'convince them to', 'make the case for', 'justify the budget', 'executive presentation'],
-    confidence_threshold: 0.7,
+    keywords: ['pitch', 'proposal', 'sell', 'demo', 'close', 'deal', 'prospect', 'value prop', 'objection', 'ROI', 'sales', 'revenue', 'pipeline', 'quota', 'lead'],
+    patterns: ['how do I sell', 'convince them to', 'make the case for', 'justify the budget', 'executive presentation', 'close the deal'],
+    confidence_threshold: 0.35,
   },
   negotiation: {
-    keywords: ['negotiate', 'contract', 'terms', 'concession', 'counter-offer', 'vendor', 'compensation', 'salary'],
-    patterns: ['how should I respond to their offer', 'they want us to', 'push back on', 'what leverage do I have'],
-    confidence_threshold: 0.7,
+    keywords: ['negotiate', 'contract', 'terms', 'concession', 'counter-offer', 'vendor', 'compensation', 'salary', 'offer', 'leverage', 'agreement'],
+    patterns: ['how should I respond to their offer', 'they want us to', 'push back on', 'what leverage do I have', 'negotiate the terms'],
+    confidence_threshold: 0.35,
   },
   marketing_content: {
-    keywords: ['brand', 'audience', 'campaign', 'SEO', 'content strategy', 'positioning', 'social media', 'newsletter'],
-    patterns: ['how do we position', 'what should our messaging', 'content calendar', 'build an audience'],
-    confidence_threshold: 0.7,
+    keywords: ['brand', 'audience', 'campaign', 'SEO', 'content strategy', 'positioning', 'social media', 'newsletter', 'marketing', 'ads', 'advertising', 'funnel', 'conversion', 'engagement', 'branding', 'copy', 'tagline', 'target market'],
+    patterns: ['how do we position', 'what should our messaging', 'content calendar', 'build an audience', 'marketing strategy', 'grow our audience', 'write marketing'],
+    confidence_threshold: 0.35,
   },
   strategic_planning: {
-    keywords: ['strategy', 'roadmap', 'vision', 'priority', 'quarter', 'OKR', 'initiative', 'investment', 'resource allocation'],
-    patterns: ['should we invest in', 'what should our strategy be', 'how do we prioritize', 'next quarter', 'three-year plan'],
-    confidence_threshold: 0.7,
+    keywords: ['strategy', 'roadmap', 'vision', 'priority', 'quarter', 'OKR', 'initiative', 'investment', 'resource allocation', 'planning', 'goals', 'objectives', 'KPI', 'metric'],
+    patterns: ['should we invest in', 'what should our strategy be', 'how do we prioritize', 'next quarter', 'three-year plan', 'strategic direction'],
+    confidence_threshold: 0.35,
   },
   crisis_management: {
-    keywords: ['breach', 'outage', 'incident', 'down', 'emergency', 'compromised', 'escalation', 'P1', 'severity 1'],
-    patterns: ['we just got', 'everything is broken', 'how do we respond', 'the board is asking', 'media is calling'],
-    confidence_threshold: 0.5,
+    keywords: ['breach', 'outage', 'incident', 'down', 'emergency', 'compromised', 'escalation', 'P1', 'severity 1', 'urgent', 'critical issue'],
+    patterns: ['we just got', 'everything is broken', 'how do we respond', 'the board is asking', 'media is calling', 'need to act now'],
+    confidence_threshold: 0.30,
   },
   creative_work: {
-    keywords: ['brainstorm', 'idea', 'creative', 'concept', 'innovation', 'vision'],
-    patterns: ['help me think of', 'what if we', 'how could we make this more', 'I need ideas for'],
-    confidence_threshold: 0.7,
+    keywords: ['brainstorm', 'idea', 'creative', 'concept', 'innovation', 'vision', 'imagine', 'prototype', 'design thinking', 'inspiration'],
+    patterns: ['help me think of', 'what if we', 'how could we make this more', 'I need ideas for', 'come up with', 'get creative'],
+    confidence_threshold: 0.35,
   },
   writing_content: {
-    keywords: ['blog', 'article', 'post', 'newsletter', 'documentation', 'write', 'draft', 'edit', 'tone'],
-    patterns: ['write a blog post', 'help me draft', 'review this writing', 'how should I frame'],
-    confidence_threshold: 0.7,
+    keywords: ['blog', 'article', 'post', 'newsletter', 'documentation', 'write', 'draft', 'edit', 'tone', 'copy', 'essay', 'email', 'message', 'announcement'],
+    patterns: ['write a blog post', 'help me draft', 'review this writing', 'how should I frame', 'write an email', 'draft a message', 'write about'],
+    confidence_threshold: 0.35,
   },
   decision_making: {
-    keywords: ['decide', 'choice', 'option', 'trade-off', 'should I', 'pros and cons', 'risk', 'compare'],
-    patterns: ['should I do X or Y', 'what would you do', 'help me decide', 'weighing my options'],
-    confidence_threshold: 0.65,
+    keywords: ['decide', 'choice', 'option', 'trade-off', 'should I', 'pros and cons', 'risk', 'compare', 'alternatives', 'weigh'],
+    patterns: ['should I do X or Y', 'what would you do', 'help me decide', 'weighing my options', 'which one should I', 'what are my options'],
+    confidence_threshold: 0.35,
   },
   personal_development: {
-    keywords: ['career', 'CISO', 'resume', 'interview', 'skill', 'certification', 'learning', 'growth path', 'mentor'],
-    patterns: ['how do I get to', 'should I pursue', 'what should I learn next', 'preparing for an interview', 'my career path'],
-    confidence_threshold: 0.7,
+    keywords: ['career', 'CISO', 'resume', 'interview', 'skill', 'certification', 'learning', 'growth path', 'mentor', 'promotion', 'job', 'role', 'transition'],
+    patterns: ['how do I get to', 'should I pursue', 'what should I learn next', 'preparing for an interview', 'my career path', 'advance my career', 'new role'],
+    confidence_threshold: 0.35,
   },
   learning_research: {
-    keywords: ['explain', 'how does', 'what is', 'teach me', 'understand', 'deep dive', 'research'],
-    patterns: ['help me understand', 'explain like', "what's the difference between", 'I want to learn about'],
-    confidence_threshold: 0.75,
+    keywords: ['explain', 'how does', 'what is', 'teach me', 'understand', 'deep dive', 'research', 'learn', 'tutorial', 'guide', 'concept'],
+    patterns: ['help me understand', 'explain like', "what's the difference between", 'I want to learn about', 'can you explain', 'how do I learn'],
+    confidence_threshold: 0.35,
   },
   general: {
     keywords: [],
@@ -109,7 +109,7 @@ const EMOTIONAL_SIGNALS: Record<Exclude<EmotionalRegister, 'neutral'>, string[]>
 // Scoring
 // ────────────────────────────────────────────────────────────────────────────
 
-const KEYWORD_WEIGHT = 0.15;
+const KEYWORD_WEIGHT = 0.20;
 const PATTERN_WEIGHT = 0.25;
 
 function scoreDomain(domain: ContextDomain, message: string): number {

@@ -1,6 +1,15 @@
 import type { CapabilityCatalog, HealthState } from './types.js';
 
-export function generatePromptFragment(catalog: CapabilityCatalog, health: HealthState): string {
+export interface SelfAwarenessContext {
+  /** The default model configured for this instance (e.g. "claude-sonnet-4-5") */
+  defaultModel?: string;
+  /** The primary provider name (e.g. "anthropic") */
+  primaryProvider?: string;
+  /** Active personality engine: 'standard' or 'the-architect' */
+  personalityEngine?: string;
+}
+
+export function generatePromptFragment(catalog: CapabilityCatalog, health: HealthState, context?: SelfAwarenessContext): string {
   const lines: string[] = ['[Self-Awareness]'];
 
   // Tools — list all names with count
@@ -36,6 +45,21 @@ export function generatePromptFragment(catalog: CapabilityCatalog, health: Healt
   if (loadedPlugins.length > 0) {
     const names = loadedPlugins.map((p) => p.name).join(', ');
     lines.push(`Plugins: ${loadedPlugins.length} loaded (${names})`);
+  }
+
+  // Model — the configured default model
+  if (context?.defaultModel) {
+    const providerLabel = context.primaryProvider ?? 'unknown';
+    lines.push(`Model: ${context.defaultModel} (via ${providerLabel})`);
+  }
+
+  // Personality engine
+  if (context?.personalityEngine) {
+    if (context.personalityEngine === 'the-architect') {
+      lines.push('Personality: The Architect (active) — evidence-based reasoning engine that adapts communication style using traits from verified thinkers');
+    } else {
+      lines.push('Personality: Standard');
+    }
   }
 
   // Health

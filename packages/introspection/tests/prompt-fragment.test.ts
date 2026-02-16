@@ -69,4 +69,33 @@ describe('generatePromptFragment', () => {
     const result = generatePromptFragment(catalog, degradedState);
     expect(result).toContain('Telegram disconnected');
   });
+
+  it('includes model info when context is provided', () => {
+    const result = generatePromptFragment(catalog, healthyState, {
+      defaultModel: 'claude-sonnet-4-5',
+      primaryProvider: 'anthropic',
+    });
+    expect(result).toContain('Model: claude-sonnet-4-5 (via anthropic)');
+  });
+
+  it('includes personality engine when standard', () => {
+    const result = generatePromptFragment(catalog, healthyState, {
+      personalityEngine: 'standard',
+    });
+    expect(result).toContain('Personality: Standard');
+  });
+
+  it('includes personality engine when the-architect is active', () => {
+    const result = generatePromptFragment(catalog, healthyState, {
+      personalityEngine: 'the-architect',
+    });
+    expect(result).toContain('Personality: The Architect (active)');
+    expect(result).toContain('evidence-based reasoning engine');
+  });
+
+  it('omits model and personality lines when no context provided', () => {
+    const result = generatePromptFragment(catalog, healthyState);
+    expect(result).not.toContain('Model:');
+    expect(result).not.toContain('Personality:');
+  });
 });
