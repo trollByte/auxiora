@@ -16,8 +16,8 @@ import {
   getWebhooksPath,
   getScreenshotsDir,
 } from '@auxiora/core';
-import { createArchitect, ARCHITECT_BASE_PROMPT } from '@auxiora/personality/architect';
-import type { TheArchitect } from '@auxiora/personality/architect';
+import { createArchitect, ARCHITECT_BASE_PROMPT, VaultStorageAdapter } from '@auxiora/personality/architect';
+import type { TheArchitect, ContextRecommendation } from '@auxiora/personality/architect';
 import {
   toolRegistry,
   toolExecutor,
@@ -1622,7 +1622,9 @@ export class Auxiora {
     } catch { /* no file */ }
 
     this.systemPrompt = parts.join('\n\n---\n\n');
-    this.architect = createArchitect();
+    const storage = new VaultStorageAdapter(this.vault);
+    this.architect = createArchitect(storage);
+    await this.architect.initialize();
 
     if (this.capabilityPromptFragment) {
       this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
@@ -1701,6 +1703,7 @@ export class Auxiora {
       detectedContext: import('@auxiora/personality/architect').TaskContext;
       activeTraits: import('@auxiora/personality/architect').TraitSource[];
       traitWeights: Record<string, number>;
+      recommendation?: ContextRecommendation;
     };
   } {
     if (!this.architect) return { prompt };
@@ -1716,6 +1719,7 @@ export class Auxiora {
         detectedContext: output.detectedContext,
         activeTraits: output.activeTraits,
         traitWeights,
+        recommendation: output.recommendation,
       },
     };
   }
@@ -1772,6 +1776,20 @@ export class Auxiora {
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
     const { id: requestId, payload } = message;
+
+    // Handle architect correction messages (learning engine)
+    if (message.type === 'architect_correction') {
+      const corrPayload = payload as { userMessage?: string; detectedDomain?: string; correctedDomain?: string } | undefined;
+      if (this.architect && corrPayload?.userMessage && corrPayload.detectedDomain && corrPayload.correctedDomain) {
+        await this.architect.recordCorrection(
+          corrPayload.userMessage,
+          corrPayload.detectedDomain as import('@auxiora/personality/architect').ContextDomain,
+          corrPayload.correctedDomain as import('@auxiora/personality/architect').ContextDomain,
+        );
+      }
+      return;
+    }
+
     const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel; chatId?: string } | undefined;
     const content = msgPayload?.content;
     const modelOverride = msgPayload?.model;

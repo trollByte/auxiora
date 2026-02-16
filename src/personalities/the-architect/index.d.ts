@@ -1,5 +1,7 @@
 import type { TraitMix, TaskContext, TraitSource, ContextDomain, PromptOutput } from '../schema.js';
 import { CorrectionStore } from './correction-store.js';
+import type { ArchitectPreferences } from './persistence.js';
+import type { EncryptedStorage } from './persistence-adapter.js';
 export type { TraitMix, TraitValue, TaskContext, TraitSource, ContextDomain, EmotionalRegister, ContextSignal, PromptOutput, } from '../schema.js';
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -10,6 +12,13 @@ export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
 export { CorrectionStore } from './correction-store.js';
 export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
+export { ContextRecommender } from './recommender.js';
+export type { ContextRecommendation } from './recommender.js';
+export { ArchitectPersistence } from './persistence.js';
+export type { ArchitectPreferences } from './persistence.js';
+export type { EncryptedStorage } from './persistence-adapter.js';
+export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
+export type { VaultLike } from './persistence-adapter.js';
 type Message = {
     role: string;
     content: string;
@@ -20,16 +29,34 @@ type Message = {
  * Takes a user message and optional conversation history, detects the
  * operational context, selects and modulates traits, and assembles a
  * complete prompt with full provenance for every active trait.
+ *
+ * When constructed with an EncryptedStorage instance, persistence is enabled:
+ * corrections, usage history, and preferences are stored encrypted at rest.
+ * Call `initialize()` once after construction to load persisted state.
  */
 export declare class TheArchitect {
     private contextOverride;
     private correctionStore;
+    private recommender;
+    private persistence?;
+    private preferences?;
+    private initialized;
+    constructor(storage?: EncryptedStorage);
+    /**
+     * Load persisted state (corrections, preferences, usage history).
+     * Call once after construction. Safe to call multiple times (idempotent).
+     * No-op when persistence is not configured.
+     */
+    initialize(): Promise<void>;
     /**
      * Primary method: user message in, complete prompt out.
      *
      * Detects context, selects the domain profile, applies emotional
      * overrides, assembles a weight-scaled prompt modifier, and returns
      * the full prompt with active trait sources for transparency.
+     *
+     * Also records usage asynchronously (fire-and-forget) and checks
+     * the recommender for context suggestions.
      */
     generatePrompt(userMessage: string, history?: Message[]): PromptOutput;
     /**
@@ -65,16 +92,24 @@ export declare class TheArchitect {
     getActiveSources(mix?: TraitMix): TraitSource[];
     /**
      * Records a user correction so the engine can learn from misclassifications.
-     * Call this when the user manually overrides the detected context.
+     * Also persists the updated corrections to encrypted storage when available.
      */
-    recordCorrection(userMessage: string, detectedDomain: ContextDomain, correctedDomain: ContextDomain): void;
+    recordCorrection(userMessage: string, detectedDomain: ContextDomain, correctedDomain: ContextDomain): Promise<void>;
     /** Load corrections from serialized data (e.g. from encrypted vault). */
     loadCorrections(serializedData: string): void;
     /** Export corrections as a serialized string for encrypted storage. */
     exportCorrections(): string;
     /** Get correction statistics for debugging and transparency. */
     getCorrectionStats(): ReturnType<CorrectionStore['getStats']>;
+    /** Returns the current preferences. Falls back to in-memory defaults. */
+    getPreferences(): Promise<ArchitectPreferences>;
+    /** Update a single preference and persist. */
+    updatePreference<K extends keyof ArchitectPreferences>(key: K, value: ArchitectPreferences[K]): Promise<void>;
+    /** Clear all persisted data: corrections, preferences, usage history. */
+    clearAllData(): Promise<void>;
+    /** Export all stored data as JSON string (data portability). */
+    exportData(): Promise<string>;
 }
-/** Creates a new Architect instance. */
-export declare function createArchitect(): TheArchitect;
+/** Creates a new Architect instance, optionally with encrypted persistence. */
+export declare function createArchitect(storage?: EncryptedStorage): TheArchitect;
 //# sourceMappingURL=index.d.ts.map

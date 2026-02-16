@@ -288,6 +288,20 @@ export class Gateway {
         }
         break;
 
+      case 'architect_correction':
+        if (!client.authenticated) {
+          this.send(client, {
+            type: 'error',
+            id,
+            payload: { message: 'Not authenticated' },
+          });
+          return;
+        }
+        if (this.messageHandler) {
+          await this.messageHandler(client, message);
+        }
+        break;
+
       case 'voice_start':
       case 'voice_end':
       case 'voice_cancel':

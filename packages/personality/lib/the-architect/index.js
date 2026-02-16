@@ -4,6 +4,8 @@ import { applyEmotionalOverride } from './emotional-overrides.js';
 import { detectContext } from './context-detector.js';
 import { assemblePromptModifier, getActiveSources } from './prompt-assembler.js';
 import { CorrectionStore } from './correction-store.js';
+import { ArchitectPersistence } from './persistence.js';
+import { ContextRecommender } from './recommender.js';
 // Re-export building blocks for advanced consumers
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -13,6 +15,9 @@ export { assemblePromptModifier, getActiveSources } from './prompt-assembler.js'
 export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
 export { CorrectionStore } from './correction-store.js';
+export { ContextRecommender } from './recommender.js';
+export { ArchitectPersistence } from './persistence.js';
+export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 // ────────────────────────────────────────────────────────────────────────────
 // Domain metadata
 // ────────────────────────────────────────────────────────────────────────────
@@ -44,16 +49,50 @@ const DOMAIN_METADATA = [
  * Takes a user message and optional conversation history, detects the
  * operational context, selects and modulates traits, and assembles a
  * complete prompt with full provenance for every active trait.
+ *
+ * When constructed with an EncryptedStorage instance, persistence is enabled:
+ * corrections, usage history, and preferences are stored encrypted at rest.
+ * Call `initialize()` once after construction to load persisted state.
  */
 export class TheArchitect {
     contextOverride = null;
-    correctionStore = new CorrectionStore();
+    correctionStore;
+    recommender;
+    persistence;
+    preferences;
+    initialized = false;
+    constructor(storage) {
+        this.correctionStore = new CorrectionStore();
+        this.recommender = new ContextRecommender();
+        if (storage) {
+            this.persistence = new ArchitectPersistence(storage);
+        }
+    }
+    /**
+     * Load persisted state (corrections, preferences, usage history).
+     * Call once after construction. Safe to call multiple times (idempotent).
+     * No-op when persistence is not configured.
+     */
+    async initialize() {
+        if (this.initialized || !this.persistence)
+            return;
+        const prefs = await this.persistence.load();
+        this.correctionStore = CorrectionStore.deserialize(prefs.corrections);
+        this.preferences = prefs;
+        if (prefs.defaultContext) {
+            this.contextOverride = prefs.defaultContext;
+        }
+        this.initialized = true;
+    }
     /**
      * Primary method: user message in, complete prompt out.
      *
      * Detects context, selects the domain profile, applies emotional
      * overrides, assembles a weight-scaled prompt modifier, and returns
      * the full prompt with active trait sources for transparency.
+     *
+     * Also records usage asynchronously (fire-and-forget) and checks
+     * the recommender for context suggestions.
      */
     generatePrompt(userMessage, history) {
         const rawContext = this.detectContext(userMessage, history);
@@ -64,12 +103,23 @@ export class TheArchitect {
         const adjustedMix = applyEmotionalOverride(baseMix, context.emotionalRegister);
         const modifier = assemblePromptModifier(adjustedMix, context);
         const sources = getActiveSources(adjustedMix);
+        // Fire-and-forget persistence of usage
+        if (this.persistence) {
+            this.persistence.recordUsage(context.domain).catch(() => { });
+        }
+        // Check for recommendations (only when no manual override is active)
+        let recommendation;
+        if (!this.contextOverride) {
+            const usageHistory = this.preferences?.contextUsageHistory ?? {};
+            recommendation = this.recommender.shouldRecommend(context, this.correctionStore, usageHistory, userMessage) ?? undefined;
+        }
         return {
             basePrompt: ARCHITECT_BASE_PROMPT,
             contextModifier: modifier,
             fullPrompt: ARCHITECT_BASE_PROMPT + '\n\n' + modifier,
             activeTraits: sources,
             detectedContext: context,
+            recommendation,
         };
     }
     /**
@@ -116,9 +166,9 @@ export class TheArchitect {
     // ── Correction learning ──────────────────────────────────────────────
     /**
      * Records a user correction so the engine can learn from misclassifications.
-     * Call this when the user manually overrides the detected context.
+     * Also persists the updated corrections to encrypted storage when available.
      */
-    recordCorrection(userMessage, detectedDomain, correctedDomain) {
+    async recordCorrection(userMessage, detectedDomain, correctedDomain) {
         const emotionalRegister = detectContext(userMessage).emotionalRegister;
         this.correctionStore.addCorrection({
             userMessage,
@@ -127,6 +177,9 @@ export class TheArchitect {
             correctedDomain,
             detectedEmotion: emotionalRegister,
         });
+        if (this.persistence) {
+            await this.persistence.saveCorrections(this.correctionStore);
+        }
     }
     /** Load corrections from serialized data (e.g. from encrypted vault). */
     loadCorrections(serializedData) {
@@ -140,12 +193,63 @@ export class TheArchitect {
     getCorrectionStats() {
         return this.correctionStore.getStats();
     }
+    // ── Preferences ───────────────────────────────────────────────────────
+    /** Returns the current preferences. Falls back to in-memory defaults. */
+    async getPreferences() {
+        if (this.persistence) {
+            const prefs = await this.persistence.load();
+            this.preferences = prefs;
+            return prefs;
+        }
+        // Return a default snapshot when no persistence
+        return {
+            corrections: this.correctionStore.serialize(),
+            showContextIndicator: true,
+            showSourcesButton: true,
+            autoDetectContext: true,
+            defaultContext: null,
+            contextUsageHistory: {},
+            totalInteractions: 0,
+            firstUsed: 0,
+            lastUsed: 0,
+            version: 1,
+        };
+    }
+    /** Update a single preference and persist. */
+    async updatePreference(key, value) {
+        if (!this.persistence)
+            return;
+        const prefs = await this.persistence.load();
+        prefs[key] = value;
+        await this.persistence.save(prefs);
+        this.preferences = prefs;
+        // Apply side effects
+        if (key === 'defaultContext') {
+            this.contextOverride = value;
+        }
+    }
+    /** Clear all persisted data: corrections, preferences, usage history. */
+    async clearAllData() {
+        this.correctionStore = new CorrectionStore();
+        this.contextOverride = null;
+        this.preferences = undefined;
+        if (this.persistence) {
+            await this.persistence.clearAll();
+        }
+    }
+    /** Export all stored data as JSON string (data portability). */
+    async exportData() {
+        if (this.persistence) {
+            return this.persistence.exportAll();
+        }
+        return JSON.stringify(await this.getPreferences(), null, 2);
+    }
 }
 // ────────────────────────────────────────────────────────────────────────────
 // Convenience factory
 // ────────────────────────────────────────────────────────────────────────────
-/** Creates a new Architect instance. */
-export function createArchitect() {
-    return new TheArchitect();
+/** Creates a new Architect instance, optionally with encrypted persistence. */
+export function createArchitect(storage) {
+    return new TheArchitect(storage);
 }
 //# sourceMappingURL=index.js.map

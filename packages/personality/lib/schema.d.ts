@@ -157,5 +157,7 @@ export interface PromptOutput {
     activeTraits: TraitSource[];
     /** The context that was detected and used for trait modulation. */
     detectedContext: TaskContext;
+    /** Suggestion to switch contexts, if the recommender thinks detection may be off. */
+    recommendation?: import('./the-architect/recommender.js').ContextRecommendation;
 }
 //# sourceMappingURL=schema.d.ts.map

@@ -191,7 +191,7 @@ describe('TheArchitect — utility methods', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// Correction learning integration
+// Correction learning
 // ────────────────────────────────────────────────────────────────────────────
 
 describe('TheArchitect — correction learning', () => {
@@ -199,10 +199,10 @@ describe('TheArchitect — correction learning', () => {
     architect = createArchitect();
   });
 
-  it('recordCorrection feeds the learning loop', () => {
+  it('recordCorrection feeds the learning loop', async () => {
     // Record 4 corrections
     for (let i = 0; i < 4; i++) {
-      architect.recordCorrection(
+      await architect.recordCorrection(
         `deployment pipeline infrastructure task ${i}`,
         'code_engineering',
         'architecture_design',
@@ -216,9 +216,9 @@ describe('TheArchitect — correction learning', () => {
     expect(output.detectedContext.originalDomain).toBe('code_engineering');
   });
 
-  it('exportCorrections and loadCorrections round-trip', () => {
+  it('exportCorrections and loadCorrections round-trip', async () => {
     for (let i = 0; i < 3; i++) {
-      architect.recordCorrection(
+      await architect.recordCorrection(
         `deployment pipeline task ${i} extra padding`,
         'code_engineering',
         'architecture_design',
@@ -236,21 +236,21 @@ describe('TheArchitect — correction learning', () => {
     expect(output.detectedContext.corrected).toBe(true);
   });
 
-  it('getCorrectionStats returns accurate data', () => {
+  it('getCorrectionStats returns accurate data', async () => {
     expect(architect.getCorrectionStats().totalCorrections).toBe(0);
 
-    architect.recordCorrection('task alpha words extra', 'code_engineering', 'architecture_design');
-    architect.recordCorrection('task bravo words extra', 'code_engineering', 'debugging');
+    await architect.recordCorrection('task alpha words extra', 'code_engineering', 'architecture_design');
+    await architect.recordCorrection('task bravo words extra', 'code_engineering', 'debugging');
 
     const stats = architect.getCorrectionStats();
     expect(stats.totalCorrections).toBe(2);
     expect(stats.topMisclassifications.length).toBe(2);
   });
 
-  it('context override takes precedence over correction store', () => {
+  it('context override takes precedence over correction store', async () => {
     // Train corrections
     for (let i = 0; i < 4; i++) {
-      architect.recordCorrection(
+      await architect.recordCorrection(
         `deployment pipeline infrastructure task ${i}`,
         'code_engineering',
         'architecture_design',

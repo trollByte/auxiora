@@ -5,6 +5,10 @@ import { applyEmotionalOverride } from './emotional-overrides.js';
 import { detectContext } from './context-detector.js';
 import { assemblePromptModifier, getActiveSources } from './prompt-assembler.js';
 import { CorrectionStore } from './correction-store.js';
+import { ArchitectPersistence } from './persistence.js';
+import type { ArchitectPreferences } from './persistence.js';
+import type { EncryptedStorage } from './persistence-adapter.js';
+import { ContextRecommender } from './recommender.js';
 
 // Re-export all types for consumer convenience
 export type {
@@ -28,6 +32,13 @@ export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
 export { CorrectionStore } from './correction-store.js';
 export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
+export { ContextRecommender } from './recommender.js';
+export type { ContextRecommendation } from './recommender.js';
+export { ArchitectPersistence } from './persistence.js';
+export type { ArchitectPreferences } from './persistence.js';
+export type { EncryptedStorage } from './persistence-adapter.js';
+export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
+export type { VaultLike } from './persistence-adapter.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Message type
@@ -69,10 +80,42 @@ const DOMAIN_METADATA: Array<{ domain: ContextDomain; label: string; description
  * Takes a user message and optional conversation history, detects the
  * operational context, selects and modulates traits, and assembles a
  * complete prompt with full provenance for every active trait.
+ *
+ * When constructed with an EncryptedStorage instance, persistence is enabled:
+ * corrections, usage history, and preferences are stored encrypted at rest.
+ * Call `initialize()` once after construction to load persisted state.
  */
 export class TheArchitect {
   private contextOverride: ContextDomain | null = null;
-  private correctionStore: CorrectionStore = new CorrectionStore();
+  private correctionStore: CorrectionStore;
+  private recommender: ContextRecommender;
+  private persistence?: ArchitectPersistence;
+  private preferences?: ArchitectPreferences;
+  private initialized = false;
+
+  constructor(storage?: EncryptedStorage) {
+    this.correctionStore = new CorrectionStore();
+    this.recommender = new ContextRecommender();
+    if (storage) {
+      this.persistence = new ArchitectPersistence(storage);
+    }
+  }
+
+  /**
+   * Load persisted state (corrections, preferences, usage history).
+   * Call once after construction. Safe to call multiple times (idempotent).
+   * No-op when persistence is not configured.
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized || !this.persistence) return;
+    const prefs = await this.persistence.load();
+    this.correctionStore = CorrectionStore.deserialize(prefs.corrections);
+    this.preferences = prefs;
+    if (prefs.defaultContext) {
+      this.contextOverride = prefs.defaultContext;
+    }
+    this.initialized = true;
+  }
 
   /**
    * Primary method: user message in, complete prompt out.
@@ -80,6 +123,9 @@ export class TheArchitect {
    * Detects context, selects the domain profile, applies emotional
    * overrides, assembles a weight-scaled prompt modifier, and returns
    * the full prompt with active trait sources for transparency.
+   *
+   * Also records usage asynchronously (fire-and-forget) and checks
+   * the recommender for context suggestions.
    */
   generatePrompt(userMessage: string, history?: Message[]): PromptOutput {
     const rawContext = this.detectContext(userMessage, history);
@@ -92,12 +138,30 @@ export class TheArchitect {
     const modifier = assemblePromptModifier(adjustedMix, context);
     const sources = getActiveSources(adjustedMix);
 
+    // Fire-and-forget persistence of usage
+    if (this.persistence) {
+      this.persistence.recordUsage(context.domain).catch(() => {});
+    }
+
+    // Check for recommendations (only when no manual override is active)
+    let recommendation: PromptOutput['recommendation'];
+    if (!this.contextOverride) {
+      const usageHistory = this.preferences?.contextUsageHistory ?? {} as Record<ContextDomain, number>;
+      recommendation = this.recommender.shouldRecommend(
+        context,
+        this.correctionStore,
+        usageHistory,
+        userMessage,
+      ) ?? undefined;
+    }
+
     return {
       basePrompt: ARCHITECT_BASE_PROMPT,
       contextModifier: modifier,
       fullPrompt: ARCHITECT_BASE_PROMPT + '\n\n' + modifier,
       activeTraits: sources,
       detectedContext: context,
+      recommendation,
     };
   }
 
@@ -152,13 +216,13 @@ export class TheArchitect {
 
   /**
    * Records a user correction so the engine can learn from misclassifications.
-   * Call this when the user manually overrides the detected context.
+   * Also persists the updated corrections to encrypted storage when available.
    */
-  recordCorrection(
+  async recordCorrection(
     userMessage: string,
     detectedDomain: ContextDomain,
     correctedDomain: ContextDomain,
-  ): void {
+  ): Promise<void> {
     const emotionalRegister = detectContext(userMessage).emotionalRegister;
     this.correctionStore.addCorrection({
       userMessage,
@@ -167,6 +231,9 @@ export class TheArchitect {
       correctedDomain,
       detectedEmotion: emotionalRegister,
     });
+    if (this.persistence) {
+      await this.persistence.saveCorrections(this.correctionStore);
+    }
   }
 
   /** Load corrections from serialized data (e.g. from encrypted vault). */
@@ -183,13 +250,72 @@ export class TheArchitect {
   getCorrectionStats(): ReturnType<CorrectionStore['getStats']> {
     return this.correctionStore.getStats();
   }
+
+  // ── Preferences ───────────────────────────────────────────────────────
+
+  /** Returns the current preferences. Falls back to in-memory defaults. */
+  async getPreferences(): Promise<ArchitectPreferences> {
+    if (this.persistence) {
+      const prefs = await this.persistence.load();
+      this.preferences = prefs;
+      return prefs;
+    }
+    // Return a default snapshot when no persistence
+    return {
+      corrections: this.correctionStore.serialize(),
+      showContextIndicator: true,
+      showSourcesButton: true,
+      autoDetectContext: true,
+      defaultContext: null,
+      contextUsageHistory: {} as Record<ContextDomain, number>,
+      totalInteractions: 0,
+      firstUsed: 0,
+      lastUsed: 0,
+      version: 1,
+    };
+  }
+
+  /** Update a single preference and persist. */
+  async updatePreference<K extends keyof ArchitectPreferences>(
+    key: K,
+    value: ArchitectPreferences[K],
+  ): Promise<void> {
+    if (!this.persistence) return;
+    const prefs = await this.persistence.load();
+    prefs[key] = value;
+    await this.persistence.save(prefs);
+    this.preferences = prefs;
+
+    // Apply side effects
+    if (key === 'defaultContext') {
+      this.contextOverride = value as ContextDomain | null;
+    }
+  }
+
+  /** Clear all persisted data: corrections, preferences, usage history. */
+  async clearAllData(): Promise<void> {
+    this.correctionStore = new CorrectionStore();
+    this.contextOverride = null;
+    this.preferences = undefined;
+    if (this.persistence) {
+      await this.persistence.clearAll();
+    }
+  }
+
+  /** Export all stored data as JSON string (data portability). */
+  async exportData(): Promise<string> {
+    if (this.persistence) {
+      return this.persistence.exportAll();
+    }
+    return JSON.stringify(await this.getPreferences(), null, 2);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Convenience factory
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Creates a new Architect instance. */
-export function createArchitect(): TheArchitect {
-  return new TheArchitect();
+/** Creates a new Architect instance, optionally with encrypted persistence. */
+export function createArchitect(storage?: EncryptedStorage): TheArchitect {
+  return new TheArchitect(storage);
 }

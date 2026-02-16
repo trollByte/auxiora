@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
-import type { TaskContext, TraitSource, ContextDomain } from '@auxiora/personality/architect';
+import type { TaskContext, TraitSource, ContextDomain, ContextRecommendation } from '@auxiora/personality/architect';
 import { ContextIndicator } from '../components/ContextIndicator.js';
 import { SourcesButton } from '../components/SourcesButton.js';
 import { ContextOverrideMenu } from '../components/ContextOverrideMenu.js';
+import { ContextRecommendation as ContextRecommendationBanner } from '../components/ContextRecommendation.js';
 import { DOMAIN_META } from '../components/context-meta.js';
 
 interface ChatMessage {
@@ -15,6 +16,9 @@ interface ChatMessage {
   detectedContext?: TaskContext;
   activeTraits?: TraitSource[];
   traitWeights?: Record<string, number>;
+  recommendation?: ContextRecommendation;
+  /** The user message that triggered this response (for correction recording). */
+  userMessage?: string;
 }
 
 interface ChatThread {
@@ -330,11 +334,15 @@ export function Chat() {
               updates.detectedContext = architect.detectedContext;
               updates.activeTraits = architect.activeTraits;
               updates.traitWeights = architect.traitWeights;
+              updates.recommendation = architect.recommendation;
             }
             if (Object.keys(updates).length > 0) {
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.role === 'assistant') {
+                  // Link the preceding user message for correction recording
+                  const userMsg = prev.slice(0, -1).reverse().find(m => m.role === 'user');
+                  if (userMsg) updates.userMessage = userMsg.content;
                   return [...prev.slice(0, -1), { ...last, ...updates }];
                 }
                 return prev;
@@ -447,14 +455,60 @@ export function Chat() {
         }));
       }
     }
-    // For 'message' scope: the override is informational on the current message only.
-    // A full re-send would require re-streaming; for now we update the displayed context.
-    setMessages(prev => prev.map(m =>
-      m.id === messageId && m.detectedContext
-        ? { ...m, detectedContext: { ...m.detectedContext, domain } }
-        : m
-    ));
+    // Record correction for the learning engine
+    setMessages(prev => {
+      const msg = prev.find(m => m.id === messageId);
+      if (msg?.detectedContext && msg.userMessage && msg.detectedContext.domain !== domain) {
+        if (wsRef.current && connected) {
+          wsRef.current.send(JSON.stringify({
+            type: 'architect_correction',
+            payload: {
+              userMessage: msg.userMessage,
+              detectedDomain: msg.detectedContext.domain,
+              correctedDomain: domain,
+            },
+          }));
+        }
+      }
+      // Update the displayed context on the message
+      return prev.map(m =>
+        m.id === messageId && m.detectedContext
+          ? { ...m, detectedContext: { ...m.detectedContext, domain }, recommendation: undefined }
+          : m
+      );
+    });
   }, [connected]);
+
+  const handleRecommendationAccept = useCallback((messageId: string, domain: ContextDomain) => {
+    // Treat as a context override + record correction
+    setMessages(prev => {
+      const msg = prev.find(m => m.id === messageId);
+      if (msg?.detectedContext && msg.userMessage && msg.detectedContext.domain !== domain) {
+        if (wsRef.current && connected) {
+          wsRef.current.send(JSON.stringify({
+            type: 'architect_correction',
+            payload: {
+              userMessage: msg.userMessage,
+              detectedDomain: msg.detectedContext.domain,
+              correctedDomain: domain,
+            },
+          }));
+        }
+      }
+      return prev.map(m =>
+        m.id === messageId
+          ? { ...m, detectedContext: m.detectedContext ? { ...m.detectedContext, domain } : m.detectedContext, recommendation: undefined }
+          : m
+      );
+    });
+  }, [connected]);
+
+  const handleRecommendationDismiss = useCallback((messageId: string) => {
+    // Neutral signal — just hide the recommendation
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, recommendation: undefined } : m
+    ));
+  }, []);
 
   const clearConversationOverride = useCallback(() => {
     setConversationContextOverride(null);
@@ -709,6 +763,13 @@ export function Chat() {
                       onClose={() => setOverrideMenuOpenForMessageId(null)}
                     />
                   </div>
+                )}
+                {msg.role === 'assistant' && msg.recommendation && (
+                  <ContextRecommendationBanner
+                    recommendation={msg.recommendation}
+                    onAccept={(domain) => handleRecommendationAccept(msg.id, domain)}
+                    onDismiss={() => handleRecommendationDismiss(msg.id)}
+                  />
                 )}
                 {msg.role === 'assistant'
                   ? <div className="chat-markdown" dangerouslySetInnerHTML={renderMessageHtml(msg.content)} /> /* pre-sanitized by renderMarkdown */
