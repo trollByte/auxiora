@@ -279,6 +279,92 @@ body {
   margin-bottom: 1rem;
 }
 
+/* Agent Activity */
+.agent-activity {
+  margin-bottom: 1.5rem;
+}
+
+.agent-activity-quiet {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  padding: 0.75rem;
+}
+
+.agent-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-activity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  animation: mc-fade-in var(--transition-base);
+}
+
+.agent-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+  animation: agent-pulse-anim 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-pulse-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.agent-activity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.agent-activity-desc {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-activity-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.agent-channel-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--bg-hover);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+.agent-activity-type {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agent-activity-elapsed {
+  font-family: var(--font-mono);
+}
+
 /* Activity Feed */
 .activity-feed-list {
   max-height: 60vh;

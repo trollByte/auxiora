@@ -63,6 +63,7 @@ export const api = {
     return fetchApi<{ data: any[] }>(`/audit${qs ? `?${qs}` : ''}`);
   },
   getStatus: () => fetchApi<{ data: any }>('/status'),
+  getActiveAgents: () => fetchApi<{ data: Array<{ id: string; type: string; description: string; channelType?: string; startedAt: string }> }>('/status/agents'),
   getSetupStatus: () =>
     fetchApi<{ needsSetup: boolean; completedSteps: string[]; vaultUnlocked: boolean; dashboardPasswordSet: boolean; agentName: string }>('/setup/status'),
   setupVault: (password: string) =>

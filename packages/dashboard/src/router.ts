@@ -699,6 +699,11 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     });
   });
 
+  // --- Active agents snapshot ---
+  router.get('/status/agents', (_req: Request, res: Response) => {
+    res.json({ data: deps.getActiveAgents?.() ?? [] });
+  });
+
   // --- Settings routes (authenticated) ---
 
   // Identity

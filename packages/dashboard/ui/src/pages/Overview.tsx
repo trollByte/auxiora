@@ -2,6 +2,7 @@ import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
 import { ActivityFeed } from '../components/ActivityFeed';
+import { AgentActivity } from '../components/AgentActivity';
 import { BehaviorHealth } from '../components/BehaviorHealth';
 
 export function Overview() {
@@ -38,6 +39,7 @@ export function Overview() {
       {/* Main two-column layout */}
       <div className="mc-columns">
         <div className="mc-left">
+          <AgentActivity />
           <BehaviorHealth />
         </div>
         <div className="mc-right">

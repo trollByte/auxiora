@@ -59,6 +59,13 @@ export interface DashboardDeps {
     delete(id: string): Promise<boolean>;
   };
   getConfiguredChannels?: () => Array<{ type: string; enabled: boolean }>;
+  getActiveAgents?: () => Array<{
+    id: string;
+    type: string;
+    description: string;
+    channelType?: string;
+    startedAt: string;
+  }>;
   getConnections: () => Array<{
     id: string;
     authenticated: boolean;

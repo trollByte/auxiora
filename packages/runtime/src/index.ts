@@ -202,6 +202,7 @@ export class Auxiora {
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
   private lastActiveChannels: Map<string, string> = new Map();
+  private activeAgents: Map<string, { id: string; type: string; description: string; channelType?: string; startedAt: string }> = new Map();
   private channelTargetsPath: string = path.join(path.dirname(getBehaviorsPath()), 'channel-targets.json');
   private orchestrationHistory: Array<{
     workflowId: string;
@@ -363,6 +364,9 @@ export class Auxiora {
           getSystemPrompt: () => this.systemPrompt,
           executeWithTools: async (messages, systemPrompt) => {
             const execId = `behavior-exec-${Date.now()}`;
+            const actionPreview = messages[0]?.content?.slice(0, 80) ?? 'Behavior';
+            this.agentStart(execId, 'behavior', actionPreview);
+
             // Use unique senderId so getOrCreate never reuses a stale behavior session
             const session = await this.sessions.getOrCreate(execId, {
               channelType: 'behavior',
@@ -374,8 +378,14 @@ export class Auxiora {
             }
             const provider = this.providers.getPrimaryProvider();
             const noopChunk = () => {};
-            const result = await this.executeWithTools(session.id, messages, systemPrompt, provider, noopChunk);
-            return { content: result.response, usage: result.usage };
+            try {
+              const result = await this.executeWithTools(session.id, messages, systemPrompt, provider, noopChunk);
+              this.agentEnd(execId, true);
+              return { content: result.response, usage: result.usage };
+            } catch (err) {
+              this.agentEnd(execId, false);
+              throw err;
+            }
           },
         },
         auditFn: (event: string, details: Record<string, unknown>) => {
@@ -568,6 +578,7 @@ export class Auxiora {
               .filter(([, v]) => typeof v === 'object' && v !== null)
               .map(([type, v]) => ({ type, enabled: !!(v as any).enabled }));
           },
+          getActiveAgents: () => this.getActiveAgents(),
           getConnections: () => this.gateway.getConnections(),
           getAuditEntries: async (limit?: number) => {
             const auditLogger = getAuditLogger();
@@ -2294,6 +2305,33 @@ export class Auxiora {
     }
   }
 
+  /** Track an agent starting execution. Broadcasts to dashboard. */
+  private agentStart(id: string, type: string, description: string, channelType?: string): void {
+    const activity = { id, type, description, channelType, startedAt: new Date().toISOString() };
+    this.activeAgents.set(id, activity);
+    this.gateway.broadcast(
+      { type: 'agent_start', payload: activity },
+      (client) => client.authenticated
+    );
+  }
+
+  /** Track an agent finishing execution. Broadcasts to dashboard. */
+  private agentEnd(id: string, success: boolean): void {
+    const activity = this.activeAgents.get(id);
+    if (!activity) return;
+    const duration = Date.now() - new Date(activity.startedAt).getTime();
+    this.activeAgents.delete(id);
+    this.gateway.broadcast(
+      { type: 'agent_end', payload: { id, duration, success } },
+      (client) => client.authenticated
+    );
+  }
+
+  /** Get all currently active agents. */
+  getActiveAgents(): Array<{ id: string; type: string; description: string; channelType?: string; startedAt: string }> {
+    return Array.from(this.activeAgents.values());
+  }
+
   /** Persist a message to the webchat session so it appears in chat history. */
   private persistToWebchat(content: string): void {
     this.sessions.getOrCreate('webchat', { channelType: 'webchat' })
@@ -2375,6 +2413,8 @@ export class Auxiora {
       ? await this.channels.startTyping(inbound.channelType, inbound.channelId)
       : () => {};
 
+    const channelAgentId = `channel:${inbound.channelType}:${inbound.channelId}:${Date.now()}`;
+
     try {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
@@ -2412,6 +2452,8 @@ export class Auxiora {
 
       // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();
+      this.agentStart(channelAgentId, 'channel', `Processing message on ${inbound.channelType}`, inbound.channelType);
+
       const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -2450,8 +2492,11 @@ export class Auxiora {
         inputTokens: channelUsage.inputTokens,
         outputTokens: channelUsage.outputTokens,
       });
+
+      this.agentEnd(channelAgentId, true);
     } catch (error) {
       stopTyping();
+      this.agentEnd(channelAgentId, false);
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       audit('channel.error', { sessionId: session.id, error: errorMessage });
