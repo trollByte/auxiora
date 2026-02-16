@@ -176,6 +176,7 @@ export function Chat() {
   const isNearBottomRef = useRef(true);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
+  const activeRequestIdRef = useRef(0); // tracks which requestId the UI should render
   const inputRef = useRef<HTMLInputElement>(null);
   const acRef = useRef<HTMLDivElement>(null);
   const chatIdRef = useRef<string | null>(null);
@@ -225,6 +226,12 @@ export function Chat() {
 
   // Load messages when chatId changes
   useEffect(() => {
+    // Detach any in-flight streaming request so its chunks/done are ignored
+    if (streaming) {
+      activeRequestIdRef.current = 0;
+      setStreaming(false);
+      currentResponseRef.current = '';
+    }
     if (!chatId) {
       setMessages([]);
       setHistoryLoaded(true);
@@ -340,12 +347,14 @@ export function Chat() {
             break;
           case 'chunk':
             currentResponseRef.current += msg.payload?.content ?? '';
+            // Ignore chunks for detached requests (user switched chats)
+            if (requestIdRef.current !== activeRequestIdRef.current) break;
             setMessages(prev => {
               const last = prev[prev.length - 1];
-              if (last?.role === 'assistant' && last.id === `resp-${requestIdRef.current}`) {
+              if (last?.role === 'assistant' && last.id === `resp-${activeRequestIdRef.current}`) {
                 return [...prev.slice(0, -1), { ...last, content: currentResponseRef.current }];
               }
-              return [...prev, { id: `resp-${requestIdRef.current}`, role: 'assistant', content: currentResponseRef.current }];
+              return [...prev, { id: `resp-${activeRequestIdRef.current}`, role: 'assistant', content: currentResponseRef.current }];
             });
             break;
           case 'message':
@@ -359,6 +368,9 @@ export function Chat() {
             break;
           case 'done': {
             setStreaming(false);
+            currentResponseRef.current = '';
+            // Ignore done for detached requests (user switched chats)
+            if (requestIdRef.current !== activeRequestIdRef.current) break;
             const routing = msg.payload?.routing;
             const architect = msg.payload?.architect;
             const updates: Partial<ChatMessage> = {};
@@ -387,7 +399,6 @@ export function Chat() {
                 return prev;
               });
             }
-            currentResponseRef.current = '';
             break;
           }
           case 'chat_created':
@@ -456,6 +467,7 @@ export function Chat() {
     if (!input.trim() || !wsRef.current || !connected || streaming) return;
     const content = input.trim();
     const id = ++requestIdRef.current;
+    activeRequestIdRef.current = id;
 
     setMessages(prev => [...prev, { id: `user-${id}`, role: 'user', content }]);
     setInput('');
