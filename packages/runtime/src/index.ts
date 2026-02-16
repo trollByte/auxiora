@@ -892,6 +892,9 @@ export class Auxiora {
                 setProviderFactory(this.providers);
                 this.logger.info('Providers re-initialized after setup');
               }
+              // Reload personality so the agent uses the name entered during setup
+              await this.loadPersonality();
+              this.logger.info('Personality reloaded after setup');
               // Connect channels now that vault is unlocked with credentials
               await this.initializeChannels();
               const channels = this.channels;
