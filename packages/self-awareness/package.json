@@ -1,0 +1,31 @@
+{
+  "name": "@auxiora/self-awareness",
+  "version": "1.0.0",
+  "description": "Dynamic self-awareness: composable signal collectors for per-message context enrichment",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/metrics": "workspace:*",
+    "@auxiora/sessions": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
