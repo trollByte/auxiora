@@ -6,3 +6,5 @@ export type {
   AwarenessStorage,
   SelfAwarenessConfig,
 } from './types.js';
+
+export { SelfAwarenessAssembler, type AssemblerOptions } from './assembler.js';
