@@ -7,8 +7,8 @@ import type { CorrectionStore } from './correction-store.js';
 
 const DOMAIN_SIGNALS: Record<ContextDomain, ContextSignal> = {
   security_review: {
-    keywords: ['vulnerability', 'CVE', 'threat', 'exploit', 'patch', 'audit', 'compliance', 'penetration', 'firewall', 'incident', 'breach', 'SIEM', 'SOC', 'CTEM', 'attack surface', 'zero-day', 'Qualys', 'CrowdStrike', 'Splunk', 'Wiz', 'TORQ', 'security', 'encryption', 'authentication', 'authorization', 'password', 'token', 'OAuth', 'RBAC', 'permissions', 'access control', 'hardening', 'malware', 'phishing', 'ransomware', 'hacked', 'hack', 'secure'],
-    patterns: ['review this security', 'is this secure', 'how would an attacker', 'what are the risks', 'FCA audit', 'threat model', 'security posture', 'attack vector', 'security review', 'security check', 'pen test', 'red team', 'how safe is', 'lock down', 'tighten security', 'security best practice', 'security issues', 'got hacked', 'been hacked', 'we got hacked'],
+    keywords: ['vulnerability', 'vulnerabilities', 'CVE', 'threat', 'exploit', 'patch', 'audit', 'compliance', 'penetration', 'firewall', 'incident', 'breach', 'SIEM', 'SOC', 'CTEM', 'attack surface', 'zero-day', 'Qualys', 'CrowdStrike', 'Splunk', 'Wiz', 'TORQ', 'security', 'encryption', 'authentication', 'authorization', 'password', 'token', 'OAuth', 'RBAC', 'permissions', 'access control', 'hardening', 'malware', 'phishing', 'ransomware', 'hacked', 'hack', 'secure'],
+    patterns: ['review this security', 'is this secure', 'how would an attacker', 'what are the risks', 'FCA audit', 'threat model', 'security posture', 'attack vector', 'security review', 'security check', 'pen test', 'red team', 'how safe is', 'lock down', 'tighten security', 'security best practice', 'security issues', 'got hacked', 'been hacked', 'we got hacked', 'check for vulnerabilit'],
     confidence_threshold: 0.35,
   },
   code_engineering: {
@@ -27,8 +27,8 @@ const DOMAIN_SIGNALS: Record<ContextDomain, ContextSignal> = {
     confidence_threshold: 0.35,
   },
   team_leadership: {
-    keywords: ['team', 'hire', 'performance', 'culture', 'morale', 'feedback', 'promotion', 'development', 'retention', 'onboarding', 'manage', 'leadership', 'report', 'standup', 'org', 'headcount', 'staffing', 'firing', 'letting go', 'PIP', 'underperforming', 'sprint', 'agile'],
-    patterns: ['how do I handle', 'my team is', 'should I tell them', 'managing', 'struggling with their performance', 'lead my team', 'build a team', 'run a team', 'manage my team', 'team meeting', 'team morale', 'team dynamic', 'team culture', 'scale the team', 'hire for', 'fire someone', 'let someone go'],
+    keywords: ['team', 'hire', 'hiring', 'performance', 'culture', 'morale', 'feedback', 'promotion', 'development', 'retention', 'onboarding', 'manage', 'leadership', 'report', 'standup', 'org', 'headcount', 'staffing', 'firing', 'letting go', 'PIP', 'underperforming', 'sprint', 'agile', 'people'],
+    patterns: ['how do I handle', 'my team is', 'should I tell them', 'managing', 'struggling with their performance', 'lead my team', 'build a team', 'run a team', 'manage my team', 'team meeting', 'team morale', 'team dynamic', 'team culture', 'scale the team', 'hire for', 'fire someone', 'let someone go', 'hire more', 'should I hire', 'grow the team'],
     confidence_threshold: 0.35,
   },
   one_on_one: {
@@ -63,7 +63,7 @@ const DOMAIN_SIGNALS: Record<ContextDomain, ContextSignal> = {
   },
   creative_work: {
     keywords: ['brainstorm', 'idea', 'creative', 'concept', 'innovation', 'vision', 'imagine', 'prototype', 'design thinking', 'inspiration', 'workshop', 'whiteboard', 'explore', 'experiment', 'invent', 'original', 'fresh'],
-    patterns: ['help me think of', 'what if we', 'how could we make this more', 'I need ideas for', 'come up with', 'get creative', 'brainstorm ideas', 'think outside the box', 'new ideas for', 'creative ways to', 'how can we innovate', 'reimagine', 'blue sky', 'spitball', 'riff on this'],
+    patterns: ['help me think of', 'what if we', 'how could we make this more', 'I need ideas for', 'come up with', 'get creative', 'brainstorm ideas', 'think outside the box', 'new ideas for', 'creative ways to', 'how can we innovate', 'reimagine', 'blue sky', 'spitball', 'riff on this', 'help me brainstorm', 'let me brainstorm', 'brainstorm with me'],
     confidence_threshold: 0.35,
   },
   writing_content: {
