@@ -190,6 +190,19 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
+  // Architect personality engine
+  getArchitectPreferences: () =>
+    fetchApi<{ data: any }>('/architect/preferences'),
+  updateArchitectPreference: (key: string, value: unknown) =>
+    fetchApi<{ success: boolean }>('/architect/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify({ key, value }),
+    }),
+  clearArchitectData: () =>
+    fetchApi<{ success: boolean }>('/architect/data', { method: 'DELETE' }),
+  exportArchitectData: () =>
+    fetchApi<{ data: string }>('/architect/data/export'),
+
   // Appearance
   getAppearance: () =>
     fetchApi<{ data: { theme: string } }>('/appearance'),
