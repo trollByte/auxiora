@@ -182,6 +182,15 @@ export interface TaskContext {
 
   /** How much rides on getting this right. */
   stakes: 'low' | 'moderate' | 'high' | 'critical';
+
+  /** True if the correction store overrode the auto-detected domain. */
+  corrected?: boolean;
+
+  /** The auto-detected domain before correction (only set when corrected). */
+  originalDomain?: ContextDomain;
+
+  /** Confidence score of the winning domain from keyword/pattern matching. */
+  detectionConfidence?: number;
 }
 
 /**

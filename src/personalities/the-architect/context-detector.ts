@@ -1,4 +1,5 @@
 import type { TaskContext, ContextDomain, EmotionalRegister, ContextSignal } from '../schema.js';
+import type { CorrectionStore } from './correction-store.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Domain signals
@@ -147,7 +148,7 @@ export function scoreAllDomains(message: string): Record<ContextDomain, number> 
 // Detection logic
 // ────────────────────────────────────────────────────────────────────────────
 
-function detectDomain(message: string): ContextDomain {
+function detectDomain(message: string): { domain: ContextDomain; confidence: number } {
   let bestDomain: ContextDomain = 'general';
   let bestScore = 0;
 
@@ -161,7 +162,7 @@ function detectDomain(message: string): ContextDomain {
     }
   }
 
-  return bestDomain;
+  return { domain: bestDomain, confidence: bestScore };
 }
 
 function detectEmotionalRegister(message: string): EmotionalRegister {
@@ -265,13 +266,34 @@ function inferMode(message: string, _history?: Array<{ role: string; content: st
  * history. Combines domain detection, emotional register analysis, complexity
  * inference, stakes assessment, and mode classification into a single
  * TaskContext object that drives trait modulation.
+ *
+ * When a `correctionStore` is provided, the auto-detected domain is checked
+ * against learned correction patterns. If a high-confidence correction is
+ * found, it overrides the detection and the `corrected` / `originalDomain`
+ * fields are set on the returned context.
  */
 export function detectContext(
   userMessage: string,
   history?: Array<{ role: string; content: string }>,
+  correctionStore?: CorrectionStore,
 ): TaskContext {
-  const domain = detectDomain(userMessage);
+  const { domain: detectedDomain, confidence } = detectDomain(userMessage);
   const emotionalRegister = detectEmotionalRegister(userMessage);
+
+  // Check for learned corrections
+  let domain = detectedDomain;
+  let corrected = false;
+  let originalDomain: ContextDomain | undefined;
+
+  if (correctionStore) {
+    const suggestion = correctionStore.suggestCorrection(userMessage, detectedDomain);
+    if (suggestion !== null) {
+      originalDomain = detectedDomain;
+      domain = suggestion;
+      corrected = true;
+    }
+  }
+
   const complexity = inferComplexity(userMessage, domain);
   const stakes = inferStakes(userMessage, domain);
   const mode = inferMode(userMessage, history);
@@ -282,5 +304,7 @@ export function detectContext(
     complexity,
     stakes,
     mode,
+    ...(corrected ? { corrected, originalDomain } : {}),
+    detectionConfidence: confidence,
   };
 }

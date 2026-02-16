@@ -1,4 +1,5 @@
 import type { TraitMix, TaskContext, TraitSource, ContextDomain, PromptOutput } from '../schema.js';
+import { CorrectionStore } from './correction-store.js';
 export type { TraitMix, TraitValue, TaskContext, TraitSource, ContextDomain, EmotionalRegister, ContextSignal, PromptOutput, } from '../schema.js';
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -7,6 +8,8 @@ export { detectContext, scoreAllDomains } from './context-detector.js';
 export { assemblePromptModifier, getActiveSources } from './prompt-assembler.js';
 export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
+export { CorrectionStore } from './correction-store.js';
+export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
 type Message = {
     role: string;
     content: string;
@@ -20,6 +23,7 @@ type Message = {
  */
 export declare class TheArchitect {
     private contextOverride;
+    private correctionStore;
     /**
      * Primary method: user message in, complete prompt out.
      *
@@ -59,6 +63,17 @@ export declare class TheArchitect {
      * the general profile if no mix is provided.
      */
     getActiveSources(mix?: TraitMix): TraitSource[];
+    /**
+     * Records a user correction so the engine can learn from misclassifications.
+     * Call this when the user manually overrides the detected context.
+     */
+    recordCorrection(userMessage: string, detectedDomain: ContextDomain, correctedDomain: ContextDomain): void;
+    /** Load corrections from serialized data (e.g. from encrypted vault). */
+    loadCorrections(serializedData: string): void;
+    /** Export corrections as a serialized string for encrypted storage. */
+    exportCorrections(): string;
+    /** Get correction statistics for debugging and transparency. */
+    getCorrectionStats(): ReturnType<CorrectionStore['getStats']>;
 }
 /** Creates a new Architect instance. */
 export declare function createArchitect(): TheArchitect;

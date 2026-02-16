@@ -189,3 +189,80 @@ describe('TheArchitect — utility methods', () => {
     expect(output.fullPrompt).toBeTruthy();
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Correction learning integration
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('TheArchitect — correction learning', () => {
+  beforeEach(() => {
+    architect = createArchitect();
+  });
+
+  it('recordCorrection feeds the learning loop', () => {
+    // Record 4 corrections
+    for (let i = 0; i < 4; i++) {
+      architect.recordCorrection(
+        `deployment pipeline infrastructure task ${i}`,
+        'code_engineering',
+        'architecture_design',
+      );
+    }
+
+    // Now detection should be corrected for similar messages
+    const output = architect.generatePrompt('Review the deployment pipeline and CI/CD container build');
+    expect(output.detectedContext.domain).toBe('architecture_design');
+    expect(output.detectedContext.corrected).toBe(true);
+    expect(output.detectedContext.originalDomain).toBe('code_engineering');
+  });
+
+  it('exportCorrections and loadCorrections round-trip', () => {
+    for (let i = 0; i < 3; i++) {
+      architect.recordCorrection(
+        `deployment pipeline task ${i} extra padding`,
+        'code_engineering',
+        'architecture_design',
+      );
+    }
+
+    const exported = architect.exportCorrections();
+
+    // Create a fresh architect and load corrections
+    const fresh = createArchitect();
+    fresh.loadCorrections(exported);
+
+    const output = fresh.generatePrompt('Review the deployment pipeline and CI/CD container build');
+    expect(output.detectedContext.domain).toBe('architecture_design');
+    expect(output.detectedContext.corrected).toBe(true);
+  });
+
+  it('getCorrectionStats returns accurate data', () => {
+    expect(architect.getCorrectionStats().totalCorrections).toBe(0);
+
+    architect.recordCorrection('task alpha words extra', 'code_engineering', 'architecture_design');
+    architect.recordCorrection('task bravo words extra', 'code_engineering', 'debugging');
+
+    const stats = architect.getCorrectionStats();
+    expect(stats.totalCorrections).toBe(2);
+    expect(stats.topMisclassifications.length).toBe(2);
+  });
+
+  it('context override takes precedence over correction store', () => {
+    // Train corrections
+    for (let i = 0; i < 4; i++) {
+      architect.recordCorrection(
+        `deployment pipeline infrastructure task ${i}`,
+        'code_engineering',
+        'architecture_design',
+      );
+    }
+
+    // Set a manual override
+    architect.setContextOverride('debugging');
+
+    const output = architect.generatePrompt('Review the deployment pipeline and CI/CD container build');
+    // Manual override wins over correction store
+    expect(output.detectedContext.domain).toBe('debugging');
+    expect(output.detectedContext.corrected).toBeUndefined();
+  });
+});

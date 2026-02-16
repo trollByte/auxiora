@@ -4,6 +4,7 @@ import { CONTEXT_PROFILES } from './context-profiles.js';
 import { applyEmotionalOverride } from './emotional-overrides.js';
 import { detectContext } from './context-detector.js';
 import { assemblePromptModifier, getActiveSources } from './prompt-assembler.js';
+import { CorrectionStore } from './correction-store.js';
 
 // Re-export all types for consumer convenience
 export type {
@@ -25,6 +26,8 @@ export { detectContext, scoreAllDomains } from './context-detector.js';
 export { assemblePromptModifier, getActiveSources } from './prompt-assembler.js';
 export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
+export { CorrectionStore } from './correction-store.js';
+export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Message type
@@ -69,6 +72,7 @@ const DOMAIN_METADATA: Array<{ domain: ContextDomain; label: string; description
  */
 export class TheArchitect {
   private contextOverride: ContextDomain | null = null;
+  private correctionStore: CorrectionStore = new CorrectionStore();
 
   /**
    * Primary method: user message in, complete prompt out.
@@ -80,7 +84,7 @@ export class TheArchitect {
   generatePrompt(userMessage: string, history?: Message[]): PromptOutput {
     const rawContext = this.detectContext(userMessage, history);
     const context: TaskContext = this.contextOverride
-      ? { ...rawContext, domain: this.contextOverride }
+      ? { ...rawContext, domain: this.contextOverride, corrected: undefined, originalDomain: undefined }
       : rawContext;
 
     const baseMix = CONTEXT_PROFILES[context.domain];
@@ -102,7 +106,7 @@ export class TheArchitect {
    * conversation history. Exposed publicly for debugging and testing.
    */
   detectContext(userMessage: string, history?: Message[]): TaskContext {
-    return detectContext(userMessage, history);
+    return detectContext(userMessage, history, this.correctionStore);
   }
 
   /**
@@ -142,6 +146,42 @@ export class TheArchitect {
   getActiveSources(mix?: TraitMix): TraitSource[] {
     const m = mix ?? CONTEXT_PROFILES['general'];
     return getActiveSources(m);
+  }
+
+  // ── Correction learning ──────────────────────────────────────────────
+
+  /**
+   * Records a user correction so the engine can learn from misclassifications.
+   * Call this when the user manually overrides the detected context.
+   */
+  recordCorrection(
+    userMessage: string,
+    detectedDomain: ContextDomain,
+    correctedDomain: ContextDomain,
+  ): void {
+    const emotionalRegister = detectContext(userMessage).emotionalRegister;
+    this.correctionStore.addCorrection({
+      userMessage,
+      messageLength: userMessage.length,
+      detectedDomain,
+      correctedDomain,
+      detectedEmotion: emotionalRegister,
+    });
+  }
+
+  /** Load corrections from serialized data (e.g. from encrypted vault). */
+  loadCorrections(serializedData: string): void {
+    this.correctionStore = CorrectionStore.deserialize(serializedData);
+  }
+
+  /** Export corrections as a serialized string for encrypted storage. */
+  exportCorrections(): string {
+    return this.correctionStore.serialize();
+  }
+
+  /** Get correction statistics for debugging and transparency. */
+  getCorrectionStats(): ReturnType<CorrectionStore['getStats']> {
+    return this.correctionStore.getStats();
   }
 }
 

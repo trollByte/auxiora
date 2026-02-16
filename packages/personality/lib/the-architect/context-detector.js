@@ -146,7 +146,7 @@ function detectDomain(message) {
             bestDomain = domain;
         }
     }
-    return bestDomain;
+    return { domain: bestDomain, confidence: bestScore };
 }
 function detectEmotionalRegister(message) {
     const lower = message.toLowerCase();
@@ -238,10 +238,27 @@ function inferMode(message, _history) {
  * history. Combines domain detection, emotional register analysis, complexity
  * inference, stakes assessment, and mode classification into a single
  * TaskContext object that drives trait modulation.
+ *
+ * When a `correctionStore` is provided, the auto-detected domain is checked
+ * against learned correction patterns. If a high-confidence correction is
+ * found, it overrides the detection and the `corrected` / `originalDomain`
+ * fields are set on the returned context.
  */
-export function detectContext(userMessage, history) {
-    const domain = detectDomain(userMessage);
+export function detectContext(userMessage, history, correctionStore) {
+    const { domain: detectedDomain, confidence } = detectDomain(userMessage);
     const emotionalRegister = detectEmotionalRegister(userMessage);
+    // Check for learned corrections
+    let domain = detectedDomain;
+    let corrected = false;
+    let originalDomain;
+    if (correctionStore) {
+        const suggestion = correctionStore.suggestCorrection(userMessage, detectedDomain);
+        if (suggestion !== null) {
+            originalDomain = detectedDomain;
+            domain = suggestion;
+            corrected = true;
+        }
+    }
     const complexity = inferComplexity(userMessage, domain);
     const stakes = inferStakes(userMessage, domain);
     const mode = inferMode(userMessage, history);
@@ -251,6 +268,8 @@ export function detectContext(userMessage, history) {
         complexity,
         stakes,
         mode,
+        ...(corrected ? { corrected, originalDomain } : {}),
+        detectionConfidence: confidence,
     };
 }
 //# sourceMappingURL=context-detector.js.map

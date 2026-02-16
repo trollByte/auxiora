@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectContext, scoreAllDomains } from '../context-detector.js';
+import { CorrectionStore } from '../correction-store.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Domain detection
@@ -164,5 +165,148 @@ describe('detectContext — edge cases', () => {
   it('personal career language sets personal mode', () => {
     const ctx = detectContext("I'm struggling with my career path");
     expect(ctx.mode).toBe('personal');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Correction store integration
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('detectContext — correction store integration', () => {
+  it('detection works normally without a correction store', () => {
+    const ctx = detectContext('Review this config for security vulnerabilities — we need an audit to check for threat vectors, potential exploit paths, and firewall rules');
+    expect(ctx.domain).toBe('security_review');
+    expect(ctx.corrected).toBeUndefined();
+    expect(ctx.originalDomain).toBeUndefined();
+  });
+
+  it('detection works normally with an empty correction store', () => {
+    const store = new CorrectionStore();
+    const ctx = detectContext(
+      'Review this config for security vulnerabilities — we need an audit to check for threat vectors, potential exploit paths, and firewall rules',
+      undefined,
+      store,
+    );
+    expect(ctx.domain).toBe('security_review');
+    expect(ctx.corrected).toBeUndefined();
+  });
+
+  it('corrections override detection when confidence is high enough', () => {
+    const store = new CorrectionStore();
+    // Teach the store: "deployment pipeline" messages detected as code_engineering
+    // should actually be architecture_design
+    for (let i = 0; i < 4; i++) {
+      store.addCorrection({
+        userMessage: `deployment pipeline configuration task ${i}`,
+        messageLength: 40,
+        detectedDomain: 'code_engineering',
+        correctedDomain: 'architecture_design',
+        detectedEmotion: 'neutral',
+      });
+    }
+
+    // This message would normally detect as code_engineering (has "deploy", "pipeline", "CI/CD")
+    const ctx = detectContext(
+      'Review the deployment pipeline and CI/CD container build',
+      undefined,
+      store,
+    );
+
+    expect(ctx.domain).toBe('architecture_design');
+    expect(ctx.corrected).toBe(true);
+    expect(ctx.originalDomain).toBe('code_engineering');
+  });
+
+  it('corrections do not override when insufficient data', () => {
+    const store = new CorrectionStore();
+    // Only 2 corrections — below the occurrences >= 3 threshold
+    store.addCorrection({
+      userMessage: 'deployment pipeline configuration first',
+      messageLength: 40,
+      detectedDomain: 'code_engineering',
+      correctedDomain: 'architecture_design',
+      detectedEmotion: 'neutral',
+    });
+    store.addCorrection({
+      userMessage: 'deployment pipeline configuration second',
+      messageLength: 40,
+      detectedDomain: 'code_engineering',
+      correctedDomain: 'architecture_design',
+      detectedEmotion: 'neutral',
+    });
+
+    const ctx = detectContext(
+      'Review the deployment pipeline and CI/CD container build',
+      undefined,
+      store,
+    );
+
+    expect(ctx.domain).toBe('code_engineering');
+    expect(ctx.corrected).toBeUndefined();
+  });
+
+  it('corrected flag is not set when no correction applies', () => {
+    const store = new CorrectionStore();
+    // Corrections for a different domain pair
+    for (let i = 0; i < 3; i++) {
+      store.addCorrection({
+        userMessage: `deployment pipeline task ${i} extra words`,
+        messageLength: 40,
+        detectedDomain: 'general',
+        correctedDomain: 'debugging',
+        detectedEmotion: 'neutral',
+      });
+    }
+
+    // This detects as code_engineering, but corrections are for general → debugging
+    const ctx = detectContext(
+      'Review the deployment pipeline and CI/CD container build',
+      undefined,
+      store,
+    );
+
+    expect(ctx.domain).toBe('code_engineering');
+    expect(ctx.corrected).toBeUndefined();
+  });
+
+  it('includes detectionConfidence on all contexts', () => {
+    const ctx = detectContext('Review this config for security vulnerabilities — we need an audit to check for threat vectors, potential exploit paths, and firewall rules');
+    expect(ctx.detectionConfidence).toBeDefined();
+    expect(typeof ctx.detectionConfidence).toBe('number');
+    expect(ctx.detectionConfidence).toBeGreaterThan(0);
+  });
+
+  it('detectionConfidence is 0 when domain is general', () => {
+    const ctx = detectContext('hello there');
+    expect(ctx.domain).toBe('general');
+    expect(ctx.detectionConfidence).toBe(0);
+  });
+
+  it('complexity and stakes use the corrected domain', () => {
+    const store = new CorrectionStore();
+    // Teach: messages with "incident" detected as debugging should be crisis_management
+    for (let i = 0; i < 3; i++) {
+      store.addCorrection({
+        userMessage: `incident response procedure review ${i}`,
+        messageLength: 40,
+        detectedDomain: 'debugging',
+        correctedDomain: 'crisis_management',
+        detectedEmotion: 'stressed',
+      });
+    }
+
+    // "incident" + "error" triggers debugging, but correction overrides to crisis_management
+    const ctx = detectContext(
+      'We have an error in the incident response procedure',
+      undefined,
+      store,
+    );
+
+    // crisis_management → complexity = 'crisis', stakes = 'critical'
+    if (ctx.corrected) {
+      expect(ctx.domain).toBe('crisis_management');
+      expect(ctx.complexity).toBe('crisis');
+      expect(ctx.stakes).toBe('critical');
+    }
   });
 });

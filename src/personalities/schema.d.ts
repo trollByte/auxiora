@@ -99,6 +99,12 @@ export interface TaskContext {
     mode: 'solo_work' | 'team_context' | 'external_facing' | 'personal';
     /** How much rides on getting this right. */
     stakes: 'low' | 'moderate' | 'high' | 'critical';
+    /** True if the correction store overrode the auto-detected domain. */
+    corrected?: boolean;
+    /** The auto-detected domain before correction (only set when corrected). */
+    originalDomain?: ContextDomain;
+    /** Confidence score of the winning domain from keyword/pattern matching. */
+    detectionConfidence?: number;
 }
 /**
  * Signals used by the context detector to infer a TaskContext from
