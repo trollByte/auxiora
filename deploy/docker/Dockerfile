@@ -9,6 +9,7 @@ WORKDIR /app
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages/ packages/
+COPY src/ src/
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm -r build
@@ -34,6 +35,7 @@ WORKDIR /app
 # Copy manifests and workspace config for prod dependency install
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY --from=builder /app/packages/ packages/
+COPY --from=builder /app/src/ src/
 
 # Strip dev artifacts: source, tests, tsconfig, tsbuildinfo
 RUN find packages -type d -name src -exec rm -rf {} + 2>/dev/null; \
@@ -41,6 +43,9 @@ RUN find packages -type d -name src -exec rm -rf {} + 2>/dev/null; \
     find packages -name 'tsconfig*.json' -delete 2>/dev/null; \
     find packages -name '*.tsbuildinfo' -delete 2>/dev/null; \
     find packages -type d -name node_modules -exec rm -rf {} + 2>/dev/null; \
+    find src -name '*.ts' ! -name '*.d.ts' -delete 2>/dev/null; \
+    find src -type d -name __tests__ -exec rm -rf {} + 2>/dev/null; \
+    find src -name '*.map' -delete 2>/dev/null; \
     true
 
 RUN pnpm install --frozen-lockfile --prod
