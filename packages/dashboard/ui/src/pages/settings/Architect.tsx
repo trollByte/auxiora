@@ -20,6 +20,13 @@ export function SettingsArchitect() {
           const res = await api.exportArchitectData();
           return res.data;
         }}
+        getEngine={async () => {
+          const res = await api.getPersonalityEngine();
+          return res.data.engine;
+        }}
+        setEngine={async (engine) => {
+          await api.setPersonalityEngine(engine);
+        }}
       />
     </div>
   );

@@ -190,6 +190,20 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
+  // Personality engine toggle
+  getPersonalityEngine: () =>
+    fetchApi<{ data: { engine: string } }>('/personality/engine'),
+  setPersonalityEngine: (engine: string) =>
+    fetchApi<{ success: boolean }>('/personality/engine', {
+      method: 'PUT',
+      body: JSON.stringify({ engine }),
+    }),
+  updateChatPersonality: (chatId: string, personality: string) =>
+    fetchApi<{ data: any }>(`/chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ personality }),
+    }),
+
   // Architect personality engine
   getArchitectPreferences: () =>
     fetchApi<{ data: any }>('/architect/preferences'),

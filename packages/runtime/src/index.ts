@@ -151,6 +151,8 @@ export class Auxiora {
   private channels?: ChannelManager;
   private vault!: Vault;
   private systemPrompt: string = '';
+  private standardPrompt: string = '';
+  private architectPrompt: string = '';
   private running = false;
   private behaviors?: BehaviorManager;
   private browserManager?: BrowserManager;
@@ -721,7 +723,11 @@ export class Auxiora {
               this.sessions.deleteChat(chatId),
             getChatMessages: (chatId: string) =>
               this.sessions.getChatMessages(chatId),
+            updateChatMetadata: (chatId: string, metadata: Record<string, unknown>) =>
+              this.sessions.updateChatMetadata(chatId, metadata),
           },
+          getPersonalityEngine: () => this.config.agent.personality ?? 'standard',
+          setPersonalityEngine: (engine: string) => this.setPersonalityEngine(engine),
           get trust() {
             return self.trustEngine && self.trustAuditTrail && self.rollbackManager ? {
               getLevels: () => self.trustEngine!.getAllLevels(),
@@ -1621,21 +1627,21 @@ export class Auxiora {
       parts.push(`\n## About the User\n${user}`);
     } catch { /* no file */ }
 
-    this.systemPrompt = parts.join('\n\n---\n\n');
+    this.architectPrompt = parts.join('\n\n---\n\n');
     const storage = new VaultStorageAdapter(this.vault);
     this.architect = createArchitect(storage);
     await this.architect.initialize();
 
     if (this.capabilityPromptFragment) {
-      this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
+      this.architectPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
     }
   }
 
   private async loadPersonality(): Promise<void> {
-    if (this.config.agent.personality === 'the-architect') {
-      return this.loadArchitectPersonality();
-    }
+    // Always initialize Architect engine (it's lightweight) so any chat can use it
+    await this.loadArchitectPersonality();
 
+    // Build standard prompt
     const parts: string[] = [];
 
     // Build identity preamble from config
@@ -1684,16 +1690,29 @@ export class Auxiora {
 
     if (parts.length > 1) {
       // Has content beyond the identity preamble
-      this.systemPrompt = parts.join('\n\n---\n\n');
+      this.standardPrompt = parts.join('\n\n---\n\n');
     } else {
       // Only identity preamble, no personality files — use enriched default
-      this.systemPrompt = `You are ${agent.name}, a helpful AI assistant. Be concise, accurate, and friendly.`;
+      this.standardPrompt = `You are ${agent.name}, a helpful AI assistant. Be concise, accurate, and friendly.`;
     }
 
     // Append self-awareness capability fragment
     if (this.capabilityPromptFragment) {
-      this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
+      this.standardPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
     }
+
+    // Set global system prompt based on config
+    this.systemPrompt = this.config.agent.personality === 'the-architect'
+      ? this.architectPrompt
+      : this.standardPrompt;
+  }
+
+  /** Switch the global personality engine at runtime (no restart required). */
+  setPersonalityEngine(engine: string): void {
+    this.config.agent.personality = engine;
+    this.systemPrompt = engine === 'the-architect'
+      ? this.architectPrompt
+      : this.standardPrompt;
   }
 
   /** Append Architect context modifier when active, returning context metadata. */
@@ -1862,8 +1881,16 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
+      // Resolve per-chat personality (metadata overrides global default)
+      const chatRecord = chatId ? this.sessions.getChat(chatId) : undefined;
+      const chatPersonality = chatRecord?.metadata?.personality as string | undefined;
+      const useArchitect = chatPersonality
+        ? chatPersonality === 'the-architect'
+        : this.config.agent.personality === 'the-architect';
+      const basePrompt = useArchitect ? this.architectPrompt : this.standardPrompt;
+
       // Build enriched prompt with modes and memories
-      let enrichedPrompt = this.systemPrompt;
+      let enrichedPrompt = basePrompt;
       let memorySection: string | null = null;
       if (this.memoryRetriever && this.memoryStore) {
         const memories = await this.memoryStore.getAll();
@@ -1894,10 +1921,13 @@ export class Auxiora {
           enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection, 'webchat');
         }
       } else if (memorySection) {
-        enrichedPrompt = this.systemPrompt + memorySection;
+        enrichedPrompt = basePrompt + memorySection;
       }
 
-      const architectResult = this.applyArchitectEnrichment(enrichedPrompt, content);
+      // Only apply Architect enrichment if this chat uses the Architect
+      const architectResult = useArchitect
+        ? this.applyArchitectEnrichment(enrichedPrompt, content)
+        : { prompt: enrichedPrompt };
       enrichedPrompt = architectResult.prompt;
 
       // Route to best model for this message

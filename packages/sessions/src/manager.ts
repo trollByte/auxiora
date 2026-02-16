@@ -306,6 +306,10 @@ export class SessionManager {
 
   // ── Chat management ──
 
+  getChat(chatId: string): Chat | undefined {
+    return this.db.getChat(chatId);
+  }
+
   createChat(title?: string): Chat {
     return this.db.createChat(title ?? 'New Chat', 'webchat');
   }
@@ -321,6 +325,10 @@ export class SessionManager {
   archiveChat(chatId: string): void {
     this.db.archiveChat(chatId);
     this.sessions.delete(chatId);
+  }
+
+  updateChatMetadata(chatId: string, metadata: Record<string, unknown>): void {
+    this.db.updateChatMetadata(chatId, metadata);
   }
 
   deleteChat(chatId: string): void {

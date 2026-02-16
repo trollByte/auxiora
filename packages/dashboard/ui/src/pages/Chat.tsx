@@ -25,6 +25,7 @@ interface ChatThread {
   id: string;
   title: string;
   updatedAt: number;
+  personality?: string;
 }
 
 interface ModelSelection {
@@ -161,6 +162,10 @@ export function Chat() {
   const [editTitle, setEditTitle] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
+  // Per-chat personality state
+  const [chatPersonality, setChatPersonality] = useState<string | undefined>(undefined);
+  const [globalEngine, setGlobalEngine] = useState<string>('standard');
+
   // Architect personality state
   const [overrideMenuOpenForMessageId, setOverrideMenuOpenForMessageId] = useState<string | null>(null);
   const [conversationContextOverride, setConversationContextOverride] = useState<ContextDomain | null>(null);
@@ -182,11 +187,18 @@ export function Chat() {
     chatIdRef.current = chatId;
   }, [chatId]);
 
+  // Load global personality engine on mount
+  useEffect(() => {
+    api.getPersonalityEngine().then(res => {
+      if (res.data?.engine) setGlobalEngine(res.data.engine);
+    }).catch(() => {});
+  }, []);
+
   // Load chat list on mount — auto-create first chat if none exist
   useEffect(() => {
     api.getChats().then(async res => {
       if (res.data && res.data.length > 0) {
-        setChats(res.data.map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt })));
+        setChats(res.data.map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt, personality: c.metadata?.personality })));
         setChatId(res.data[0].id);
       } else {
         // No chats yet — create one automatically
@@ -198,6 +210,16 @@ export function Chat() {
       }
     }).catch(() => {});
   }, []);
+
+  // Sync per-chat personality when chatId changes
+  useEffect(() => {
+    if (!chatId) {
+      setChatPersonality(undefined);
+      return;
+    }
+    const chat = chats.find(c => c.id === chatId);
+    setChatPersonality(chat?.personality);
+  }, [chatId, chats]);
 
   // Load messages when chatId changes
   useEffect(() => {
@@ -524,6 +546,18 @@ export function Chat() {
     }
   }, [connected]);
 
+  const handleChatPersonalityChange = useCallback(async (value: string) => {
+    if (!chatId) return;
+    const personality = value || undefined; // empty string = use global default
+    try {
+      await api.updateChatPersonality(chatId, value || 'standard');
+      setChatPersonality(personality);
+      setChats(prev => prev.map(c => c.id === chatId ? { ...c, personality } : c));
+    } catch {
+      // ignore
+    }
+  }, [chatId]);
+
   const handleNewChat = async () => {
     try {
       const res = await api.createNewChat();
@@ -674,6 +708,20 @@ export function Chat() {
               <span className="chat-agent-name">{agentName}</span>
               <span className="chat-status-sep" />
               <span className="chat-status-label">Mode: <strong>{modeLabel}</strong></span>
+              <span className="chat-status-sep" />
+              <span className="chat-status-label">
+                Engine:{' '}
+                <select
+                  className="chat-personality-select"
+                  value={chatPersonality ?? ''}
+                  onChange={e => handleChatPersonalityChange(e.target.value)}
+                  title="Per-chat personality engine"
+                >
+                  <option value="">Global ({globalEngine === 'the-architect' ? 'Architect' : 'Standard'})</option>
+                  <option value="standard">Standard</option>
+                  <option value="the-architect">The Architect</option>
+                </select>
+              </span>
               {templateName && (
                 <>
                   <span className="chat-status-sep" />

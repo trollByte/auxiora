@@ -263,6 +263,9 @@ export interface DashboardDeps {
     stop(): void;
     getTurnCount(): number;
   };
+  // --- Personality engine ---
+  getPersonalityEngine?: () => string;
+  setPersonalityEngine?: (engine: string) => void;
   // --- Chat session history ---
   sessions?: {
     getWebchatMessages(): Promise<Array<{ id: string; role: string; content: string; timestamp: number }>>;
@@ -272,6 +275,7 @@ export interface DashboardDeps {
     archiveChat(chatId: string): void;
     deleteChat(chatId: string): void;
     getChatMessages(chatId: string): Array<{ id: string; role: string; content: string; timestamp: number }>;
+    updateChatMetadata?(chatId: string, metadata: Record<string, unknown>): void;
   };
 }
 

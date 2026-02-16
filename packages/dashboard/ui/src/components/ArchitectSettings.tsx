@@ -13,6 +13,10 @@ export interface ArchitectSettingsProps {
   clearData: () => Promise<void>;
   /** Export all data as JSON string. */
   exportData: () => Promise<string>;
+  /** Get the current global personality engine. */
+  getEngine?: () => Promise<string>;
+  /** Set the global personality engine. */
+  setEngine?: (engine: string) => Promise<void>;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -22,18 +26,38 @@ export function ArchitectSettings({
   updatePreference,
   clearData,
   exportData,
+  getEngine,
+  setEngine,
 }: ArchitectSettingsProps) {
   const [prefs, setPrefs] = useState<ArchitectPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [status, setStatus] = useState('');
+  const [engineEnabled, setEngineEnabled] = useState(false);
 
   useEffect(() => {
     loadPreferences()
       .then(p => { setPrefs(p); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [loadPreferences]);
+    if (getEngine) {
+      getEngine().then(e => setEngineEnabled(e === 'the-architect')).catch(() => {});
+    }
+  }, [loadPreferences, getEngine]);
+
+  const handleEngineToggle = useCallback(async () => {
+    if (!setEngine) return;
+    setSaving(true);
+    const newEngine = engineEnabled ? 'standard' : 'the-architect';
+    try {
+      await setEngine(newEngine);
+      setEngineEnabled(!engineEnabled);
+      setStatus(newEngine === 'the-architect' ? 'Architect engine enabled' : 'Architect engine disabled');
+      setTimeout(() => setStatus(''), 3000);
+    } finally {
+      setSaving(false);
+    }
+  }, [engineEnabled, setEngine]);
 
   const handleToggle = useCallback(async (key: keyof ArchitectPreferences, value: boolean) => {
     if (!prefs) return;
@@ -101,6 +125,26 @@ export function ArchitectSettings({
   return (
     <div className="settings-form">
       {status && <div className="settings-success" role="status">{status}</div>}
+
+      {/* ── Global engine toggle ── */}
+      {setEngine && (
+        <div className="settings-section">
+          <h3>Engine</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              className={`toggle${engineEnabled ? ' active' : ''}`}
+              onClick={() => !saving && handleEngineToggle()}
+              style={saving ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+              {engineEnabled ? 'Architect engine enabled (global default)' : 'Architect engine disabled'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+            Controls the default personality for new chats. Individual chats can override this.
+          </p>
+        </div>
+      )}
 
       {/* ── Display toggles ── */}
       <div className="settings-section">

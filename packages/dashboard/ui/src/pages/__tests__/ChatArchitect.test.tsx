@@ -40,6 +40,7 @@ vi.mock('../../api', () => ({
     getModels: vi.fn().mockResolvedValue({ providers: [] }),
     getIdentity: vi.fn().mockResolvedValue({}),
     getPersonality: vi.fn().mockResolvedValue({}),
+    getPersonalityEngine: vi.fn().mockResolvedValue({ data: { engine: 'standard' } }),
     getChats: vi.fn().mockResolvedValue({
       data: [{ id: 'chat-1', title: 'Test Chat', updatedAt: 1700000000000 }],
     }),

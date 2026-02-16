@@ -78,6 +78,11 @@ export class SessionDatabase {
     this.db.prepare('UPDATE chats SET archived = 1, updated_at = ? WHERE id = ?').run(Date.now(), id);
   }
 
+  updateChatMetadata(id: string, metadata: Record<string, unknown>): void {
+    this.db.prepare('UPDATE chats SET metadata = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(metadata), Date.now(), id);
+  }
+
   deleteChat(id: string): void {
     this.db.prepare('DELETE FROM chats WHERE id = ?').run(id);
   }

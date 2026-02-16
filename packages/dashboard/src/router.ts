@@ -645,12 +645,20 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
     const chatId = String(req.params.id);
-    const { title, archived } = req.body as { title?: string; archived?: boolean };
+    const { title, archived, personality } = req.body as { title?: string; archived?: boolean; personality?: string };
     if (title !== undefined && deps.sessions.renameChat) {
       deps.sessions.renameChat(chatId, title);
     }
     if (archived === true && deps.sessions.archiveChat) {
       deps.sessions.archiveChat(chatId);
+    }
+    if (personality !== undefined && deps.sessions.updateChatMetadata) {
+      const validPersonalities = ['standard', 'the-architect'];
+      if (!validPersonalities.includes(personality)) {
+        res.status(400).json({ error: `Invalid personality: must be one of ${validPersonalities.join(', ')}` });
+        return;
+      }
+      deps.sessions.updateChatMetadata(chatId, { personality });
     }
     res.json({ data: { ok: true } });
   });
@@ -2344,6 +2352,31 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     } catch {
       res.status(500).json({ error: 'Failed to save appearance config' });
     }
+  });
+
+  // --- Global personality engine toggle ---
+  router.get('/personality/engine', (_req: Request, res: Response) => {
+    const engine = deps.getPersonalityEngine ? deps.getPersonalityEngine() : 'standard';
+    res.json({ data: { engine } });
+  });
+
+  router.put('/personality/engine', async (req: Request, res: Response) => {
+    const { engine } = req.body as { engine?: string };
+    const validEngines = ['standard', 'the-architect'];
+    if (!engine || !validEngines.includes(engine)) {
+      res.status(400).json({ error: `Invalid engine: must be one of ${validEngines.join(', ')}` });
+      return;
+    }
+    // Update in-memory
+    if (deps.setPersonalityEngine) {
+      deps.setPersonalityEngine(engine);
+    }
+    // Persist to config file
+    if (setup?.saveConfig) {
+      await setup.saveConfig({ agent: { personality: engine } });
+    }
+    void audit('settings.personality', { engine });
+    res.json({ success: true });
   });
 
   // --- Architect personality engine routes ---
