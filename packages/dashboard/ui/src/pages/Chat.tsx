@@ -172,6 +172,8 @@ export function Chat() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
   const currentResponseRef = useRef('');
   const requestIdRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -287,7 +289,22 @@ export function Chat() {
   }, [acIndex, acOpen]);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+
+  // Track whether the user is near the bottom of the messages container
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const threshold = 80;
+      isNearBottomRef.current =
+        container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
@@ -444,6 +461,7 @@ export function Chat() {
     setInput('');
     setStreaming(true);
     currentResponseRef.current = '';
+    isNearBottomRef.current = true;
 
     const payload: Record<string, string> = { content };
     if (selectedModel) {
@@ -756,7 +774,7 @@ export function Chat() {
               </div>
             </span>
           </div>
-          <div className="chat-messages">
+          <div className="chat-messages" ref={messagesContainerRef}>
             {!chatId && (
               <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
                 Select a chat or create a new one
