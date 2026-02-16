@@ -1,6 +1,9 @@
 {
   "name": "@auxiora/introspection",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "publishConfig": {
+      "access": "public"
+  },
   "description": "Self-awareness: capability catalog, health monitoring, and introspection for Auxiora",
   "type": "module",
   "main": "dist/index.js",
