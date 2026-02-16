@@ -2407,7 +2407,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   }
 
   function loadArchitectPrefs(): Record<string, unknown> {
-    const raw = deps.vault.get('architect.preferences');
+    const raw = deps.vault.get('architect_preferences');
     if (!raw) return architectDefaults();
     try {
       return { ...architectDefaults(), ...JSON.parse(raw) };
@@ -2429,7 +2429,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       }
       const prefs = loadArchitectPrefs();
       prefs[key] = value;
-      await deps.vault.add('architect.preferences', JSON.stringify(prefs));
+      await deps.vault.add('architect_preferences', JSON.stringify(prefs));
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: 'Failed to update architect preference' });
@@ -2438,7 +2438,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
 
   router.delete('/architect/data', async (_req: Request, res: Response) => {
     try {
-      await deps.vault.add('architect.preferences', JSON.stringify(architectDefaults()));
+      await deps.vault.add('architect_preferences', JSON.stringify(architectDefaults()));
       await deps.vault.add('architect.learning', JSON.stringify({}));
       res.json({ success: true });
     } catch {
@@ -2448,7 +2448,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
 
   router.get('/architect/data/export', (_req: Request, res: Response) => {
     try {
-      const prefs = deps.vault.get('architect.preferences') || '{}';
+      const prefs = deps.vault.get('architect_preferences') || '{}';
       const learning = deps.vault.get('architect.learning') || '{}';
       const exportData = JSON.stringify({
         preferences: JSON.parse(prefs),
