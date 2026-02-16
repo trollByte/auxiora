@@ -2347,17 +2347,44 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   });
 
   // --- Architect personality engine routes ---
-  router.get('/architect/preferences', (_req: Request, res: Response) => {
+  const ARCHITECT_DOMAINS = [
+    'security_review', 'code_engineering', 'architecture_design', 'debugging',
+    'team_leadership', 'one_on_one', 'sales_pitch', 'negotiation',
+    'marketing_content', 'strategic_planning', 'crisis_management',
+    'creative_work', 'writing_content', 'decision_making',
+    'learning_research', 'personal_development', 'general',
+  ] as const;
+
+  function architectDefaults() {
+    const now = Date.now();
+    const history: Record<string, number> = {};
+    for (const d of ARCHITECT_DOMAINS) history[d] = 0;
+    return {
+      corrections: '{"corrections":[]}',
+      showContextIndicator: true,
+      showSourcesButton: true,
+      autoDetectContext: true,
+      defaultContext: null,
+      contextUsageHistory: history,
+      totalInteractions: 0,
+      firstUsed: now,
+      lastUsed: now,
+      version: 1,
+    };
+  }
+
+  function loadArchitectPrefs(): Record<string, unknown> {
     const raw = deps.vault.get('architect.preferences');
-    if (!raw) {
-      res.json({ data: {} });
-      return;
-    }
+    if (!raw) return architectDefaults();
     try {
-      res.json({ data: JSON.parse(raw) });
+      return { ...architectDefaults(), ...JSON.parse(raw) };
     } catch {
-      res.json({ data: {} });
+      return architectDefaults();
     }
+  }
+
+  router.get('/architect/preferences', (_req: Request, res: Response) => {
+    res.json({ data: loadArchitectPrefs() });
   });
 
   router.patch('/architect/preferences', async (req: Request, res: Response) => {
@@ -2367,8 +2394,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
         res.status(400).json({ error: 'Missing preference key' });
         return;
       }
-      const raw = deps.vault.get('architect.preferences');
-      const prefs = raw ? JSON.parse(raw) : {};
+      const prefs = loadArchitectPrefs();
       prefs[key] = value;
       await deps.vault.add('architect.preferences', JSON.stringify(prefs));
       res.json({ success: true });
@@ -2379,7 +2405,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
 
   router.delete('/architect/data', async (_req: Request, res: Response) => {
     try {
-      await deps.vault.add('architect.preferences', JSON.stringify({}));
+      await deps.vault.add('architect.preferences', JSON.stringify(architectDefaults()));
       await deps.vault.add('architect.learning', JSON.stringify({}));
       res.json({ success: true });
     } catch {
