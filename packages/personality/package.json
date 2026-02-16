@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./architect": {
+      "types": "../../src/personalities/index.d.ts",
+      "import": "../../src/personalities/index.js"
     }
   },
   "scripts": {

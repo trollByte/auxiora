@@ -16,6 +16,8 @@ import {
   getWebhooksPath,
   getScreenshotsDir,
 } from '@auxiora/core';
+import { createArchitect, ARCHITECT_BASE_PROMPT } from '@auxiora/personality/architect';
+import type { TheArchitect } from '@auxiora/personality/architect';
 import {
   toolRegistry,
   toolExecutor,
@@ -202,6 +204,7 @@ export class Auxiora {
   private capabilityCatalog?: CapabilityCatalogImpl;
   private healthMonitor?: HealthMonitorImpl;
   private capabilityPromptFragment: string = '';
+  private architect?: TheArchitect;
 
   // Security floor
   private securityFloor?: SecurityFloor;
@@ -1607,7 +1610,30 @@ export class Auxiora {
     return lines.join('\n');
   }
 
+  private async loadArchitectPersonality(): Promise<void> {
+    const parts: string[] = [ARCHITECT_BASE_PROMPT];
+
+    // Workspace files still provide user context
+    try { parts.push(await fs.readFile(getAgentsPath(), 'utf-8')); } catch { /* no file */ }
+    try { parts.push(await fs.readFile(getIdentityPath(), 'utf-8')); } catch { /* no file */ }
+    try {
+      const user = await fs.readFile(getUserPath(), 'utf-8');
+      parts.push(`\n## About the User\n${user}`);
+    } catch { /* no file */ }
+
+    this.systemPrompt = parts.join('\n\n---\n\n');
+    this.architect = createArchitect();
+
+    if (this.capabilityPromptFragment) {
+      this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
+    }
+  }
+
   private async loadPersonality(): Promise<void> {
+    if (this.config.agent.personality === 'the-architect') {
+      return this.loadArchitectPersonality();
+    }
+
     const parts: string[] = [];
 
     // Build identity preamble from config
@@ -1666,6 +1692,13 @@ export class Auxiora {
     if (this.capabilityPromptFragment) {
       this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
     }
+  }
+
+  /** Append Architect context modifier when active. */
+  private applyArchitectEnrichment(prompt: string, userMessage: string): string {
+    if (!this.architect) return prompt;
+    const output = this.architect.generatePrompt(userMessage);
+    return prompt + '\n\n' + output.contextModifier;
   }
 
   private async initializeModes(): Promise<void> {
@@ -1826,6 +1859,8 @@ export class Auxiora {
       } else if (memorySection) {
         enrichedPrompt = this.systemPrompt + memorySection;
       }
+
+      enrichedPrompt = this.applyArchitectEnrichment(enrichedPrompt, content);
 
       // Route to best model for this message
       let provider;
@@ -2548,6 +2583,8 @@ export class Auxiora {
       } else if (channelMemorySection) {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
+
+      enrichedPrompt = this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
 
       // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();
