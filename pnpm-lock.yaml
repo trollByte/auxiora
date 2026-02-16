@@ -805,6 +805,9 @@ importers:
       '@auxiora/screen':
         specifier: workspace:*
         version: link:../screen
+      '@auxiora/self-awareness':
+        specifier: workspace:*
+        version: link:../self-awareness
       '@auxiora/sessions':
         specifier: workspace:*
         version: link:../sessions
@@ -860,6 +863,25 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/self-awareness:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/metrics':
+        specifier: workspace:*
+        version: link:../metrics
+      '@auxiora/sessions':
+        specifier: workspace:*
+        version: link:../sessions
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@25.1.0)(jsdom@28.1.0(@noble/hashes@1.8.0))
 
   packages/sessions:
     dependencies:
