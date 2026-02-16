@@ -80,6 +80,8 @@ export const api = {
     fetchApi<{ success: boolean }>('/setup/personality', { method: 'POST', body: JSON.stringify({ template }) }),
   setupProvider: (provider: string, apiKey?: string, endpoint?: string) =>
     fetchApi<{ success: boolean }>('/setup/provider', { method: 'POST', body: JSON.stringify({ provider, apiKey, endpoint }) }),
+  setupProviders: (providers: Array<{ name: string; apiKey?: string; endpoint?: string }>) =>
+    fetchApi<{ success: boolean; providers: string[]; primary: string }>('/setup/provider', { method: 'POST', body: JSON.stringify({ providers }) }),
   setupChannels: (channels: Array<{ type: string; enabled: boolean; credentials?: Record<string, string> }>) =>
     fetchApi<{ success: boolean }>('/setup/channels', { method: 'POST', body: JSON.stringify({ channels }) }),
   completeSetup: () =>

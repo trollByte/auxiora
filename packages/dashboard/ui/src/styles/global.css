@@ -1463,6 +1463,31 @@ body {
   background: var(--accent-subtle);
 }
 
+.setup-provider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.setup-provider-label {
+  flex: 0 0 160px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.setup-provider-row input[type="password"],
+.setup-provider-row input[type="text"] {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.setup-provider-row input[type="checkbox"] {
+  width: auto;
+  margin-bottom: 0;
+}
+
 /* Setup progress */
 .setup-progress {
   display: flex;

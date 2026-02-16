@@ -31,6 +31,17 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   const router = Router();
   const auth = new DashboardAuth(config.sessionTtlMs);
 
+  const PROVIDER_VAULT_KEYS: Record<string, string> = {
+    anthropic: 'ANTHROPIC_API_KEY',
+    openai: 'OPENAI_API_KEY',
+    google: 'GOOGLE_API_KEY',
+    groq: 'GROQ_API_KEY',
+    deepseek: 'DEEPSEEK_API_KEY',
+    cohere: 'COHERE_API_KEY',
+    xai: 'XAI_API_KEY',
+    replicate: 'REPLICATE_API_TOKEN',
+  };
+
   // --- Auth middleware ---
   function requireAuth(req: Request, res: Response, next: NextFunction): void {
     // OAuth callbacks are public — Google redirects here without a session cookie
@@ -242,52 +253,62 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   });
 
   router.post('/setup/provider', async (req: Request, res: Response) => {
-    const { provider, apiKey } = req.body as { provider?: string; apiKey?: string };
-    if (!provider) {
-      res.status(400).json({ error: 'Provider is required' });
+    const { providers: providerList, provider, apiKey } = req.body as {
+      providers?: Array<{ name: string; apiKey?: string; endpoint?: string }>;
+      provider?: string; apiKey?: string;
+    };
+
+    // Support both legacy single-provider and new multi-provider format
+    const entries = providerList ?? (provider ? [{ name: provider, apiKey, endpoint: (req.body as any).endpoint }] : []);
+
+    if (entries.length === 0) {
+      res.status(400).json({ error: 'At least one provider is required' });
       return;
     }
 
-    if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'ollama') {
-      res.status(400).json({ error: 'Provider must be "anthropic", "openai", or "ollama"' });
-      return;
-    }
+    let primary: string | undefined;
+    const configured: string[] = [];
 
-    if (provider === 'ollama') {
-      const endpoint = (req.body as any).endpoint;
-      if (setup?.saveConfig) {
-        await setup.saveConfig({
-          provider: {
-            primary: 'ollama',
-            ollama: { baseUrl: endpoint || 'http://localhost:11434' },
-          },
-        });
+    for (const entry of entries) {
+      if (entry.name === 'ollama') {
+        if (setup?.saveConfig) {
+          await setup.saveConfig({
+            provider: { ollama: { baseUrl: entry.endpoint || 'http://localhost:11434' } },
+          });
+        }
+        configured.push('ollama');
+        if (!primary) primary = 'ollama';
+        continue;
       }
-      void audit('setup.provider', { provider });
-      res.json({ success: true, provider });
-      return;
+
+      const vaultKey = PROVIDER_VAULT_KEYS[entry.name];
+      if (!vaultKey) {
+        res.status(400).json({ error: `Unknown provider: ${entry.name}` });
+        return;
+      }
+
+      if (!entry.apiKey) {
+        continue; // skip providers with no key provided
+      }
+
+      try {
+        await deps.vault.add(vaultKey, entry.apiKey);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to store API key';
+        res.status(400).json({ error: `Vault error for ${entry.name}: ${msg}` });
+        return;
+      }
+
+      configured.push(entry.name);
+      if (!primary) primary = entry.name;
     }
 
-    if (!apiKey) {
-      res.status(400).json({ error: 'API key is required for this provider' });
-      return;
+    if (primary && setup?.saveConfig) {
+      await setup.saveConfig({ provider: { primary } });
     }
 
-    const vaultKey = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
-    try {
-      await deps.vault.add(vaultKey, apiKey);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to store API key';
-      res.status(400).json({ error: `Vault is not initialized. Complete the vault setup step first. (${msg})` });
-      return;
-    }
-
-    if (setup?.saveConfig) {
-      await setup.saveConfig({ provider: { primary: provider } });
-    }
-
-    void audit('setup.provider', { provider });
-    res.json({ success: true, provider });
+    void audit('setup.provider', { providers: configured });
+    res.json({ success: true, providers: configured, primary });
   });
 
   router.post('/setup/channels', async (req: Request, res: Response) => {
@@ -901,17 +922,6 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   });
 
   // Provider: configure a specific provider's credentials (does NOT change primary/fallback)
-  const PROVIDER_VAULT_KEYS: Record<string, string> = {
-    anthropic: 'ANTHROPIC_API_KEY',
-    openai: 'OPENAI_API_KEY',
-    google: 'GOOGLE_API_KEY',
-    groq: 'GROQ_API_KEY',
-    deepseek: 'DEEPSEEK_API_KEY',
-    cohere: 'COHERE_API_KEY',
-    xai: 'XAI_API_KEY',
-    replicate: 'REPLICATE_API_TOKEN',
-  };
-
   const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible', 'claudeOAuth'];
 
   // --- Claude OAuth PKCE flow ---
