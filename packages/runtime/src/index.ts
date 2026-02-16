@@ -82,6 +82,8 @@ import { ScheduleAnalyzer, ScheduleOptimizer, MeetingPrepGenerator } from '@auxi
 import { ContactGraph, ContextRecall } from '@auxiora/contacts';
 import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compose';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
+import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
+import type { IntrospectionSources, AutoFixActions } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
 import { setMemoryStore } from '@auxiora/tools';
@@ -196,6 +198,11 @@ export class Auxiora {
   private notificationHub?: NotificationHub;
   private dndManager?: DoNotDisturbManager;
   private notificationOrchestrator?: NotificationOrchestrator;
+
+  private capabilityCatalog?: CapabilityCatalogImpl;
+  private healthMonitor?: HealthMonitorImpl;
+  private capabilityPromptFragment: string = '';
+
   // Security floor
   private securityFloor?: SecurityFloor;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
@@ -579,6 +586,8 @@ export class Auxiora {
               .map(([type, v]) => ({ type, enabled: !!(v as any).enabled }));
           },
           getActiveAgents: () => this.getActiveAgents(),
+          getHealthState: () => this.healthMonitor?.getHealthState() ?? { overall: 'unknown', subsystems: [], issues: [], lastCheck: '' },
+          getCapabilities: () => this.capabilityCatalog?.getCatalog() ?? null,
           getConnections: () => this.gateway.getConnections(),
           getAuditEntries: async (limit?: number) => {
             const auditLogger = getAuditLogger();
@@ -1134,6 +1143,91 @@ export class Auxiora {
     };
     this.screenCapturer = new ScreenCapturer(mockCaptureBackend);
     this.logger.info('Screen system initialized (capture backend: mock)');
+
+    // --- Self-awareness: capability catalog + health monitor ---
+    const introspectionSources: IntrospectionSources = {
+      getTools: () => toolRegistry.list(),
+      getConnectedChannels: () => this.channels?.getConnectedChannels() ?? [],
+      getConfiguredChannels: () => this.channels?.getConfiguredChannels() ?? [],
+      getDefaultChannelId: (type) => this.channels?.getDefaultChannelId(type as any),
+      getBehaviors: async () => this.behaviors?.list() ?? [],
+      getProviders: () => {
+        if (!this.providers) return [];
+        const names = this.providers.listAvailable();
+        return names.map((n) => {
+          const p = this.providers!.getProvider(n);
+          return { name: n, displayName: p.metadata.displayName, models: p.metadata.models };
+        });
+      },
+      getPrimaryProviderName: () => this.config.provider.primary,
+      getFallbackProviderName: () => this.config.provider.fallback,
+      checkProviderAvailable: async (name) => {
+        try {
+          const p = this.providers?.getProvider(name);
+          return p ? await p.metadata.isAvailable() : false;
+        } catch { return false; }
+      },
+      getPlugins: () => (this.pluginLoader?.listPlugins() ?? []).map((p) => ({
+        name: p.name, version: p.version, status: 'active',
+        toolCount: p.toolCount, behaviorNames: p.behaviorNames,
+      })),
+      getFeatures: () => ({
+        behaviors: (this.config as any).features?.behaviors !== false,
+        browser: (this.config as any).features?.browser !== false,
+        voice: !!(this.config as any).features?.voice,
+        webhooks: !!(this.config as any).features?.webhooks,
+        plugins: !!(this.config as any).features?.plugins,
+        memory: this.config.memory?.enabled !== false,
+      }),
+      getAuditEntries: async (limit) => {
+        const al = getAuditLogger();
+        return al.getEntries(limit);
+      },
+      getTrustLevel: (domain) => this.trustEngine?.getTrustLevel(domain as any) ?? 0,
+    };
+
+    this.capabilityCatalog = new CapabilityCatalogImpl(introspectionSources);
+    await this.capabilityCatalog.rebuild();
+
+    const initialHealth = { overall: 'healthy' as const, subsystems: [], issues: [], lastCheck: new Date().toISOString() };
+    this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog.getCatalog(), initialHealth);
+
+    const autoFixActions: AutoFixActions = {
+      reconnectChannel: async () => false,
+      restartBehavior: async (_id) => {
+        // BehaviorManager does not yet expose a resume() method
+        return false;
+      },
+    };
+
+    this.healthMonitor = new HealthMonitorImpl(introspectionSources, autoFixActions);
+    this.healthMonitor.onChange((state) => {
+      this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog!.getCatalog(), state);
+      this.gateway.broadcast({ type: 'health_update', payload: state }, (client) => client.authenticated);
+    });
+    this.healthMonitor.start(30_000);
+
+    const introspectTool = createIntrospectTool(
+      () => this.capabilityCatalog!.getCatalog(),
+      () => this.healthMonitor!.getHealthState(),
+      introspectionSources,
+    );
+    toolRegistry.register(introspectTool as any);
+
+    // Update catalog on relevant audit events
+    const introspectionAuditLogger = getAuditLogger();
+    const prevOnEntry = introspectionAuditLogger.onEntry;
+    introspectionAuditLogger.onEntry = (entry) => {
+      prevOnEntry?.(entry);
+      if (entry.event.startsWith('channel.') || entry.event.startsWith('plugin.')) {
+        this.capabilityCatalog?.rebuildSection(entry.event.startsWith('channel.') ? 'channels' : 'plugins');
+      }
+    };
+
+    this.logger.info('Self-awareness initialized', {
+      tools: this.capabilityCatalog.getCatalog().tools.length,
+      channels: this.capabilityCatalog.getCatalog().channels.length,
+    });
   }
 
   private async initializeProviders(): Promise<void> {
@@ -1566,6 +1660,11 @@ export class Auxiora {
     } else {
       // Only identity preamble, no personality files — use enriched default
       this.systemPrompt = `You are ${agent.name}, a helpful AI assistant. Be concise, accurate, and friendly.`;
+    }
+
+    // Append self-awareness capability fragment
+    if (this.capabilityPromptFragment) {
+      this.systemPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
     }
   }
 

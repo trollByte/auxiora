@@ -64,6 +64,8 @@ export const api = {
   },
   getStatus: () => fetchApi<{ data: any }>('/status'),
   getActiveAgents: () => fetchApi<{ data: Array<{ id: string; type: string; description: string; channelType?: string; startedAt: string }> }>('/status/agents'),
+  getHealthState: () => fetchApi<{ data: any }>('/status/health'),
+  getCapabilities: () => fetchApi<{ data: any }>('/status/capabilities'),
   getSetupStatus: () =>
     fetchApi<{ needsSetup: boolean; completedSteps: string[]; vaultUnlocked: boolean; dashboardPasswordSet: boolean; agentName: string }>('/setup/status'),
   setupVault: (password: string) =>

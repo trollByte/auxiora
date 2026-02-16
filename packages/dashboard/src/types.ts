@@ -66,6 +66,21 @@ export interface DashboardDeps {
     channelType?: string;
     startedAt: string;
   }>;
+  getHealthState?: () => {
+    overall: string;
+    subsystems: Array<{ name: string; status: string; lastCheck: string; details?: string }>;
+    issues: Array<{ id: string; subsystem: string; severity: string; description: string; detectedAt: string; suggestedFix?: string; autoFixable: boolean }>;
+    lastCheck: string;
+  };
+  getCapabilities?: () => {
+    tools: Array<{ name: string; description: string; parameterCount: number }>;
+    channels: Array<{ type: string; connected: boolean; hasDefault: boolean }>;
+    behaviors: Array<{ id: string; type: string; status: string; action: string; health: string; runCount: number; failCount: number }>;
+    providers: Array<{ name: string; displayName: string; available: boolean; isPrimary: boolean; isFallback: boolean; models: string[] }>;
+    plugins: Array<{ name: string; version: string; status: string; toolCount: number }>;
+    features: Record<string, boolean>;
+    updatedAt: string;
+  } | null;
   getConnections: () => Array<{
     id: string;
     authenticated: boolean;

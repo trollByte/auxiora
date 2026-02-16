@@ -704,6 +704,14 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: deps.getActiveAgents?.() ?? [] });
   });
 
+  router.get('/status/health', (_req: Request, res: Response) => {
+    res.json({ data: deps.getHealthState?.() ?? { overall: 'unknown', subsystems: [], issues: [], lastCheck: '' } });
+  });
+
+  router.get('/status/capabilities', (_req: Request, res: Response) => {
+    res.json({ data: deps.getCapabilities?.() ?? null });
+  });
+
   // --- Settings routes (authenticated) ---
 
   // Identity
