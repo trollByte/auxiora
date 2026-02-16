@@ -41,13 +41,24 @@ export class BehaviorExecutor {
       const messages = this.buildMessages(behavior);
       const systemPrompt = this.buildSystemPrompt(behavior);
 
-      const result = await provider.complete(messages, { systemPrompt });
-      const content = result.content;
+      let content: string;
 
-      logger.debug('Behavior AI response received', {
-        id: behavior.id,
-        tokens: result.usage,
-      });
+      if (this.deps.executeWithTools) {
+        logger.debug('Executing behavior with tools', { id: behavior.id });
+        const toolResult = await this.deps.executeWithTools(messages, systemPrompt);
+        content = toolResult.content;
+        logger.debug('Behavior AI response received (with tools)', {
+          id: behavior.id,
+          tokens: toolResult.usage,
+        });
+      } else {
+        const result = await provider.complete(messages, { systemPrompt });
+        content = result.content;
+        logger.debug('Behavior AI response received', {
+          id: behavior.id,
+          tokens: result.usage,
+        });
+      }
 
       // Deliver to channel
       const label = this.getLabel(behavior);

@@ -93,6 +93,62 @@ describe('BehaviorExecutor', () => {
     expect(result.error).toContain('Channel offline');
   });
 
+  it('should use executeWithTools when available', async () => {
+    const mockProvider = {
+      name: 'mock',
+      complete: vi.fn(),
+      stream: vi.fn(),
+    };
+
+    const mockSend = vi.fn().mockResolvedValue({ success: true });
+    const mockExecuteWithTools = vi.fn().mockResolvedValue({
+      content: 'Researched result with tools',
+      usage: { inputTokens: 50, outputTokens: 100 },
+    });
+
+    const executor = new BehaviorExecutor({
+      getProvider: () => mockProvider,
+      sendToChannel: mockSend,
+      getSystemPrompt: () => 'You are Auxiora.',
+      executeWithTools: mockExecuteWithTools,
+    });
+
+    const result = await executor.execute(makeBehavior());
+
+    expect(result.success).toBe(true);
+    expect(result.result).toBe('Researched result with tools');
+    expect(mockExecuteWithTools).toHaveBeenCalledOnce();
+    expect(mockProvider.complete).not.toHaveBeenCalled();
+  });
+
+  it('should fall back to provider.complete when executeWithTools is not provided', async () => {
+    const mockProvider = {
+      name: 'mock',
+      complete: vi.fn().mockResolvedValue({
+        content: 'Fallback result',
+        usage: { inputTokens: 10, outputTokens: 20 },
+        model: 'mock',
+        finishReason: 'end_turn',
+      }),
+      stream: vi.fn(),
+    };
+
+    const mockSend = vi.fn().mockResolvedValue({ success: true });
+
+    const executor = new BehaviorExecutor({
+      getProvider: () => mockProvider,
+      sendToChannel: mockSend,
+      getSystemPrompt: () => 'You are Auxiora.',
+      // no executeWithTools
+    });
+
+    const result = await executor.execute(makeBehavior());
+
+    expect(result.success).toBe(true);
+    expect(result.result).toBe('Fallback result');
+    expect(mockProvider.complete).toHaveBeenCalledOnce();
+  });
+
   it('should format monitor results with condition info', async () => {
     const mockProvider = {
       name: 'mock',
