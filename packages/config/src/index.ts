@@ -297,6 +297,21 @@ const AgentIdentitySchema = z.object({
 
 export type AgentIdentity = z.infer<typeof AgentIdentitySchema>;
 
+const SelfAwarenessConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  tokenBudget: z.number().default(500),
+  collectors: z.object({
+    conversationReflector: z.boolean().default(true),
+    capacityMonitor: z.boolean().default(true),
+    knowledgeBoundary: z.boolean().default(true),
+    relationshipModel: z.boolean().default(true),
+    temporalTracker: z.boolean().default(true),
+    environmentSensor: z.boolean().default(true),
+    metaCognitor: z.boolean().default(true),
+  }).default({}),
+  proactiveInsights: z.boolean().default(true),
+}).default({});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -316,6 +331,7 @@ export const ConfigSchema = z.object({
   agent: AgentIdentitySchema.default({}),
   modes: ModesConfigSchema.default({}),
   research: ResearchConfigSchema.default({}),
+  selfAwareness: SelfAwarenessConfigSchema.default({}),
   // [P12] Trust / Autonomy
   trust: TrustConfigSchema.default({}),
   intent: IntentConfigSchema.default({}),
