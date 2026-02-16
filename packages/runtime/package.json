@@ -52,6 +52,7 @@
     "@auxiora/agent-protocol": "workspace:*",
     "@auxiora/ambient": "workspace:*",
     "@auxiora/connectors": "workspace:*",
+    "@auxiora/introspection": "workspace:*",
     "@auxiora/connector-github": "workspace:*",
     "@auxiora/connector-google-workspace": "workspace:*",
     "@auxiora/connector-homeassistant": "workspace:*",

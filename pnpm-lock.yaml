@@ -754,6 +754,9 @@ importers:
       '@auxiora/intent':
         specifier: workspace:*
         version: link:../intent
+      '@auxiora/introspection':
+        specifier: workspace:*
+        version: link:../introspection
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
