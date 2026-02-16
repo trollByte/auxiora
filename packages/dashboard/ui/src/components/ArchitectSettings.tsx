@@ -15,12 +15,6 @@ export interface ArchitectSettingsProps {
   exportData: () => Promise<string>;
 }
 
-interface CorrectionStats {
-  totalCorrections: number;
-  topMisclassifications: Array<{ from: ContextDomain; to: ContextDomain; count: number }>;
-  correctionRate: Record<string, number>;
-}
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ArchitectSettings({
@@ -95,62 +89,62 @@ export function ArchitectSettings({
     }
   }, [exportData]);
 
-  if (loading) return <div className="architect-settings-loading">Loading preferences...</div>;
-  if (!prefs) return <div className="architect-settings-error">Failed to load preferences</div>;
+  if (loading) return null;
+  if (!prefs) return <div className="error">Failed to load preferences</div>;
 
-  // Compute correction stats from prefs
   const totalInteractions = prefs.totalInteractions;
   const topDomains = Object.entries(prefs.contextUsageHistory)
     .filter(([, count]) => count > 0)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 3) as [ContextDomain, number][];
+    .slice(0, 5) as [ContextDomain, number][];
 
   return (
-    <div className="architect-settings">
-      <h3 className="architect-settings-title">The Architect Settings</h3>
+    <div className="settings-form">
+      {status && <div className="settings-success" role="status">{status}</div>}
 
-      {status && <div className="architect-settings-status" role="status">{status}</div>}
+      {/* ── Display toggles ── */}
+      <div className="settings-section">
+        <h3>Display</h3>
 
-      {/* Toggles */}
-      <div className="architect-settings-section">
-        <h4>Display</h4>
-
-        <label className="architect-settings-toggle">
-          <input
-            type="checkbox"
-            checked={prefs.showContextIndicator}
-            onChange={e => handleToggle('showContextIndicator', e.target.checked)}
-            disabled={saving}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <div
+            className={`toggle${prefs.showContextIndicator ? ' active' : ''}`}
+            onClick={() => !saving && handleToggle('showContextIndicator', !prefs.showContextIndicator)}
+            style={saving ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
           />
-          <span>Show context indicator</span>
-        </label>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+            Show context indicator
+          </span>
+        </div>
 
-        <label className="architect-settings-toggle">
-          <input
-            type="checkbox"
-            checked={prefs.showSourcesButton}
-            onChange={e => handleToggle('showSourcesButton', e.target.checked)}
-            disabled={saving}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <div
+            className={`toggle${prefs.showSourcesButton ? ' active' : ''}`}
+            onClick={() => !saving && handleToggle('showSourcesButton', !prefs.showSourcesButton)}
+            style={saving ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
           />
-          <span>Show sources button</span>
-        </label>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+            Show sources button
+          </span>
+        </div>
 
-        <label className="architect-settings-toggle">
-          <input
-            type="checkbox"
-            checked={prefs.autoDetectContext}
-            onChange={e => handleToggle('autoDetectContext', e.target.checked)}
-            disabled={saving}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            className={`toggle${prefs.autoDetectContext ? ' active' : ''}`}
+            onClick={() => !saving && handleToggle('autoDetectContext', !prefs.autoDetectContext)}
+            style={saving ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
           />
-          <span>Auto-detect context</span>
-        </label>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+            Auto-detect context
+          </span>
+        </div>
       </div>
 
-      {/* Default context */}
-      <div className="architect-settings-section">
-        <h4>Default Context</h4>
+      {/* ── Default context ── */}
+      <div className="settings-section">
+        <h3>Default Context</h3>
+        <label>Context domain</label>
         <select
-          className="architect-settings-select"
           value={prefs.defaultContext ?? 'auto'}
           onChange={e => handleDefaultContext(e.target.value)}
           disabled={saving}
@@ -164,54 +158,57 @@ export function ArchitectSettings({
         </select>
       </div>
 
-      {/* Detection accuracy */}
-      <div className="architect-settings-section">
-        <h4>Detection Accuracy</h4>
-        <div className="architect-settings-stats">
-          <div className="architect-settings-stat">
-            <span className="architect-settings-stat-value">{totalInteractions}</span>
-            <span className="architect-settings-stat-label">Total interactions</span>
+      {/* ── Detection stats ── */}
+      <div className="settings-section">
+        <h3>Detection Stats</h3>
+        <div className="status-grid" style={{ marginBottom: '1rem' }}>
+          <div className="status-card">
+            <h3>Total</h3>
+            <div className="value">{totalInteractions}</div>
+            <div className="sub">interactions</div>
           </div>
-          {topDomains.length > 0 && (
-            <div className="architect-settings-stat">
-              <span className="architect-settings-stat-label">Most used contexts</span>
-              <ul className="architect-settings-stat-list">
-                {topDomains.map(([domain, count]) => (
-                  <li key={domain}>
-                    {DOMAIN_META[domain]?.icon} {DOMAIN_META[domain]?.label}: {count} ({totalInteractions > 0 ? Math.round(count / totalInteractions * 100) : 0}%)
-                  </li>
-                ))}
-              </ul>
+          {topDomains.slice(0, 3).map(([domain, count]) => (
+            <div className="status-card" key={domain}>
+              <h3>{DOMAIN_META[domain]?.icon} {DOMAIN_META[domain]?.label}</h3>
+              <div className="value">{count}</div>
+              <div className="sub">{totalInteractions > 0 ? Math.round(count / totalInteractions * 100) : 0}% of total</div>
             </div>
-          )}
+          ))}
         </div>
+        {topDomains.length === 0 && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            No interactions recorded yet. Context stats will appear here as you use The Architect.
+          </p>
+        )}
       </div>
 
-      {/* Data management */}
-      <div className="architect-settings-section">
-        <h4>Data</h4>
-        <div className="architect-settings-actions">
+      {/* ── Data management ── */}
+      <div className="settings-section" style={{ borderBottom: 'none' }}>
+        <h3>Data Management</h3>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {confirmClear ? (
-            <div className="architect-settings-confirm">
-              <span>Clear all learning data? This cannot be undone.</span>
+            <>
+              <span style={{ fontSize: '0.85rem', color: 'var(--danger)', marginRight: '0.25rem' }}>
+                Clear all learning data? This cannot be undone.
+              </span>
               <button
-                className="architect-settings-btn architect-settings-btn-danger"
+                className="btn-sm btn-danger"
                 onClick={handleClear}
                 disabled={saving}
               >
-                Confirm clear
+                Confirm
               </button>
               <button
-                className="architect-settings-btn"
+                className="btn-sm"
                 onClick={() => setConfirmClear(false)}
                 disabled={saving}
               >
                 Cancel
               </button>
-            </div>
+            </>
           ) : (
             <button
-              className="architect-settings-btn architect-settings-btn-danger"
+              className="btn-sm btn-danger"
               onClick={() => setConfirmClear(true)}
               disabled={saving}
             >
@@ -219,7 +216,7 @@ export function ArchitectSettings({
             </button>
           )}
           <button
-            className="architect-settings-btn"
+            className="btn-sm"
             onClick={handleExport}
             disabled={saving}
           >
