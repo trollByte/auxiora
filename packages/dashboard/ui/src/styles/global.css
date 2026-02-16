@@ -718,6 +718,176 @@ body {
   background: var(--accent-subtle);
 }
 
+/* Override popover (full menu) */
+.context-override-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: context-popover-in var(--transition-base) forwards;
+}
+
+@keyframes context-popover-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.context-override-header {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-override-detected {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.context-override-subheader {
+  padding: 0.4rem 0.75rem 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.context-override-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.25rem;
+  margin: 0;
+  list-style: none;
+}
+
+.context-override-domain-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.context-override-domain-item:hover,
+.context-override-domain-item:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.context-override-domain-item.detected {
+  background: var(--accent-subtle);
+}
+
+.context-override-domain-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.context-override-domain-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.context-override-domain-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.context-override-detected-badge {
+  display: inline-block;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.context-override-domain-desc {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+/* Scope picker */
+.context-override-scope {
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.context-override-scope-label {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.context-override-scope-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.context-override-scope-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.context-override-scope-hint {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.context-override-scope-back {
+  align-self: flex-start;
+  padding: 0.2rem 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.context-override-scope-back:hover {
+  color: var(--text-primary);
+}
+
 /* ── Buttons ───────────────────────────────────── */
 
 .btn-sm {

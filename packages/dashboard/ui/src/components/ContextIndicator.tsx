@@ -1,46 +1,5 @@
-import type { TaskContext, ContextDomain, EmotionalRegister } from '@auxiora/personality/architect';
-
-// ── Domain metadata ──────────────────────────────────────────────────────────
-
-interface DomainMeta {
-  icon: string;
-  label: string;
-  colorClass: string;
-}
-
-const DOMAIN_META: Record<ContextDomain, DomainMeta> = {
-  security_review:      { icon: '\u{1F6E1}\uFE0F', label: 'Security Review',  colorClass: 'context-red' },
-  crisis_management:    { icon: '\u{1F6A8}',       label: 'Crisis',           colorClass: 'context-red' },
-  code_engineering:     { icon: '\u{1F4BB}',       label: 'Engineering',      colorClass: 'context-blue' },
-  architecture_design:  { icon: '\u{1F3D7}\uFE0F', label: 'Architecture',     colorClass: 'context-blue' },
-  debugging:            { icon: '\u{1F41B}',       label: 'Debugging',        colorClass: 'context-blue' },
-  team_leadership:      { icon: '\u{1F465}',       label: 'Team Leadership',  colorClass: 'context-green' },
-  one_on_one:           { icon: '\u{1F91D}',       label: 'One-on-One',       colorClass: 'context-green' },
-  sales_pitch:          { icon: '\u{1F4C8}',       label: 'Sales',            colorClass: 'context-purple' },
-  negotiation:          { icon: '\u2696\uFE0F',    label: 'Negotiation',      colorClass: 'context-purple' },
-  marketing_content:    { icon: '\u{1F4E3}',       label: 'Marketing',        colorClass: 'context-purple' },
-  strategic_planning:   { icon: '\u{1F3AF}',       label: 'Strategy',         colorClass: 'context-orange' },
-  decision_making:      { icon: '\u2696\uFE0F',    label: 'Decision',         colorClass: 'context-orange' },
-  creative_work:        { icon: '\u{1F4A1}',       label: 'Creative',         colorClass: 'context-teal' },
-  writing_content:      { icon: '\u270D\uFE0F',    label: 'Writing',          colorClass: 'context-teal' },
-  learning_research:    { icon: '\u{1F4DA}',       label: 'Learning',         colorClass: 'context-gray' },
-  personal_development: { icon: '\u{1F331}',       label: 'Growth',           colorClass: 'context-gray' },
-  general:              { icon: '\u{1F4AC}',       label: 'General',          colorClass: 'context-gray' },
-};
-
-// ── Emotional register labels ────────────────────────────────────────────────
-
-const EMOTIONAL_LABELS: Partial<Record<EmotionalRegister, string>> = {
-  stressed:    '\u00B7 Under Pressure',
-  frustrated:  '\u00B7 Working Through It',
-  uncertain:   '\u00B7 Exploring',
-  excited:     '\u00B7 Energized',
-  celebratory: '\u00B7 Celebrating',
-};
-
-// ── All domains for the override menu ────────────────────────────────────────
-
-const ALL_DOMAINS = Object.keys(DOMAIN_META) as ContextDomain[];
+import type { TaskContext, ContextDomain } from '@auxiora/personality/architect';
+import { DOMAIN_META, ALL_DOMAINS, EMOTIONAL_LABELS } from './context-meta.js';
 
 // ── Component ────────────────────────────────────────────────────────────────
 
