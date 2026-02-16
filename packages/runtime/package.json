@@ -63,6 +63,7 @@
     "@auxiora/conversation": "workspace:*",
     "@auxiora/notification-hub": "workspace:*",
     "@auxiora/screen": "workspace:*",
+    "@auxiora/self-awareness": "workspace:*",
     "express": "^5.1.0"
   },
   "devDependencies": {

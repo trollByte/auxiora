@@ -110,6 +110,17 @@ import {
 import { getModesDir } from '@auxiora/core';
 import { fileURLToPath } from 'node:url';
 import { getLogger } from '@auxiora/logger';
+import {
+  SelfAwarenessAssembler,
+  InMemoryAwarenessStorage,
+  ConversationReflector,
+  CapacityMonitor,
+  KnowledgeBoundary,
+  RelationshipModel,
+  TemporalTracker,
+  EnvironmentSensor,
+  MetaCognitor,
+} from '@auxiora/self-awareness';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -206,6 +217,7 @@ export class Auxiora {
   private capabilityCatalog?: CapabilityCatalogImpl;
   private healthMonitor?: HealthMonitorImpl;
   private capabilityPromptFragment: string = '';
+  private selfAwarenessAssembler?: SelfAwarenessAssembler;
   private architect?: TheArchitect;
 
   // Security floor
@@ -1710,6 +1722,24 @@ export class Auxiora {
     this.systemPrompt = this.config.agent.personality === 'the-architect'
       ? this.architectPrompt
       : this.standardPrompt;
+
+    // Initialize dynamic self-awareness assembler
+    if (this.config.selfAwareness?.enabled) {
+      const storage = new InMemoryAwarenessStorage();
+      const collectorConfig = this.config.selfAwareness.collectors ?? {};
+      const collectors = [
+        ...(collectorConfig.conversationReflector !== false ? [new ConversationReflector(storage)] : []),
+        ...(collectorConfig.capacityMonitor !== false ? [new CapacityMonitor()] : []),
+        ...(collectorConfig.knowledgeBoundary !== false ? [new KnowledgeBoundary(storage)] : []),
+        ...(collectorConfig.relationshipModel !== false ? [new RelationshipModel(storage)] : []),
+        ...(collectorConfig.temporalTracker !== false ? [new TemporalTracker(storage)] : []),
+        ...(collectorConfig.environmentSensor !== false ? [new EnvironmentSensor()] : []),
+        ...(collectorConfig.metaCognitor !== false ? [new MetaCognitor(storage)] : []),
+      ];
+      this.selfAwarenessAssembler = new SelfAwarenessAssembler(collectors, {
+        tokenBudget: this.config.selfAwareness.tokenBudget ?? 500,
+      });
+    }
   }
 
   /** Switch the global personality engine at runtime (no restart required). */
@@ -1953,6 +1983,21 @@ export class Auxiora {
         : { prompt: enrichedPrompt };
       enrichedPrompt = architectResult.prompt;
 
+      // Inject dynamic self-awareness context
+      if (this.selfAwarenessAssembler) {
+        const awarenessContext = {
+          userId: client.senderId ?? 'anonymous',
+          sessionId: session.id,
+          chatId: chatId ?? session.id,
+          currentMessage: content,
+          recentMessages: contextMessages,
+        };
+        const awarenessFragment = await this.selfAwarenessAssembler.assemble(awarenessContext);
+        if (awarenessFragment) {
+          enrichedPrompt += '\n\n[Dynamic Self-Awareness]\n' + awarenessFragment;
+        }
+      }
+
       // Route to best model for this message
       let provider;
       let routingResult: RoutingResult | undefined;
@@ -2042,6 +2087,20 @@ export class Auxiora {
           architect: architectResult.architectMeta,
         },
       });
+
+      // Background self-awareness analysis
+      if (this.selfAwarenessAssembler) {
+        this.selfAwarenessAssembler.afterResponse({
+          userId: client.senderId ?? 'anonymous',
+          sessionId: session.id,
+          chatId: chatId ?? session.id,
+          currentMessage: content,
+          recentMessages: contextMessages,
+          response: fullResponse,
+          responseTime: Date.now() - (session.metadata.lastActiveAt ?? Date.now()),
+          tokensUsed: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
+        }).catch(() => {});
+      }
 
       audit('message.sent', {
         sessionId: session.id,
