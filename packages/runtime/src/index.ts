@@ -1638,8 +1638,13 @@ export class Auxiora {
   }
 
   private async loadPersonality(): Promise<void> {
-    // Always initialize Architect engine (it's lightweight) so any chat can use it
-    await this.loadArchitectPersonality();
+    // Always initialize Architect engine (it's lightweight) so any chat can use it.
+    // Wrap in try/catch: vault may be locked during setup mode.
+    try {
+      await this.loadArchitectPersonality();
+    } catch {
+      this.logger.warn('Architect personality not available (vault may be locked)');
+    }
 
     // Build standard prompt
     const parts: string[] = [];
