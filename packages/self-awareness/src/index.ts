@@ -9,3 +9,4 @@ export type {
 
 export { SelfAwarenessAssembler, type AssemblerOptions } from './assembler.js';
 export { InMemoryAwarenessStorage } from './storage.js';
+export { ConversationReflector } from './collectors/conversation-reflector.js';
