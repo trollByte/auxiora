@@ -859,6 +859,10 @@ export class Auxiora {
               const merged = deepMerge(current, updates);
               await saveFullConfig(merged as Config);
               this.config = await loadConfig();
+              // Rebuild system prompt if agent identity changed
+              if (updates.agent) {
+                await this.loadPersonality();
+              }
             },
             getAgentName: () => this.config.agent?.name ?? 'Auxiora',
             getAgentPronouns: () => this.config.agent?.pronouns ?? 'they/them',
