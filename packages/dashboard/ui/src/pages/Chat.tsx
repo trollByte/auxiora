@@ -464,7 +464,7 @@ export function Chat() {
   };
 
   const sendMessage = () => {
-    if (!input.trim() || !wsRef.current || !connected || streaming) return;
+    if (!input.trim() || !wsRef.current || !connected) return;
     const content = input.trim();
     const id = ++requestIdRef.current;
     activeRequestIdRef.current = id;
@@ -921,10 +921,10 @@ export function Chat() {
                   if (e.key === 'Enter') sendMessage();
                 }}
                 placeholder={!chatId ? 'Select or create a chat...' : connected ? 'Type / for commands...' : 'Connecting...'}
-                disabled={!connected || streaming || !chatId}
+                disabled={!connected || !chatId}
               />
             </div>
-            <button onClick={sendMessage} disabled={!connected || streaming || !input.trim() || !chatId}>
+            <button onClick={sendMessage} disabled={!connected || !input.trim() || !chatId}>
               Send
             </button>
           </div>
