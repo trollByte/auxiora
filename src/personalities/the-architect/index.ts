@@ -9,6 +9,7 @@ import { ArchitectPersistence } from './persistence.js';
 import type { ArchitectPreferences } from './persistence.js';
 import type { EncryptedStorage } from './persistence-adapter.js';
 import { ContextRecommender } from './recommender.js';
+import { ConversationContext } from './conversation-context.js';
 
 // Re-export all types for consumer convenience
 export type {
@@ -34,6 +35,8 @@ export { CorrectionStore } from './correction-store.js';
 export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
 export { ContextRecommender } from './recommender.js';
 export type { ContextRecommendation } from './recommender.js';
+export { ConversationContext } from './conversation-context.js';
+export type { ConversationSummary } from './conversation-context.js';
 export { ArchitectPersistence } from './persistence.js';
 export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
@@ -89,6 +92,7 @@ export class TheArchitect {
   private contextOverride: ContextDomain | null = null;
   private correctionStore: CorrectionStore;
   private recommender: ContextRecommender;
+  private conversationContext: ConversationContext;
   private persistence?: ArchitectPersistence;
   private preferences?: ArchitectPreferences;
   private initialized = false;
@@ -96,6 +100,7 @@ export class TheArchitect {
   constructor(storage?: EncryptedStorage) {
     this.correctionStore = new CorrectionStore();
     this.recommender = new ContextRecommender();
+    this.conversationContext = new ConversationContext();
     if (storage) {
       this.persistence = new ArchitectPersistence(storage);
     }
@@ -129,9 +134,30 @@ export class TheArchitect {
    */
   generatePrompt(userMessage: string, history?: Message[]): PromptOutput {
     const rawContext = this.detectContext(userMessage, history);
-    const context: TaskContext = this.contextOverride
-      ? { ...rawContext, domain: this.contextOverride, corrected: undefined, originalDomain: undefined }
-      : rawContext;
+    let context: TaskContext;
+
+    if (this.contextOverride) {
+      context = { ...rawContext, domain: this.contextOverride, corrected: undefined, originalDomain: undefined };
+    } else {
+      // Apply conversation-level theme awareness
+      const rawDomain = rawContext.domain;
+      const rawConfidence = rawContext.detectionConfidence ?? 0;
+      this.conversationContext.recordDetection(userMessage, rawDomain, rawConfidence);
+      const effectiveDomain = this.conversationContext.getEffectiveDomain(rawDomain, rawConfidence);
+      const theme = this.conversationContext.getSummary().theme;
+
+      if (effectiveDomain !== rawDomain) {
+        context = {
+          ...rawContext,
+          domain: effectiveDomain,
+          rawDetectedDomain: rawDomain,
+          themeOverridden: true,
+          conversationTheme: theme ?? undefined,
+        };
+      } else {
+        context = { ...rawContext, conversationTheme: theme ?? undefined };
+      }
+    }
 
     const baseMix = CONTEXT_PROFILES[context.domain];
     const adjustedMix = applyEmotionalOverride(baseMix, context.emotionalRegister);
@@ -210,6 +236,18 @@ export class TheArchitect {
   getActiveSources(mix?: TraitMix): TraitSource[] {
     const m = mix ?? CONTEXT_PROFILES['general'];
     return getActiveSources(m);
+  }
+
+  // ── Conversation context ─────────────────────────────────────────────
+
+  /** Reset conversation context for a new conversation. */
+  resetConversation(): void {
+    this.conversationContext.reset();
+  }
+
+  /** Get the conversation context summary. */
+  getConversationSummary() {
+    return this.conversationContext.getSummary();
   }
 
   // ── Correction learning ──────────────────────────────────────────────
@@ -297,6 +335,7 @@ export class TheArchitect {
     this.correctionStore = new CorrectionStore();
     this.contextOverride = null;
     this.preferences = undefined;
+    this.conversationContext.reset();
     if (this.persistence) {
       await this.persistence.clearAll();
     }

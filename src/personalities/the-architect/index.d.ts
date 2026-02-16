@@ -14,6 +14,8 @@ export { CorrectionStore } from './correction-store.js';
 export type { DetectionCorrection, CorrectionPattern } from './correction-store.js';
 export { ContextRecommender } from './recommender.js';
 export type { ContextRecommendation } from './recommender.js';
+export { ConversationContext } from './conversation-context.js';
+export type { ConversationSummary } from './conversation-context.js';
 export { ArchitectPersistence } from './persistence.js';
 export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
@@ -38,6 +40,7 @@ export declare class TheArchitect {
     private contextOverride;
     private correctionStore;
     private recommender;
+    private conversationContext;
     private persistence?;
     private preferences?;
     private initialized;
@@ -90,6 +93,10 @@ export declare class TheArchitect {
      * the general profile if no mix is provided.
      */
     getActiveSources(mix?: TraitMix): TraitSource[];
+    /** Reset conversation context for a new conversation. */
+    resetConversation(): void;
+    /** Get the conversation context summary. */
+    getConversationSummary(): import("./conversation-context.js").ConversationSummary;
     /**
      * Records a user correction so the engine can learn from misclassifications.
      * Also persists the updated corrections to encrypted storage when available.

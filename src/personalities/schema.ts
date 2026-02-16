@@ -191,6 +191,15 @@ export interface TaskContext {
 
   /** Confidence score of the winning domain from keyword/pattern matching. */
   detectionConfidence?: number;
+
+  /** The sustained conversation theme (set after 3+ consistent detections). */
+  conversationTheme?: ContextDomain;
+
+  /** True if the effective domain differs from the raw per-message detection. */
+  themeOverridden?: boolean;
+
+  /** The raw detected domain before conversation theme adjustment. */
+  rawDetectedDomain?: ContextDomain;
 }
 
 /**

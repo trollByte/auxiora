@@ -6,6 +6,7 @@ import { assemblePromptModifier, getActiveSources } from './prompt-assembler.js'
 import { CorrectionStore } from './correction-store.js';
 import { ArchitectPersistence } from './persistence.js';
 import { ContextRecommender } from './recommender.js';
+import { ConversationContext } from './conversation-context.js';
 // Re-export building blocks for advanced consumers
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -16,6 +17,7 @@ export { SOURCE_MAP } from './source-map.js';
 export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
 export { CorrectionStore } from './correction-store.js';
 export { ContextRecommender } from './recommender.js';
+export { ConversationContext } from './conversation-context.js';
 export { ArchitectPersistence } from './persistence.js';
 export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 // ────────────────────────────────────────────────────────────────────────────
@@ -58,12 +60,14 @@ export class TheArchitect {
     contextOverride = null;
     correctionStore;
     recommender;
+    conversationContext;
     persistence;
     preferences;
     initialized = false;
     constructor(storage) {
         this.correctionStore = new CorrectionStore();
         this.recommender = new ContextRecommender();
+        this.conversationContext = new ConversationContext();
         if (storage) {
             this.persistence = new ArchitectPersistence(storage);
         }
@@ -96,9 +100,30 @@ export class TheArchitect {
      */
     generatePrompt(userMessage, history) {
         const rawContext = this.detectContext(userMessage, history);
-        const context = this.contextOverride
-            ? { ...rawContext, domain: this.contextOverride, corrected: undefined, originalDomain: undefined }
-            : rawContext;
+        let context;
+        if (this.contextOverride) {
+            context = { ...rawContext, domain: this.contextOverride, corrected: undefined, originalDomain: undefined };
+        }
+        else {
+            // Apply conversation-level theme awareness
+            const rawDomain = rawContext.domain;
+            const rawConfidence = rawContext.detectionConfidence ?? 0;
+            this.conversationContext.recordDetection(userMessage, rawDomain, rawConfidence);
+            const effectiveDomain = this.conversationContext.getEffectiveDomain(rawDomain, rawConfidence);
+            const theme = this.conversationContext.getSummary().theme;
+            if (effectiveDomain !== rawDomain) {
+                context = {
+                    ...rawContext,
+                    domain: effectiveDomain,
+                    rawDetectedDomain: rawDomain,
+                    themeOverridden: true,
+                    conversationTheme: theme ?? undefined,
+                };
+            }
+            else {
+                context = { ...rawContext, conversationTheme: theme ?? undefined };
+            }
+        }
         const baseMix = CONTEXT_PROFILES[context.domain];
         const adjustedMix = applyEmotionalOverride(baseMix, context.emotionalRegister);
         const modifier = assemblePromptModifier(adjustedMix, context);
@@ -162,6 +187,15 @@ export class TheArchitect {
     getActiveSources(mix) {
         const m = mix ?? CONTEXT_PROFILES['general'];
         return getActiveSources(m);
+    }
+    // ── Conversation context ─────────────────────────────────────────────
+    /** Reset conversation context for a new conversation. */
+    resetConversation() {
+        this.conversationContext.reset();
+    }
+    /** Get the conversation context summary. */
+    getConversationSummary() {
+        return this.conversationContext.getSummary();
     }
     // ── Correction learning ──────────────────────────────────────────────
     /**
@@ -233,6 +267,7 @@ export class TheArchitect {
         this.correctionStore = new CorrectionStore();
         this.contextOverride = null;
         this.preferences = undefined;
+        this.conversationContext.reset();
         if (this.persistence) {
             await this.persistence.clearAll();
         }
