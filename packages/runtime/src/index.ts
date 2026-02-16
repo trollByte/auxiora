@@ -1263,6 +1263,11 @@ export class Auxiora {
     let anthropicOAuthToken: string | undefined;
     let openaiKey: string | undefined;
     let googleKey: string | undefined;
+    let groqKey: string | undefined;
+    let deepseekKey: string | undefined;
+    let cohereKey: string | undefined;
+    let xaiKey: string | undefined;
+    let replicateToken: string | undefined;
     let vaultLocked = false;
 
     try {
@@ -1270,6 +1275,11 @@ export class Auxiora {
       anthropicOAuthToken = this.vault.get('ANTHROPIC_OAUTH_TOKEN');
       openaiKey = this.vault.get('OPENAI_API_KEY');
       googleKey = this.vault.get('GOOGLE_API_KEY');
+      groqKey = this.vault.get('GROQ_API_KEY');
+      deepseekKey = this.vault.get('DEEPSEEK_API_KEY');
+      cohereKey = this.vault.get('COHERE_API_KEY');
+      xaiKey = this.vault.get('XAI_API_KEY');
+      replicateToken = this.vault.get('REPLICATE_API_TOKEN');
 
       // Check if ANTHROPIC_API_KEY is actually an OAuth token (sk-ant-oat01-*)
       // This handles users who stored their OAuth token in the wrong vault key
@@ -1287,7 +1297,8 @@ export class Auxiora {
 
     const hasAnthropic = anthropicKey || anthropicOAuthToken || hasCliCredentials;
     const hasOllama = this.config.provider.ollama?.model;
-    if (!hasAnthropic && !openaiKey && !googleKey && !hasOllama) {
+    const hasAnyKey = hasAnthropic || openaiKey || googleKey || groqKey || deepseekKey || cohereKey || xaiKey || replicateToken || hasOllama;
+    if (!hasAnyKey) {
       if (vaultLocked) {
         this.logger.warn('Vault is locked. AI providers not initialized.');
         this.logger.warn('To use AI: auxiora vault add ANTHROPIC_API_KEY');
@@ -1399,6 +1410,40 @@ export class Auxiora {
               model: this.config.provider.openaiCompatible.model,
               maxTokens: this.config.provider.openaiCompatible.maxTokens,
               name: this.config.provider.openaiCompatible.name,
+            }
+          : undefined,
+        groq: groqKey
+          ? {
+              apiKey: groqKey,
+              model: this.config.provider.groq.model,
+              maxTokens: this.config.provider.groq.maxTokens,
+            }
+          : undefined,
+        deepseek: deepseekKey
+          ? {
+              apiKey: deepseekKey,
+              model: this.config.provider.deepseek.model,
+              maxTokens: this.config.provider.deepseek.maxTokens,
+            }
+          : undefined,
+        cohere: cohereKey
+          ? {
+              apiKey: cohereKey,
+              model: this.config.provider.cohere.model,
+              maxTokens: this.config.provider.cohere.maxTokens,
+            }
+          : undefined,
+        xai: xaiKey
+          ? {
+              apiKey: xaiKey,
+              model: this.config.provider.xai.model,
+              maxTokens: this.config.provider.xai.maxTokens,
+            }
+          : undefined,
+        replicate: replicateToken
+          ? {
+              apiToken: replicateToken,
+              model: this.config.provider.replicate.model,
             }
           : undefined,
       },

@@ -81,6 +81,25 @@ const ProviderConfigSchema = z.object({
     baseUrl: z.string().default(''),
     name: z.string().default('custom'),
   }).default({}),
+  groq: z.object({
+    model: z.string().default('llama-3.3-70b-versatile'),
+    maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  deepseek: z.object({
+    model: z.string().default('deepseek-chat'),
+    maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  cohere: z.object({
+    model: z.string().default('command-r-plus'),
+    maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  xai: z.object({
+    model: z.string().default('grok-2'),
+    maxTokens: z.number().int().positive().default(4096),
+  }).default({}),
+  replicate: z.object({
+    model: z.string().default('meta/meta-llama-3-70b-instruct'),
+  }).default({}),
 });
 
 const SessionConfigSchema = z.object({
