@@ -277,8 +277,22 @@ export class BrowserManager {
 
 async function defaultBrowserFactory(config: BrowserConfig): Promise<Browser> {
   const { chromium } = await import('playwright');
-  return chromium.launch({
-    headless: config.headless,
-    args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
-  });
+  try {
+    return await chromium.launch({
+      headless: config.headless,
+      args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
+    });
+  } catch (error: any) {
+    if (error.message?.includes('Executable doesn\'t exist') || error.message?.includes('browserType.launch')) {
+      logger.info('Playwright browsers not installed, installing chromium...');
+      const { execFileSync } = await import('node:child_process');
+      execFileSync('npx', ['playwright', 'install', 'chromium'], { stdio: 'pipe', timeout: 120_000 });
+      logger.info('Chromium installed successfully');
+      return chromium.launch({
+        headless: config.headless,
+        args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
+      });
+    }
+    throw error;
+  }
 }
