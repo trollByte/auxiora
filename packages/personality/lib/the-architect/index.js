@@ -1,3 +1,77 @@
+// ────────────────────────────────────────────────────────────────────────────
+// THE ARCHITECT — Full Data Flow (Phases 1–4)
+// ────────────────────────────────────────────────────────────────────────────
+//
+// ┌─ INBOUND ──────────────────────────────────────────────────────────────┐
+// │ User types message in chat UI                                         │
+// │                      ↓                                                │
+// │ Chat service calls architect.generatePrompt(userMessage, history)     │
+// └───────────────────────────────────────────────────────────────────────┘
+//
+// ┌─ CONTEXT DETECTION (Phase 1 + Phase 2 corrections) ───────────────────┐
+// │ 1. detectContext() scores message against 17 domain keyword sets      │
+// │ 2. CorrectionStore checks for learned corrections from past           │
+// │    misclassifications — if a correction matches, it overrides the     │
+// │    auto-detected domain and sets corrected=true, originalDomain       │
+// │ 3. Emotional register inferred (neutral/stressed/frustrated/etc.)     │
+// │ 4. Stakes, complexity, and mode derived from signals                  │
+// │ Result: TaskContext { domain, emotionalRegister, stakes, ... }        │
+// └───────────────────────────────────────────────────────────────────────┘
+//                      ↓
+// ┌─ CONVERSATION THEME (Phase 3) ────────────────────────────────────────┐
+// │ 5. ConversationContext.recordDetection() adds to sliding window       │
+// │ 6. After 3+ consistent detections, a theme locks in                   │
+// │ 7. Brief tangents (< 0.7 confidence) don't break theme               │
+// │ 8. Crisis domains always override regardless of theme                 │
+// │ Result: effectiveDomain (may differ from raw detection)               │
+// └───────────────────────────────────────────────────────────────────────┘
+//                      ↓
+// ┌─ TRAIT MIXING (Phases 1–4) ───────────────────────────────────────────┐
+// │ 9.  baseMix = CONTEXT_PROFILES[effectiveDomain]   (29 traits, 0–1)   │
+// │ 10. adjustedMix = applyEmotionalOverride(baseMix, emotion)           │
+// │     — stressed → +warmth, +stoicCalm, +empathy                       │
+// │     — frustrated → +empathy, +patience, -urgency                     │
+// │     — etc.                                                            │
+// │ 11. EmotionalTracker records intensity, detects trajectory            │
+// │     (stable / escalating / de_escalating / volatile / shifting)       │
+// │ 12. adjustedMix = applyTrajectoryMultipliers(adjustedMix, trajectory)│
+// │     — escalating: 1.2× warmth, empathy, calm                         │
+// │     — volatile: 1.3× warmth, calm                                    │
+// │ 13. adjustedMix = customWeights.apply(adjustedMix)                   │
+// │     — additive offsets [-0.3, +0.3] from user preferences / presets  │
+// │ Result: final TraitMix with all 29 traits modulated                   │
+// └───────────────────────────────────────────────────────────────────────┘
+//                      ↓
+// ┌─ PROMPT ASSEMBLY (Phase 1) ───────────────────────────────────────────┐
+// │ 14. contextModifier = assemblePromptModifier(adjustedMix, context)   │
+// │     — weight-scaled behavioral instructions for each active trait     │
+// │ 15. activeSources = getActiveSources(adjustedMix)                     │
+// │     — provenance: trait → historical mind → source work → evidence   │
+// │ 16. fullPrompt = ARCHITECT_BASE_PROMPT + contextModifier              │
+// │ Result: PromptOutput { fullPrompt, activeTraits, detectedContext }    │
+// └───────────────────────────────────────────────────────────────────────┘
+//                      ↓
+// ┌─ SIDE EFFECTS (Phases 2–3) ───────────────────────────────────────────┐
+// │ 17. Fire-and-forget: persistence.recordUsage(domain)                  │
+// │ 18. Recommender checks for context suggestions:                       │
+// │     — correction_pattern: previously corrected similar messages        │
+// │     — low_confidence: detection score below threshold                  │
+// │     — usage_pattern: unusual domain for this user                     │
+// │ Result: optional ContextRecommendation in output                      │
+// └───────────────────────────────────────────────────────────────────────┘
+//                      ↓
+// ┌─ OUTBOUND ────────────────────────────────────────────────────────────┐
+// │ Runtime sends fullPrompt as system prompt to AI provider              │
+// │ Response displayed in chat UI with:                                   │
+// │   — ContextIndicator pill (domain + emoji)                            │
+// │   — SourcesButton → SourcesPanel (active traits + provenance)         │
+// │   — ContextRecommendation banner (if recommendation present)          │
+// │   — ContextOverrideMenu (user can force a different domain)           │
+// │   — TraitCustomizer (user adjusts trait weights / loads presets)       │
+// │   — ConversationExportButton → JSON / Markdown / CSV download         │
+// └───────────────────────────────────────────────────────────────────────┘
+//
+// ────────────────────────────────────────────────────────────────────────────
 import { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 import { CONTEXT_PROFILES } from './context-profiles.js';
 import { applyEmotionalOverride } from './emotional-overrides.js';
@@ -8,6 +82,8 @@ import { ArchitectPersistence } from './persistence.js';
 import { ContextRecommender } from './recommender.js';
 import { ConversationContext } from './conversation-context.js';
 import { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
+import { CustomWeights, WEIGHT_PRESETS } from './custom-weights.js';
+import { ConversationExporter } from './conversation-export.js';
 // Re-export building blocks for advanced consumers
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -20,6 +96,8 @@ export { CorrectionStore } from './correction-store.js';
 export { ContextRecommender } from './recommender.js';
 export { ConversationContext } from './conversation-context.js';
 export { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
+export { CustomWeights, WEIGHT_PRESETS } from './custom-weights.js';
+export { ConversationExporter } from './conversation-export.js';
 export { ArchitectPersistence } from './persistence.js';
 export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 // ────────────────────────────────────────────────────────────────────────────
@@ -64,6 +142,7 @@ export class TheArchitect {
     recommender;
     conversationContext;
     emotionalTracker;
+    customWeights;
     persistence;
     preferences;
     initialized = false;
@@ -72,6 +151,7 @@ export class TheArchitect {
         this.recommender = new ContextRecommender();
         this.conversationContext = new ConversationContext();
         this.emotionalTracker = new EmotionalTracker();
+        this.customWeights = new CustomWeights();
         if (storage) {
             this.persistence = new ArchitectPersistence(storage);
         }
@@ -89,6 +169,9 @@ export class TheArchitect {
         this.preferences = prefs;
         if (prefs.defaultContext) {
             this.contextOverride = prefs.defaultContext;
+        }
+        if (prefs.customWeights) {
+            this.customWeights = CustomWeights.deserialize(prefs.customWeights);
         }
         this.initialized = true;
     }
@@ -135,6 +218,8 @@ export class TheArchitect {
         this.emotionalTracker.recordEmotion(context.emotionalRegister, intensity, userMessage);
         const effective = this.emotionalTracker.getEffectiveEmotion();
         adjustedMix = this.applyTrajectoryMultipliers(adjustedMix, effective.trajectory);
+        // Apply user's custom trait weight adjustments (additive offsets)
+        adjustedMix = this.customWeights.apply(adjustedMix);
         const modifier = assemblePromptModifier(adjustedMix, context);
         const sources = getActiveSources(adjustedMix);
         // Fire-and-forget persistence of usage
@@ -212,6 +297,39 @@ export class TheArchitect {
     /** Get the current emotional trajectory. */
     getEmotionalState() {
         return this.emotionalTracker.getEffectiveEmotion();
+    }
+    // ── Custom weights ───────────────────────────────────────────────────
+    /** Set a custom trait weight offset. Persists if storage is available. */
+    async setTraitOverride(trait, offset) {
+        this.customWeights.setOverride(trait, offset);
+        await this.persistCustomWeights();
+    }
+    /** Remove a custom trait weight override. */
+    async removeTraitOverride(trait) {
+        this.customWeights.removeOverride(trait);
+        await this.persistCustomWeights();
+    }
+    /** Load a preset weight configuration. */
+    async loadPreset(presetName) {
+        this.customWeights.loadPreset(presetName);
+        await this.persistCustomWeights();
+    }
+    /** Returns available weight presets. */
+    listPresets() {
+        return WEIGHT_PRESETS;
+    }
+    /** Returns current custom weight overrides. */
+    getActiveOverrides() {
+        return this.customWeights.getOverrides();
+    }
+    /** Persist custom weights to encrypted storage. */
+    async persistCustomWeights() {
+        if (!this.persistence)
+            return;
+        const prefs = await this.persistence.load();
+        prefs.customWeights = this.customWeights.serialize();
+        await this.persistence.save(prefs);
+        this.preferences = prefs;
     }
     // ── Trajectory multipliers ──────────────────────────────────────────
     /**
@@ -291,6 +409,7 @@ export class TheArchitect {
         // Return a default snapshot when no persistence
         return {
             corrections: this.correctionStore.serialize(),
+            customWeights: this.customWeights.serialize(),
             showContextIndicator: true,
             showSourcesButton: true,
             autoDetectContext: true,
@@ -322,8 +441,31 @@ export class TheArchitect {
         this.preferences = undefined;
         this.conversationContext.reset();
         this.emotionalTracker.reset();
+        this.customWeights.clear();
         if (this.persistence) {
             await this.persistence.clearAll();
+        }
+    }
+    // ── Conversation export ────────────────────────────────────────────
+    /**
+     * Export a conversation with full personality engine metadata.
+     * Returns an ExportedConversation that can be serialized to JSON, Markdown, or CSV.
+     */
+    exportConversation(messages, conversationId) {
+        const exporter = new ConversationExporter();
+        return exporter.export(messages, conversationId);
+    }
+    /**
+     * Export a conversation in the specified format.
+     * @param format - 'json' | 'markdown' | 'csv'
+     */
+    exportConversationAs(messages, conversationId, format) {
+        const exporter = new ConversationExporter();
+        const conversation = exporter.export(messages, conversationId);
+        switch (format) {
+            case 'json': return exporter.toJSON(conversation);
+            case 'markdown': return exporter.toMarkdown(conversation);
+            case 'csv': return exporter.toCSV(conversation);
         }
     }
     /** Export all stored data as JSON string (data portability). */

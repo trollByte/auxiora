@@ -19,11 +19,14 @@ const health: HealthState = {
   lastCheck: '2026-02-15T12:00:00Z',
 };
 
+// Use recent timestamps so the 24h filter always includes them
+const recentTime = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
 const sources = {
   getAuditEntries: async () => [
-    { timestamp: '2026-02-15T11:50:00Z', event: 'channel.error', details: { channelType: 'discord', error: 'Send failed' } },
-    { timestamp: '2026-02-15T11:55:00Z', event: 'channel.error', details: { channelType: 'discord', error: 'Send failed' } },
-    { timestamp: '2026-02-15T11:58:00Z', event: 'behavior.failed', details: { error: 'Timeout' } },
+    { timestamp: recentTime(10), event: 'channel.error', details: { channelType: 'discord', error: 'Send failed' } },
+    { timestamp: recentTime(5), event: 'channel.error', details: { channelType: 'discord', error: 'Send failed' } },
+    { timestamp: recentTime(2), event: 'behavior.failed', details: { error: 'Timeout' } },
   ],
   getFeatures: () => ({ behaviors: true, browser: true, voice: false }),
 };

@@ -17,7 +17,7 @@ auxiora/
 │   │
 │   ├── providers/          # Multi-provider LLM adapter (10+)
 │   ├── router/             # Model routing, task classification, cost tracking
-│   ├── personality/        # SOUL.md, modes, tone, voice profiles
+│   ├── personality/        # SOUL.md + The Architect (29 traits, 17 domains)
 │   ├── memory/             # Semantic/temporal/entity memory partitions
 │   │
 │   ├── gateway/            # HTTP/WS server, rate limiting, pairing
@@ -56,8 +56,14 @@ auxiora/
 │   ├── apt/                # Apt repository update script
 │   └── homebrew/           # Homebrew tap formula
 │
+├── src/
+│   └── personalities/      # The Architect personality engine source
+│       ├── schema.ts       # Core types (TraitMix, TaskContext, PromptOutput)
+│       └── the-architect/  # 17 source modules + 12 test files
+│
 ├── scripts/
-│   └── install.sh          # Universal install script
+│   ├── install.sh          # Universal install script
+│   └── test-architect.ts   # Full Phase 1–4 pipeline verification
 │
 ├── docs/                   # Documentation
 ├── templates/              # Personality templates
@@ -175,7 +181,9 @@ Intelligent model routing:
 
 ### `@auxiora/personality`
 
-SOUL.md personality engine:
+Two personality engines available:
+
+#### SOUL.md (legacy)
 
 - **Tone controls**: warmth, directness, humor, formality (0–1 scales)
 - **8 interaction modes**: operator, analyst, advisor, writer, socratic, legal, roast, companion
@@ -183,6 +191,55 @@ SOUL.md personality engine:
 - **Voice profiles**: 7 templates (professional, friendly, creative, minimal, empathetic, chill, mentor)
 - **Security floor**: Injection prevention, tool pattern detection
 - **Escalation**: 5-level severity state machine
+
+#### The Architect (v1.4.0+)
+
+Context-aware personality engine grounded in 29 traits from documented historical methodologies. Each trait traces to a specific mind's work (Munger, Musk, Grove, Bezos, Voss, etc.) with full provenance.
+
+```
+User message
+     ↓
+Context Detection (17 domains) → Correction Learning → Conversation Theme
+     ↓
+Trait Mixing: domain profile → emotional override → trajectory modifier → custom weights
+     ↓
+Prompt Assembly: base prompt + weight-scaled behavioral instructions
+     ↓
+Output: fullPrompt + activeTraits with provenance + recommendations
+```
+
+**Core engine** (`src/personalities/the-architect/`):
+
+| Module | Purpose |
+|--------|---------|
+| `context-detector.ts` | Keyword scoring across 17 domains |
+| `context-profiles.ts` | 29-trait weight profiles per domain |
+| `emotional-overrides.ts` | Emotion → trait modulation |
+| `emotional-tracker.ts` | Multi-message trajectory detection (stable, escalating, volatile, etc.) |
+| `conversation-context.ts` | Theme persistence across turns (tangent resistance, crisis override) |
+| `correction-store.ts` | Learns from user corrections to improve future detection |
+| `custom-weights.ts` | User-defined trait offsets [-0.3, +0.3] with 5 presets |
+| `recommender.ts` | Suggests context switches based on patterns |
+| `prompt-assembler.ts` | Assembles weight-scaled behavioral instructions |
+| `source-map.ts` | Provenance: trait → mind → source work → evidence |
+| `conversation-export.ts` | Export conversation with full metadata (JSON, Markdown, CSV) |
+| `persistence.ts` | Encrypted preferences, usage history, corrections |
+
+**5 presets**: The CISO (security paranoia), The Builder (ship fast), The Coach (empathy), The Strategist (long-term), The Closer (sales energy).
+
+**UI components** (`packages/dashboard/ui/src/components/`):
+
+| Component | Purpose |
+|-----------|---------|
+| `ContextIndicator.tsx` | Domain pill with emoji beside responses |
+| `ContextOverrideMenu.tsx` | Manual domain picker with scope (message/conversation) |
+| `ContextRecommendation.tsx` | Suggestion banner when detection is uncertain |
+| `SourcesButton.tsx` + `SourcesPanel.tsx` | View active traits with provenance |
+| `TraitCustomizer.tsx` | Slider panel for per-trait weight adjustments |
+| `ConversationExportButton.tsx` | Export dropdown (JSON / Markdown / CSV) |
+| `ArchitectSettings.tsx` | Preferences panel |
+
+**Test coverage**: 12 engine test files (277 tests) + 7 component test files (101 tests) = 378 tests.
 
 ### `@auxiora/memory`
 
@@ -299,18 +356,24 @@ Channel (Discord/Telegram/Slack/WebChat/...)
     └────┬────┘
          │
          ▼
+    ┌─────────────┐
+    │ Personality  │ ← The Architect: detect context → mix traits → assemble prompt
+    │              │   OR SOUL.md: apply mode + tone controls
+    └──────┬──────┘
+         │
+         ▼
     ┌─────────┐
     │ Router  │ ← Select provider + model for task
     └────┬────┘
          │
          ▼
     ┌─────────┐
-    │Provider │ ← Call LLM API (with personality prompt)
+    │Provider │ ← Call LLM API (with personality-enriched prompt)
     └────┬────┘
          │
          ▼
     ┌─────────┐
-    │Response │ ← Stream back to channel
+    │Response │ ← Stream back to channel + context indicator + source attribution
     └─────────┘
 ```
 

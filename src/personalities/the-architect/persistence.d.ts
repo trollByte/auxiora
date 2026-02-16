@@ -4,6 +4,8 @@ import { CorrectionStore } from './correction-store.js';
 export interface ArchitectPreferences {
     /** Serialized CorrectionStore (context detection learning data). */
     corrections: string;
+    /** Serialized CustomWeights (user trait adjustments). */
+    customWeights?: string;
     /** Whether to show the context indicator pill in the chat UI. */
     showContextIndicator: boolean;
     /** Whether to show the sources/provenance button in the chat UI. */

@@ -10,6 +10,9 @@ export interface ArchitectPreferences {
   /** Serialized CorrectionStore (context detection learning data). */
   corrections: string;
 
+  /** Serialized CustomWeights (user trait adjustments). */
+  customWeights?: string;
+
   /** Whether to show the context indicator pill in the chat UI. */
   showContextIndicator: boolean;
 

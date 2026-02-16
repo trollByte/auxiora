@@ -2,6 +2,8 @@ import type { TraitMix, TaskContext, TraitSource, ContextDomain, PromptOutput } 
 import { CorrectionStore } from './correction-store.js';
 import type { ArchitectPreferences } from './persistence.js';
 import type { EncryptedStorage } from './persistence-adapter.js';
+import type { WeightPreset } from './custom-weights.js';
+import type { ChatMessage, ExportedConversation } from './conversation-export.js';
 export type { TraitMix, TraitValue, TaskContext, TraitSource, ContextDomain, EmotionalRegister, ContextSignal, PromptOutput, } from '../schema.js';
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -18,6 +20,10 @@ export { ConversationContext } from './conversation-context.js';
 export type { ConversationSummary } from './conversation-context.js';
 export { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
 export type { EmotionalTrajectory, EffectiveEmotion } from './emotional-tracker.js';
+export { CustomWeights, WEIGHT_PRESETS } from './custom-weights.js';
+export type { WeightPreset } from './custom-weights.js';
+export { ConversationExporter } from './conversation-export.js';
+export type { ChatMessage, AssistantMetadata, ExportedMessage, ExportedConversation } from './conversation-export.js';
 export { ArchitectPersistence } from './persistence.js';
 export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
@@ -44,6 +50,7 @@ export declare class TheArchitect {
     private recommender;
     private conversationContext;
     private emotionalTracker;
+    private customWeights;
     private persistence?;
     private preferences?;
     private initialized;
@@ -102,6 +109,18 @@ export declare class TheArchitect {
     getConversationSummary(): import("./conversation-context.js").ConversationSummary;
     /** Get the current emotional trajectory. */
     getEmotionalState(): import("./emotional-tracker.js").EffectiveEmotion;
+    /** Set a custom trait weight offset. Persists if storage is available. */
+    setTraitOverride(trait: keyof TraitMix, offset: number): Promise<void>;
+    /** Remove a custom trait weight override. */
+    removeTraitOverride(trait: keyof TraitMix): Promise<void>;
+    /** Load a preset weight configuration. */
+    loadPreset(presetName: string): Promise<void>;
+    /** Returns available weight presets. */
+    listPresets(): Record<string, WeightPreset>;
+    /** Returns current custom weight overrides. */
+    getActiveOverrides(): Partial<Record<keyof TraitMix, number>>;
+    /** Persist custom weights to encrypted storage. */
+    private persistCustomWeights;
     /**
      * Apply trajectory-based multipliers on top of standard emotional overrides.
      * Caps all values at 1.0.
@@ -124,6 +143,16 @@ export declare class TheArchitect {
     updatePreference<K extends keyof ArchitectPreferences>(key: K, value: ArchitectPreferences[K]): Promise<void>;
     /** Clear all persisted data: corrections, preferences, usage history. */
     clearAllData(): Promise<void>;
+    /**
+     * Export a conversation with full personality engine metadata.
+     * Returns an ExportedConversation that can be serialized to JSON, Markdown, or CSV.
+     */
+    exportConversation(messages: ChatMessage[], conversationId: string): ExportedConversation;
+    /**
+     * Export a conversation in the specified format.
+     * @param format - 'json' | 'markdown' | 'csv'
+     */
+    exportConversationAs(messages: ChatMessage[], conversationId: string, format: 'json' | 'markdown' | 'csv'): string;
     /** Export all stored data as JSON string (data portability). */
     exportData(): Promise<string>;
 }

@@ -99,7 +99,7 @@ GitHub | Notion | Linear | Google Workspace (Calendar, Gmail, Drive) | Microsoft
 
 ### Intelligence
 
-- **Personality System** — SOUL.md with 8 interaction modes, tone controls, voice profiles, and a marketplace.
+- **Personality System** — SOUL.md with 8 interaction modes, tone controls, voice profiles. Plus **The Architect**: 29-trait context-aware engine grounded in historical methodologies (Munger, Musk, Grove, Bezos, Voss, etc.) with 17 domains, emotional tracking, correction learning, custom weight presets, and full provenance.
 - **Memory** — Semantic, temporal, and entity-based partitions with pattern detection.
 - **Behaviors** — Scheduled tasks (cron), monitors (conditional polling), and one-shot reminders.
 - **Ambient Mode** — Proactive briefings, pattern anticipation, and quiet notifications.
@@ -149,14 +149,16 @@ Vault location:
 
 ## Personality
 
-Auxiora's personality is defined by SOUL.md with fine-grained controls:
+Auxiora offers two personality systems:
 
 ```bash
 auxiora personality list       # Show available templates
 auxiora personality set <name> # Apply a personality template
 ```
 
-### Tone Controls
+### SOUL.md (Classic)
+
+Fine-grained tone controls with 8 interaction modes:
 
 | Parameter | Range | Description |
 |-----------|-------|-------------|
@@ -165,11 +167,23 @@ auxiora personality set <name> # Apply a personality template
 | Humor | 0–1 | Serious to playful |
 | Formality | 0–1 | Casual to formal |
 
-### Interaction Modes
+Modes: `operator` | `analyst` | `advisor` | `writer` | `socratic` | `legal` | `roast` | `companion`
 
-8 modes auto-detected from context or manually selected:
+### The Architect
 
-`operator` | `analyst` | `advisor` | `writer` | `socratic` | `legal` | `roast` | `companion`
+Context-aware personality engine with 29 traits grounded in documented historical methodologies. Every trait traces to a specific mind's work with full provenance.
+
+**How it works:**
+1. **Context Detection** — Scores messages against 17 domains (security, architecture, debugging, coaching, crisis, etc.)
+2. **Emotional Tracking** — Detects trajectory across messages (stable, escalating, volatile, shifting)
+3. **Trait Mixing** — Domain profile → emotional override → trajectory modifier → custom weights
+4. **Prompt Assembly** — Weight-scaled behavioral instructions from source minds
+
+**17 domains**: Security Review, Code Engineering, Architecture Design, Debugging, Team Leadership, One-on-One, Sales Pitch, Negotiation, Marketing, Strategic Planning, Crisis Management, Creative Work, Writing, Decision Making, Learning & Research, Personal Development, General.
+
+**5 presets**: The CISO (security paranoia), The Builder (ship fast), The Coach (empathy), The Strategist (deep analysis), The Closer (sales energy).
+
+**Transparency**: Every response shows which traits are active and why — "Adversarial Thinking (Andy Grove / Sun Tzu)" not just "being careful."
 
 ### Personality Files
 
@@ -317,6 +331,7 @@ The monorepo uses pnpm workspaces with 60+ packages under `packages/`.
 - [x] Desktop app (Tauri)
 - [x] Multi-chat system
 - [x] Easy cross-platform installation (npm, Homebrew, apt)
+- [x] The Architect personality engine (29 traits, 17 domains, provenance)
 - [ ] Plugin marketplace
 - [ ] Mobile app
 - [ ] Cloud sync and multi-tenancy
