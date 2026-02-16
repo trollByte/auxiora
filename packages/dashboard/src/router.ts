@@ -2346,6 +2346,62 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     }
   });
 
+  // --- Architect personality engine routes ---
+  router.get('/architect/preferences', (_req: Request, res: Response) => {
+    const raw = deps.vault.get('architect.preferences');
+    if (!raw) {
+      res.json({ data: {} });
+      return;
+    }
+    try {
+      res.json({ data: JSON.parse(raw) });
+    } catch {
+      res.json({ data: {} });
+    }
+  });
+
+  router.patch('/architect/preferences', async (req: Request, res: Response) => {
+    try {
+      const { key, value } = req.body as { key: string; value: unknown };
+      if (!key) {
+        res.status(400).json({ error: 'Missing preference key' });
+        return;
+      }
+      const raw = deps.vault.get('architect.preferences');
+      const prefs = raw ? JSON.parse(raw) : {};
+      prefs[key] = value;
+      await deps.vault.add('architect.preferences', JSON.stringify(prefs));
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to update architect preference' });
+    }
+  });
+
+  router.delete('/architect/data', async (_req: Request, res: Response) => {
+    try {
+      await deps.vault.add('architect.preferences', JSON.stringify({}));
+      await deps.vault.add('architect.learning', JSON.stringify({}));
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to clear architect data' });
+    }
+  });
+
+  router.get('/architect/data/export', (_req: Request, res: Response) => {
+    try {
+      const prefs = deps.vault.get('architect.preferences') || '{}';
+      const learning = deps.vault.get('architect.learning') || '{}';
+      const exportData = JSON.stringify({
+        preferences: JSON.parse(prefs),
+        learning: JSON.parse(learning),
+        exportedAt: new Date().toISOString(),
+      }, null, 2);
+      res.json({ data: exportData });
+    } catch {
+      res.status(500).json({ error: 'Failed to export architect data' });
+    }
+  });
+
   // --- Notification routes ---
   router.get('/notifications', (_req: Request, res: Response) => {
     const raw = deps.vault.get('notifications.recent');
