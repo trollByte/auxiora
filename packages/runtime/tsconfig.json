@@ -4,11 +4,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@auxiora/personality/architect": ["../../src/personalities/index.d.ts"]
+      "@auxiora/personality/architect": ["../personality/lib/index.d.ts"]
     }
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../src/personalities" }
-  ]
+  "include": ["src/**/*"]
 }

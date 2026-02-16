@@ -11,8 +11,8 @@
       "import": "./dist/index.js"
     },
     "./architect": {
-      "types": "../../src/personalities/index.d.ts",
-      "import": "../../src/personalities/index.js"
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
     }
   },
   "scripts": {

@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "outDir": "./dist",
     "paths": {
-      "@auxiora/personality/architect": ["../../../src/personalities/index.d.ts"]
+      "@auxiora/personality/architect": ["../../personality/lib/index.d.ts"]
     }
   },
   "include": ["src"]
