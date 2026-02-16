@@ -139,4 +139,76 @@ describe('BrowserManager', () => {
       expect(browserFactory).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('fetch-only fallback', () => {
+    let fallbackManager: BrowserManager;
+
+    beforeEach(() => {
+      const failingFactory = vi.fn().mockRejectedValue(new Error('Executable doesn\'t exist'));
+      fallbackManager = new BrowserManager({
+        browserFactory: failingFactory,
+        config: { screenshotDir: '' } as any,
+      });
+    });
+
+    it('should enter fetch-only mode when browser launch fails', async () => {
+      expect(fallbackManager.isFetchOnly).toBe(false);
+      await fallbackManager.launch();
+      expect(fallbackManager.isFetchOnly).toBe(true);
+    });
+
+    it('should navigate using fetch in fallback mode', async () => {
+      await fallbackManager.launch();
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        url: 'https://example.com',
+        text: vi.fn().mockResolvedValue('<html><head><title>Example</title></head><body><h1>Hello</h1></body></html>'),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await fallbackManager.navigate('s1', 'https://example.com');
+      expect(result.title).toBe('Example');
+      expect(result.content).toContain('Hello');
+      expect(result.url).toBe('https://example.com');
+
+      vi.unstubAllGlobals();
+    });
+
+    it('should throw clear error for interactive methods in fallback mode', async () => {
+      await fallbackManager.launch();
+
+      await expect(fallbackManager.click('s1', 'button')).rejects.toThrow('Interactive browsing is not available');
+      await expect(fallbackManager.type('s1', 'input', 'text')).rejects.toThrow('Interactive browsing is not available');
+      await expect(fallbackManager.screenshot('s1')).rejects.toThrow('Interactive browsing is not available');
+      await expect(fallbackManager.extract('s1', 'div')).rejects.toThrow('Interactive browsing is not available');
+      await expect(fallbackManager.runScript('s1', '1+1')).rejects.toThrow('Interactive browsing is not available');
+    });
+
+    it('should allow timeout-based wait in fallback mode', async () => {
+      await fallbackManager.launch();
+      // Timeout wait should still work (no browser needed)
+      await expect(fallbackManager.wait('s1', 10)).resolves.toBeUndefined();
+    });
+
+    it('should throw for selector-based wait in fallback mode', async () => {
+      await fallbackManager.launch();
+      await expect(fallbackManager.wait('s1', '.some-selector')).rejects.toThrow('Interactive browsing is not available');
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      await fallbackManager.launch();
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(fallbackManager.navigate('s1', 'https://example.com/missing')).rejects.toThrow('HTTP 404');
+
+      vi.unstubAllGlobals();
+    });
+  });
 });

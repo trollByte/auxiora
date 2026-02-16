@@ -15,6 +15,11 @@ export interface BrowserManagerOptions {
 
 const MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_RESULT_SIZE = 100 * 1024; // 100KB
+const MAX_FETCH_CONTENT = 500_000; // 500KB
+const FETCH_TIMEOUT = 15_000; // 15s
+const USER_AGENT = 'Auxiora/1.0 (AI Assistant; +https://github.com/trollByte/auxiora)';
+
+const INTERACTIVE_ERROR = 'Interactive browsing is not available (Playwright not installed). Navigation and page reading still work. To enable clicking, typing, and screenshots, install Playwright: npx playwright install --with-deps chromium';
 
 export class BrowserManager {
   private config: BrowserConfig;
@@ -22,24 +27,40 @@ export class BrowserManager {
   private context: BrowserContext | null = null;
   private pages = new Map<string, Page>();
   private browserFactory: BrowserFactory;
+  private fetchOnly = false;
 
   constructor(options: BrowserManagerOptions = {}) {
     this.config = { ...DEFAULT_BROWSER_CONFIG, ...options.config };
     this.browserFactory = options.browserFactory || defaultBrowserFactory;
   }
 
+  /** Whether running in fetch-only fallback mode (no Playwright). */
+  get isFetchOnly(): boolean {
+    return this.fetchOnly;
+  }
+
   async launch(): Promise<void> {
-    if (this.browser?.isConnected()) {
-      return;
-    }
+    if (this.fetchOnly) return;
+    if (this.browser?.isConnected()) return;
 
     logger.info('Launching browser', { headless: this.config.headless });
-    this.browser = await this.browserFactory(this.config);
-    this.context = await this.browser.newContext();
-    logger.info('Browser launched');
+    try {
+      this.browser = await this.browserFactory(this.config);
+      this.context = await this.browser.newContext();
+      logger.info('Browser launched');
+    } catch (error: any) {
+      logger.warn('Playwright unavailable, falling back to fetch-only mode', {
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      this.fetchOnly = true;
+      this.browser = null;
+      this.context = null;
+    }
   }
 
   private async ensureBrowser(): Promise<void> {
+    if (this.fetchOnly) return;
+
     if (!this.browser || !this.browser.isConnected()) {
       this.pages.clear();
       this.context = null;
@@ -51,6 +72,10 @@ export class BrowserManager {
   }
 
   async getPage(sessionId: string): Promise<Page> {
+    if (this.fetchOnly) {
+      throw new Error(INTERACTIVE_ERROR);
+    }
+
     await this.ensureBrowser();
 
     const existing = this.pages.get(sessionId);
@@ -106,6 +131,8 @@ export class BrowserManager {
     logger.info('Browser shutdown complete');
   }
 
+  // ─── Navigation (works in both modes) ────────────────────────────────────
+
   async navigate(sessionId: string, url: string): Promise<PageInfo> {
     const validationError = validateUrl(url, {
       allowedUrls: this.config.allowedUrls,
@@ -113,6 +140,10 @@ export class BrowserManager {
     });
     if (validationError) {
       throw new Error(validationError);
+    }
+
+    if (this.fetchOnly) {
+      return this.fetchNavigate(url);
     }
 
     const page = await this.getPage(sessionId);
@@ -124,12 +155,16 @@ export class BrowserManager {
     return { url: page.url(), title, content };
   }
 
+  // ─── Interactive methods (Playwright only) ───────────────────────────────
+
   async click(sessionId: string, selector: string): Promise<void> {
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
     const page = await this.getPage(sessionId);
     await page.click(selector, { timeout: this.config.actionTimeout });
   }
 
   async type(sessionId: string, selector: string, text: string, pressEnter?: boolean): Promise<void> {
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
     const page = await this.getPage(sessionId);
     await page.fill(selector, text);
     if (pressEnter) {
@@ -138,6 +173,7 @@ export class BrowserManager {
   }
 
   async screenshot(sessionId: string, options?: ScreenshotOptions): Promise<{ base64: string; path?: string }> {
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
     const page = await this.getPage(sessionId);
 
     const screenshotOptions: any = {
@@ -158,6 +194,113 @@ export class BrowserManager {
     return this.processScreenshot(buffer, sessionId);
   }
 
+  async extract(sessionId: string, selector: string): Promise<ExtractResult> {
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
+    const page = await this.getPage(sessionId);
+
+    const elements = await page.$$eval(selector, (els) =>
+      els.map((el) => ({
+        text: (el as any).innerText || el.textContent || '',
+        tagName: el.tagName.toLowerCase(),
+        attributes: Object.fromEntries(
+          Array.from(el.attributes).map((attr: any) => [attr.name, attr.value])
+        ),
+      }))
+    );
+
+    return { selector, elements };
+  }
+
+  async wait(sessionId: string, selectorOrMs: string | number): Promise<void> {
+    if (typeof selectorOrMs === 'number') {
+      const delay = Math.min(selectorOrMs, 30_000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return;
+    }
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
+    const page = await this.getPage(sessionId);
+    await page.waitForSelector(selectorOrMs, { timeout: this.config.actionTimeout });
+  }
+
+  async runScript(sessionId: string, script: string): Promise<string> {
+    if (this.fetchOnly) throw new Error(INTERACTIVE_ERROR);
+    const page = await this.getPage(sessionId);
+    // Playwright's page API for running script in browser context
+    const result = await page.evaluate(script);
+    const json = JSON.stringify(result);
+
+    if (json.length > MAX_RESULT_SIZE) {
+      throw new Error(`Result too large (${json.length} bytes, max ${MAX_RESULT_SIZE})`);
+    }
+
+    return json;
+  }
+
+  async browse(sessionId: string, task: string): Promise<{ result: string; steps: BrowseStep[] }> {
+    const mutationKeywords = ['click', 'type', 'fill', 'submit', 'login', 'sign in', 'purchase', 'buy', 'send', 'post', 'delete'];
+    const needsMutation = mutationKeywords.some((kw) => task.toLowerCase().includes(kw));
+
+    if (needsMutation) {
+      const msg = this.fetchOnly
+        ? `This task requires page interactions (clicking, typing) which are not available in fetch-only mode. ${INTERACTIVE_ERROR}`
+        : 'This task requires page interactions (clicking, typing). Please use the primitive browser tools (browser_click, browser_type) for these actions, which require user approval for safety.';
+      return { result: msg, steps: [] };
+    }
+
+    return {
+      result: `Browse task queued: "${task}". Use browser_navigate to go to a page, then browser_extract to get data.`,
+      steps: [],
+    };
+  }
+
+  // ─── Fetch-only fallback ─────────────────────────────────────────────────
+
+  private async fetchNavigate(url: string): Promise<PageInfo> {
+    logger.info('Fetching URL (fetch-only mode)', { url });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      let text = await response.text();
+      if (text.length > MAX_FETCH_CONTENT) {
+        text = text.substring(0, MAX_FETCH_CONTENT);
+      }
+
+      const title = this.extractTitle(text);
+      const content = this.htmlToMarkdown(text);
+
+      return { url: response.url, title, content };
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timed out after ${FETCH_TIMEOUT}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private extractTitle(html: string): string {
+    const match = html.match(/<title[^>]*>(.*?)<\/title>/is);
+    return match ? match[1].replace(/\s+/g, ' ').trim() : '';
+  }
+
+  // ─── Shared helpers ──────────────────────────────────────────────────────
+
   private async processScreenshot(buffer: Buffer, sessionId: string): Promise<{ base64: string; path?: string }> {
     if (buffer.length > MAX_SCREENSHOT_SIZE) {
       logger.warn('Screenshot exceeds size limit', { size: buffer.length });
@@ -177,65 +320,6 @@ export class BrowserManager {
     }
 
     return { base64, path: filePath };
-  }
-
-  async extract(sessionId: string, selector: string): Promise<ExtractResult> {
-    const page = await this.getPage(sessionId);
-
-    const elements = await page.$$eval(selector, (els) =>
-      els.map((el) => ({
-        text: (el as any).innerText || el.textContent || '',
-        tagName: el.tagName.toLowerCase(),
-        attributes: Object.fromEntries(
-          Array.from(el.attributes).map((attr: any) => [attr.name, attr.value])
-        ),
-      }))
-    );
-
-    return { selector, elements };
-  }
-
-  async wait(sessionId: string, selectorOrMs: string | number): Promise<void> {
-    const page = await this.getPage(sessionId);
-
-    if (typeof selectorOrMs === 'number') {
-      const delay = Math.min(selectorOrMs, 30_000);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    } else {
-      await page.waitForSelector(selectorOrMs, { timeout: this.config.actionTimeout });
-    }
-  }
-
-  async runScript(sessionId: string, script: string): Promise<string> {
-    const page = await this.getPage(sessionId);
-    // Using Playwright's page.evaluate API to run script in browser context
-    const result = await page.evaluate(script);
-    const json = JSON.stringify(result);
-
-    if (json.length > MAX_RESULT_SIZE) {
-      throw new Error(`Result too large (${json.length} bytes, max ${MAX_RESULT_SIZE})`);
-    }
-
-    return json;
-  }
-
-  async browse(sessionId: string, task: string): Promise<{ result: string; steps: BrowseStep[] }> {
-    const steps: BrowseStep[] = [];
-
-    const mutationKeywords = ['click', 'type', 'fill', 'submit', 'login', 'sign in', 'purchase', 'buy', 'send', 'post', 'delete'];
-    const needsMutation = mutationKeywords.some((kw) => task.toLowerCase().includes(kw));
-
-    if (needsMutation) {
-      return {
-        result: 'This task requires page interactions (clicking, typing). Please use the primitive browser tools (browser_click, browser_type) for these actions, which require user approval for safety.',
-        steps: [],
-      };
-    }
-
-    return {
-      result: `Browse task queued: "${task}". Use browser_navigate to go to a page, then browser_extract to get data.`,
-      steps,
-    };
   }
 
   private async getPageMarkdown(page: Page): Promise<string> {
@@ -277,22 +361,8 @@ export class BrowserManager {
 
 async function defaultBrowserFactory(config: BrowserConfig): Promise<Browser> {
   const { chromium } = await import('playwright');
-  try {
-    return await chromium.launch({
-      headless: config.headless,
-      args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
-    });
-  } catch (error: any) {
-    if (error.message?.includes('Executable doesn\'t exist') || error.message?.includes('browserType.launch')) {
-      logger.info('Playwright browsers not installed, installing chromium...');
-      const { execFileSync } = await import('node:child_process');
-      execFileSync('npx', ['playwright', 'install', 'chromium'], { stdio: 'pipe', timeout: 120_000 });
-      logger.info('Chromium installed successfully');
-      return chromium.launch({
-        headless: config.headless,
-        args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
-      });
-    }
-    throw error;
-  }
+  return chromium.launch({
+    headless: config.headless,
+    args: ['--disable-extensions', '--disable-dev-shm-usage', '--no-sandbox'],
+  });
 }
