@@ -106,7 +106,7 @@ function htmlToMarkdown(html: string): string {
  */
 export const WebBrowserTool: Tool = {
   name: 'web_browser',
-  description: 'Fetch and read web pages. Use this to get information from URLs, read documentation, etc.',
+  description: 'PREFERRED tool for reading web pages. Use this for any read-only web task: searching, reading articles, looking up information, fetching documentation, getting news, etc. This is lightweight and works everywhere. Only use browser_navigate instead if you need JavaScript rendering or interactive features.',
 
   parameters: [
     {

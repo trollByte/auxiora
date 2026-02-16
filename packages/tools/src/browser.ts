@@ -33,7 +33,7 @@ function getSessionId(context: ExecutionContext, params: any): string {
 export const BrowserNavigateTool: Tool = {
   name: 'browser_navigate',
   description:
-    'Navigate the browser to a URL. Returns page title and text content. The URL must be a valid http/https URL; private IPs and dangerous protocols are blocked.',
+    'Navigate a full browser (Playwright) to a URL. Only use this when you need JavaScript rendering or plan to interact with the page (clicking, typing, screenshots). For simple page reading, use web_browser instead — it is faster and always available.',
 
   parameters: [
     {
@@ -412,7 +412,7 @@ export const BrowserEvaluateTool: Tool = {
 export const BrowseTool: Tool = {
   name: 'browse',
   description:
-    'High-level browsing tool: describe a read-only browsing task in natural language. For tasks that require clicking or typing, use the primitive browser tools instead.',
+    'High-level browsing orchestrator for multi-step interactive tasks. For simple page reading (articles, search results, documentation), use web_browser instead — it is faster and always available.',
 
   parameters: [
     {

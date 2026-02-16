@@ -1767,6 +1767,12 @@ export class Auxiora {
       this.standardPrompt = `You are ${agent.name}, a helpful AI assistant. Be concise, accurate, and friendly.`;
     }
 
+    // Append tool usage guidance
+    this.standardPrompt += '\n\n---\n\n## Tool Usage\n'
+      + '- For reading web pages, searching, fetching articles, or looking up information, use the `web_browser` tool. It is fast, lightweight, and always available.\n'
+      + '- Only use `browser_navigate` and other browser_* tools when you need JavaScript rendering or interactive features (clicking buttons, filling forms, taking screenshots).\n'
+      + '- Never expose raw tool errors to the user. If a tool fails, explain the situation naturally.';
+
     // Append self-awareness capability fragment
     if (this.capabilityPromptFragment) {
       this.standardPrompt += '\n\n---\n\n' + this.capabilityPromptFragment;
