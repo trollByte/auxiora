@@ -279,4 +279,10 @@ export interface PromptOutput {
 
   /** Suggestion to switch contexts, if the recommender thinks detection may be off. */
   recommendation?: import('./the-architect/recommender.js').ContextRecommendation;
+
+  /** Emotional trajectory across the conversation (stable, escalating, etc.). */
+  emotionalTrajectory?: import('./the-architect/emotional-tracker.js').EmotionalTrajectory;
+
+  /** True when sustained high-intensity frustration triggers a proactive check-in. */
+  escalationAlert?: boolean;
 }

@@ -7,6 +7,7 @@ import { CorrectionStore } from './correction-store.js';
 import { ArchitectPersistence } from './persistence.js';
 import { ContextRecommender } from './recommender.js';
 import { ConversationContext } from './conversation-context.js';
+import { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
 // Re-export building blocks for advanced consumers
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -18,6 +19,7 @@ export { TRAIT_TO_INSTRUCTION } from './trait-to-instruction.js';
 export { CorrectionStore } from './correction-store.js';
 export { ContextRecommender } from './recommender.js';
 export { ConversationContext } from './conversation-context.js';
+export { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
 export { ArchitectPersistence } from './persistence.js';
 export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 // ────────────────────────────────────────────────────────────────────────────
@@ -61,6 +63,7 @@ export class TheArchitect {
     correctionStore;
     recommender;
     conversationContext;
+    emotionalTracker;
     persistence;
     preferences;
     initialized = false;
@@ -68,6 +71,7 @@ export class TheArchitect {
         this.correctionStore = new CorrectionStore();
         this.recommender = new ContextRecommender();
         this.conversationContext = new ConversationContext();
+        this.emotionalTracker = new EmotionalTracker();
         if (storage) {
             this.persistence = new ArchitectPersistence(storage);
         }
@@ -125,7 +129,12 @@ export class TheArchitect {
             }
         }
         const baseMix = CONTEXT_PROFILES[context.domain];
-        const adjustedMix = applyEmotionalOverride(baseMix, context.emotionalRegister);
+        let adjustedMix = applyEmotionalOverride(baseMix, context.emotionalRegister);
+        // Track emotional trajectory and apply trajectory-based multipliers
+        const intensity = estimateIntensity(userMessage, context.emotionalRegister);
+        this.emotionalTracker.recordEmotion(context.emotionalRegister, intensity, userMessage);
+        const effective = this.emotionalTracker.getEffectiveEmotion();
+        adjustedMix = this.applyTrajectoryMultipliers(adjustedMix, effective.trajectory);
         const modifier = assemblePromptModifier(adjustedMix, context);
         const sources = getActiveSources(adjustedMix);
         // Fire-and-forget persistence of usage
@@ -144,6 +153,8 @@ export class TheArchitect {
             fullPrompt: ARCHITECT_BASE_PROMPT + '\n\n' + modifier,
             activeTraits: sources,
             detectedContext: context,
+            emotionalTrajectory: effective.trajectory,
+            escalationAlert: effective.escalationAlert || undefined,
             recommendation,
         };
     }
@@ -189,13 +200,55 @@ export class TheArchitect {
         return getActiveSources(m);
     }
     // ── Conversation context ─────────────────────────────────────────────
-    /** Reset conversation context for a new conversation. */
+    /** Reset conversation context and emotional tracker for a new conversation. */
     resetConversation() {
         this.conversationContext.reset();
+        this.emotionalTracker.reset();
     }
     /** Get the conversation context summary. */
     getConversationSummary() {
         return this.conversationContext.getSummary();
+    }
+    /** Get the current emotional trajectory. */
+    getEmotionalState() {
+        return this.emotionalTracker.getEffectiveEmotion();
+    }
+    // ── Trajectory multipliers ──────────────────────────────────────────
+    /**
+     * Apply trajectory-based multipliers on top of standard emotional overrides.
+     * Caps all values at 1.0.
+     */
+    applyTrajectoryMultipliers(mix, trajectory) {
+        if (trajectory === 'stable')
+            return mix;
+        const result = { ...mix };
+        const cap = (key, multiplier) => {
+            result[key] = Math.min(result[key] * multiplier, 1.0);
+        };
+        switch (trajectory) {
+            case 'escalating':
+                cap('warmth', 1.2);
+                cap('tacticalEmpathy', 1.2);
+                cap('stoicCalm', 1.2);
+                break;
+            case 'volatile':
+                cap('warmth', 1.3);
+                cap('stoicCalm', 1.3);
+                break;
+            case 'de_escalating':
+                // Gently normalize all override-affected traits
+                for (const key of Object.keys(result)) {
+                    result[key] = Math.min(result[key] * 0.9, 1.0);
+                }
+                break;
+            case 'shifting':
+                // Slightly dampened to smooth the transition
+                for (const key of Object.keys(result)) {
+                    result[key] = Math.min(result[key] * 0.8, 1.0);
+                }
+                break;
+        }
+        return result;
     }
     // ── Correction learning ──────────────────────────────────────────────
     /**
@@ -268,6 +321,7 @@ export class TheArchitect {
         this.contextOverride = null;
         this.preferences = undefined;
         this.conversationContext.reset();
+        this.emotionalTracker.reset();
         if (this.persistence) {
             await this.persistence.clearAll();
         }

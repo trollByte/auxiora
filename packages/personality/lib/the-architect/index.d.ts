@@ -16,6 +16,8 @@ export { ContextRecommender } from './recommender.js';
 export type { ContextRecommendation } from './recommender.js';
 export { ConversationContext } from './conversation-context.js';
 export type { ConversationSummary } from './conversation-context.js';
+export { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
+export type { EmotionalTrajectory, EffectiveEmotion } from './emotional-tracker.js';
 export { ArchitectPersistence } from './persistence.js';
 export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
@@ -41,6 +43,7 @@ export declare class TheArchitect {
     private correctionStore;
     private recommender;
     private conversationContext;
+    private emotionalTracker;
     private persistence?;
     private preferences?;
     private initialized;
@@ -93,10 +96,17 @@ export declare class TheArchitect {
      * the general profile if no mix is provided.
      */
     getActiveSources(mix?: TraitMix): TraitSource[];
-    /** Reset conversation context for a new conversation. */
+    /** Reset conversation context and emotional tracker for a new conversation. */
     resetConversation(): void;
     /** Get the conversation context summary. */
     getConversationSummary(): import("./conversation-context.js").ConversationSummary;
+    /** Get the current emotional trajectory. */
+    getEmotionalState(): import("./emotional-tracker.js").EffectiveEmotion;
+    /**
+     * Apply trajectory-based multipliers on top of standard emotional overrides.
+     * Caps all values at 1.0.
+     */
+    private applyTrajectoryMultipliers;
     /**
      * Records a user correction so the engine can learn from misclassifications.
      * Also persists the updated corrections to encrypted storage when available.

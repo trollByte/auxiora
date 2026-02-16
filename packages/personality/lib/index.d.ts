@@ -9,4 +9,6 @@ export { ContextRecommender } from './the-architect/recommender.js';
 export type { ContextRecommendation } from './the-architect/recommender.js';
 export { ConversationContext } from './the-architect/conversation-context.js';
 export type { ConversationSummary } from './the-architect/conversation-context.js';
+export { EmotionalTracker, estimateIntensity } from './the-architect/emotional-tracker.js';
+export type { EmotionalTrajectory, EffectiveEmotion } from './the-architect/emotional-tracker.js';
 //# sourceMappingURL=index.d.ts.map
