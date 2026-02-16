@@ -8,3 +8,4 @@ export type {
 } from './types.js';
 
 export { SelfAwarenessAssembler, type AssemblerOptions } from './assembler.js';
+export { InMemoryAwarenessStorage } from './storage.js';
