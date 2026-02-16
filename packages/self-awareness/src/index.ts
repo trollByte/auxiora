@@ -15,3 +15,4 @@ export { KnowledgeBoundary } from './collectors/knowledge-boundary.js';
 export { RelationshipModel } from './collectors/relationship-model.js';
 export { TemporalTracker } from './collectors/temporal-tracker.js';
 export { EnvironmentSensor } from './collectors/environment-sensor.js';
+export { MetaCognitor } from './collectors/meta-cognitor.js';
