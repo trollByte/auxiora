@@ -1629,7 +1629,9 @@ export class Auxiora {
   }
 
   private async loadArchitectPersonality(): Promise<void> {
-    const parts: string[] = [ARCHITECT_BASE_PROMPT];
+    // Identity preamble first so the AI knows its configured name (e.g. "Aria")
+    const agent = this.config.agent;
+    const parts: string[] = [this.buildIdentityPreamble(agent), ARCHITECT_BASE_PROMPT];
 
     // Workspace files still provide user context
     try { parts.push(await fs.readFile(getAgentsPath(), 'utf-8')); } catch { /* no file */ }
