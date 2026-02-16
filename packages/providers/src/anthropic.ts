@@ -177,7 +177,7 @@ export class AnthropicProvider implements Provider {
     },
   };
   private client: Anthropic;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
   private authMode: 'api-key' | 'setup-token' | 'oauth';
   private oauthToken?: string;

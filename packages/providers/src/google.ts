@@ -55,7 +55,7 @@ export class GoogleProvider implements Provider {
     },
   };
   private client: GoogleGenerativeAI;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
 
   constructor(options: GoogleProviderOptions) {

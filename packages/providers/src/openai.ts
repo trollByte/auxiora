@@ -102,7 +102,7 @@ export class OpenAIProvider implements Provider {
     },
   };
   private client: OpenAI;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
 
   constructor(options: OpenAIProviderOptions) {

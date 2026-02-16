@@ -1760,9 +1760,11 @@ export class Auxiora {
 
   private getSelfAwarenessContext(): SelfAwarenessContext {
     const primary = this.config.provider.primary;
-    const providerConfig = (this.config.provider as Record<string, any>)[primary];
+    // Read model directly from the live provider instance — this is the actual
+    // model being used, not just what the config file says.
+    const provider = this.providers.getPrimaryProvider();
     return {
-      defaultModel: this.config.routing?.defaultModel ?? providerConfig?.model,
+      defaultModel: provider.defaultModel,
       primaryProvider: primary,
       personalityEngine: this.config.agent.personality ?? 'standard',
     };

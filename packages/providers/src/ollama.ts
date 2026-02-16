@@ -33,7 +33,7 @@ export class OllamaProvider implements Provider {
   name = 'ollama';
   metadata: ProviderMetadata;
   private baseUrl: string;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
 
   constructor(options: OllamaProviderOptions) {

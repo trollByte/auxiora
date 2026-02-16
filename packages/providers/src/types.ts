@@ -100,6 +100,7 @@ export interface ProviderMetadata {
 
 export interface Provider {
   name: string;
+  readonly defaultModel: string;
   metadata: ProviderMetadata;
   complete(messages: ChatMessage[], options?: CompletionOptions): Promise<CompletionResult>;
   stream(

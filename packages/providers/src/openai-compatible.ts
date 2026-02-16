@@ -22,7 +22,7 @@ export class OpenAICompatibleProvider implements Provider {
   name: string;
   metadata: ProviderMetadata;
   private client: OpenAI;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
 
   constructor(options: OpenAICompatibleProviderOptions) {

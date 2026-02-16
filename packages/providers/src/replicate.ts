@@ -69,7 +69,7 @@ export class ReplicateProvider implements Provider {
   };
 
   private apiToken: string;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private pollInterval: number;
 
   constructor(options: ReplicateProviderOptions) {

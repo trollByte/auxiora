@@ -116,7 +116,7 @@ export class GroqProvider implements Provider {
   };
 
   private apiKey: string;
-  private defaultModel: string;
+  readonly defaultModel: string;
   private defaultMaxTokens: number;
 
   constructor(options: GroqProviderOptions) {
