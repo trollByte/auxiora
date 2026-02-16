@@ -14,3 +14,11 @@ export type {
   ContextSignal,
   PromptOutput,
 } from './schema.js';
+
+// Phase 3: persistence, recommendations, settings
+export { InMemoryEncryptedStorage, VaultStorageAdapter } from './the-architect/persistence-adapter.js';
+export type { EncryptedStorage, VaultLike } from './the-architect/persistence-adapter.js';
+export { ArchitectPersistence } from './the-architect/persistence.js';
+export type { ArchitectPreferences } from './the-architect/persistence.js';
+export { ContextRecommender } from './the-architect/recommender.js';
+export type { ContextRecommendation } from './the-architect/recommender.js';
