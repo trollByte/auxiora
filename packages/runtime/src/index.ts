@@ -1694,11 +1694,30 @@ export class Auxiora {
     }
   }
 
-  /** Append Architect context modifier when active. */
-  private applyArchitectEnrichment(prompt: string, userMessage: string): string {
-    if (!this.architect) return prompt;
+  /** Append Architect context modifier when active, returning context metadata. */
+  private applyArchitectEnrichment(prompt: string, userMessage: string): {
+    prompt: string;
+    architectMeta?: {
+      detectedContext: import('@auxiora/personality/architect').TaskContext;
+      activeTraits: import('@auxiora/personality/architect').TraitSource[];
+      traitWeights: Record<string, number>;
+    };
+  } {
+    if (!this.architect) return { prompt };
     const output = this.architect.generatePrompt(userMessage);
-    return prompt + '\n\n' + output.contextModifier;
+    const mix = this.architect.getTraitMix(output.detectedContext);
+    const traitWeights: Record<string, number> = {};
+    for (const [key, val] of Object.entries(mix)) {
+      traitWeights[key] = val;
+    }
+    return {
+      prompt: prompt + '\n\n' + output.contextModifier,
+      architectMeta: {
+        detectedContext: output.detectedContext,
+        activeTraits: output.activeTraits,
+        traitWeights,
+      },
+    };
   }
 
   private async initializeModes(): Promise<void> {
@@ -1860,7 +1879,8 @@ export class Auxiora {
         enrichedPrompt = this.systemPrompt + memorySection;
       }
 
-      enrichedPrompt = this.applyArchitectEnrichment(enrichedPrompt, content);
+      const architectResult = this.applyArchitectEnrichment(enrichedPrompt, content);
+      enrichedPrompt = architectResult.prompt;
 
       // Route to best model for this message
       let provider;
@@ -1948,6 +1968,7 @@ export class Auxiora {
             provider: providerOverride || this.config.provider.primary,
             override: true,
           } : undefined,
+          architect: architectResult.architectMeta,
         },
       });
 
@@ -2584,7 +2605,8 @@ export class Auxiora {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
 
-      enrichedPrompt = this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
+      const channelArchitectResult = this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
+      enrichedPrompt = channelArchitectResult.prompt;
 
       // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();

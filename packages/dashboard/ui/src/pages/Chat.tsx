@@ -1,12 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
+import type { TaskContext, TraitSource, ContextDomain } from '@auxiora/personality/architect';
+import { ContextIndicator } from '../components/ContextIndicator.js';
+import { SourcesButton } from '../components/SourcesButton.js';
+import { ContextOverrideMenu } from '../components/ContextOverrideMenu.js';
+import { DOMAIN_META } from '../components/context-meta.js';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'error';
   content: string;
   model?: string;
+  detectedContext?: TaskContext;
+  activeTraits?: TraitSource[];
+  traitWeights?: Record<string, number>;
 }
 
 interface ChatThread {
@@ -148,6 +156,10 @@ export function Chat() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Architect personality state
+  const [overrideMenuOpenForMessageId, setOverrideMenuOpenForMessageId] = useState<string | null>(null);
+  const [conversationContextOverride, setConversationContextOverride] = useState<ContextDomain | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -305,15 +317,25 @@ export function Chat() {
           case 'done': {
             setStreaming(false);
             const routing = msg.payload?.routing;
+            const architect = msg.payload?.architect;
+            const updates: Partial<ChatMessage> = {};
             if (routing) {
               const modelLabel = routing.model
                 ? `${routing.provider}/${routing.model}`
                 : routing.provider;
               setLastModel(modelLabel);
+              updates.model = modelLabel;
+            }
+            if (architect) {
+              updates.detectedContext = architect.detectedContext;
+              updates.activeTraits = architect.activeTraits;
+              updates.traitWeights = architect.traitWeights;
+            }
+            if (Object.keys(updates).length > 0) {
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.role === 'assistant') {
-                  return [...prev.slice(0, -1), { ...last, model: modelLabel }];
+                  return [...prev.slice(0, -1), { ...last, ...updates }];
                 }
                 return prev;
               });
@@ -409,6 +431,45 @@ export function Chat() {
     }));
   };
 
+  const handleContextOverride = useCallback((domain: ContextDomain, scope: 'message' | 'conversation', messageId: string) => {
+    setOverrideMenuOpenForMessageId(null);
+    if (scope === 'conversation') {
+      setConversationContextOverride(domain);
+      // Send override command so runtime uses it for subsequent messages
+      if (wsRef.current && connected) {
+        wsRef.current.send(JSON.stringify({
+          type: 'message',
+          id: String(++requestIdRef.current),
+          payload: {
+            content: `/context-override ${domain}`,
+            chatId: chatIdRef.current,
+          },
+        }));
+      }
+    }
+    // For 'message' scope: the override is informational on the current message only.
+    // A full re-send would require re-streaming; for now we update the displayed context.
+    setMessages(prev => prev.map(m =>
+      m.id === messageId && m.detectedContext
+        ? { ...m, detectedContext: { ...m.detectedContext, domain } }
+        : m
+    ));
+  }, [connected]);
+
+  const clearConversationOverride = useCallback(() => {
+    setConversationContextOverride(null);
+    if (wsRef.current && connected) {
+      wsRef.current.send(JSON.stringify({
+        type: 'message',
+        id: String(++requestIdRef.current),
+        payload: {
+          content: '/context-override clear',
+          chatId: chatIdRef.current,
+        },
+      }));
+    }
+  }, [connected]);
+
   const handleNewChat = async () => {
     try {
       const res = await api.createNewChat();
@@ -416,6 +477,8 @@ export function Chat() {
       setChats(prev => [{ id: newChat.id, title: newChat.title, updatedAt: newChat.updatedAt }, ...prev]);
       setChatId(newChat.id);
       setMessages([]);
+      setConversationContextOverride(null);
+      setOverrideMenuOpenForMessageId(null);
       setHistoryLoaded(true);
       inputRef.current?.focus();
     } catch {
@@ -607,12 +670,57 @@ export function Chat() {
                 Send a message to start chatting
               </div>
             )}
+            {conversationContextOverride && (
+              <div className="context-override-banner">
+                <span>
+                  Context locked to {DOMAIN_META[conversationContextOverride]?.icon ?? '🔒'}{' '}
+                  {DOMAIN_META[conversationContextOverride]?.label ?? conversationContextOverride}
+                </span>
+                <button
+                  className="context-override-unlock"
+                  onClick={clearConversationOverride}
+                  aria-label="Clear context override"
+                >
+                  Tap to unlock
+                </button>
+              </div>
+            )}
             {messages.map(msg => (
               <div key={msg.id} className={`chat-message ${msg.role}`}>
+                {msg.role === 'assistant' && msg.detectedContext && (
+                  <div className="chat-context-row">
+                    <ContextIndicator
+                      context={msg.detectedContext}
+                      onOverride={(domain) => handleContextOverride(domain, 'message', msg.id)}
+                    />
+                    <button
+                      className="context-override-trigger"
+                      onClick={() => setOverrideMenuOpenForMessageId(
+                        overrideMenuOpenForMessageId === msg.id ? null : msg.id,
+                      )}
+                      aria-label="Override context"
+                    >
+                      ✎
+                    </button>
+                    <ContextOverrideMenu
+                      isOpen={overrideMenuOpenForMessageId === msg.id}
+                      currentDomain={msg.detectedContext.domain}
+                      onSelect={(domain, scope) => handleContextOverride(domain, scope, msg.id)}
+                      onClose={() => setOverrideMenuOpenForMessageId(null)}
+                    />
+                  </div>
+                )}
                 {msg.role === 'assistant'
-                  ? <div className="chat-markdown" dangerouslySetInnerHTML={renderMessageHtml(msg.content)} />
+                  ? <div className="chat-markdown" dangerouslySetInnerHTML={renderMessageHtml(msg.content)} /> /* pre-sanitized by renderMarkdown */
                   : msg.content
                 }
+                {msg.role === 'assistant' && msg.activeTraits && msg.activeTraits.length > 0 && (
+                  <SourcesButton
+                    sources={msg.activeTraits}
+                    context={msg.detectedContext!}
+                    weights={msg.traitWeights}
+                  />
+                )}
                 {msg.model && (
                   <div className="model-label">{msg.model}</div>
                 )}

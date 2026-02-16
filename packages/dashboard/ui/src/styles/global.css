@@ -2988,3 +2988,63 @@ body {
 .editor-section input[type="text"]::placeholder {
   color: var(--text-secondary);
 }
+
+/* ── Chat Context Integration ──────────────────────────── */
+
+.context-override-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.context-override-unlock {
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast);
+}
+
+.context-override-unlock:hover {
+  background: var(--accent-glow);
+}
+
+.chat-context-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.context-override-trigger {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.chat-message:hover .context-override-trigger {
+  opacity: 1;
+}
+
+.context-override-trigger:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}

@@ -49,6 +49,7 @@ const defaults = {
   context: makeContext(),
   isOpen: true,
   onClose: () => {},
+  weights: undefined as Record<string, number> | undefined,
 };
 
 function renderPanel(overrides: Partial<typeof defaults> = {}) {
