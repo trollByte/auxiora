@@ -8,7 +8,8 @@ import { BehaviorHealth } from '../components/BehaviorHealth';
 export function Overview() {
   const { data: status, refresh } = useApi(() => api.getStatus(), []);
   const { data: models, refresh: refreshModels } = useApi(() => api.getModels(), []);
-  usePolling(() => { refresh(); refreshModels(); });
+  const { data: healthData, refresh: refreshHealth } = useApi(() => api.getHealthState(), []);
+  usePolling(() => { refresh(); refreshModels(); refreshHealth(); });
 
   const s = status?.data;
   const primaryProvider = models?.providers?.find((p: any) => p.available)?.displayName ?? 'None';
@@ -34,7 +35,26 @@ export function Overview() {
           <div className="value">{s ? formatUptime(s.uptime) : '-'}</div>
           <div className="sub">Since last restart</div>
         </div>
+        <div className="status-card">
+          <h3>Health</h3>
+          <div className="value">
+            <span className={`health-dot health-${healthData?.data?.overall ?? 'unknown'}`} />
+            {capitalize(healthData?.data?.overall ?? 'unknown')}
+          </div>
+          <div className="sub">{healthData?.data?.issues?.length ?? 0} issues</div>
+        </div>
       </div>
+
+      {healthData?.data?.issues?.length > 0 && (
+        <div className="health-alerts">
+          {healthData.data.issues.map((issue: any) => (
+            <div key={issue.id} className={`health-alert health-alert-${issue.severity}`}>
+              <span className="health-alert-text">{issue.description}</span>
+              {issue.suggestedFix && <span className="health-alert-fix">{issue.suggestedFix}</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Main two-column layout */}
       <div className="mc-columns">
@@ -55,4 +75,8 @@ function formatUptime(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

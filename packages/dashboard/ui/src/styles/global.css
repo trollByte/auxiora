@@ -488,6 +488,58 @@ body {
   padding: 1rem 0;
 }
 
+/* Health indicators */
+.health-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.health-healthy { background: var(--success); }
+.health-degraded { background: #f59e0b; }
+.health-unhealthy { background: var(--danger); }
+.health-unknown { background: var(--text-secondary); }
+
+.health-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.health-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  animation: mc-fade-in var(--transition-base);
+}
+
+.health-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+}
+
+.health-alert-critical {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid var(--danger);
+}
+
+.health-alert-text {
+  color: var(--text-primary);
+}
+
+.health-alert-fix {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+}
+
 @keyframes mc-fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
