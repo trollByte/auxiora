@@ -260,6 +260,60 @@ body {
   margin-top: 0.15rem;
 }
 
+.domain-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.domain-stat-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 40px 40px;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  padding: 0.35rem 0;
+}
+
+.domain-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.domain-stat-bar-track {
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.domain-stat-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.domain-stat-count {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.domain-stat-pct {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
 /* ── Mission Control ──────────────────────────────── */
 
 .mc-columns {

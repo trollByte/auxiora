@@ -119,8 +119,7 @@ export function ArchitectSettings({
   const totalInteractions = prefs.totalInteractions;
   const topDomains = Object.entries(prefs.contextUsageHistory)
     .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5) as [ContextDomain, number][];
+    .sort(([, a], [, b]) => b - a) as [ContextDomain, number][];
 
   return (
     <div className="settings-form">
@@ -211,14 +210,28 @@ export function ArchitectSettings({
             <div className="value">{totalInteractions}</div>
             <div className="sub">interactions</div>
           </div>
-          {topDomains.slice(0, 3).map(([domain, count]) => (
-            <div className="status-card" key={domain}>
-              <h3>{DOMAIN_META[domain]?.icon} {DOMAIN_META[domain]?.label}</h3>
-              <div className="value">{count}</div>
-              <div className="sub">{totalInteractions > 0 ? Math.round(count / totalInteractions * 100) : 0}% of total</div>
-            </div>
-          ))}
         </div>
+        {topDomains.length > 0 && (
+          <div className="domain-stats-list">
+            {topDomains.map(([domain, count]) => {
+              const pct = totalInteractions > 0 ? Math.round(count / totalInteractions * 100) : 0;
+              const maxCount = topDomains[0]?.[1] ?? 1;
+              const barWidth = Math.max(4, Math.round(count / maxCount * 100));
+              return (
+                <div className="domain-stat-row" key={domain}>
+                  <span className="domain-stat-label">
+                    {DOMAIN_META[domain]?.icon} {DOMAIN_META[domain]?.label ?? domain}
+                  </span>
+                  <span className="domain-stat-bar-track">
+                    <span className="domain-stat-bar-fill" style={{ width: `${barWidth}%` }} />
+                  </span>
+                  <span className="domain-stat-count">{count}</span>
+                  <span className="domain-stat-pct">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {topDomains.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             No interactions recorded yet. Context stats will appear here as you use The Architect.
