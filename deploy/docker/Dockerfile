@@ -13,7 +13,17 @@ COPY packages/ packages/
 RUN pnpm install --frozen-lockfile
 RUN pnpm -r build
 
-# Stage 2: Production
+# Stage 2: Extract only package.json manifests (for cacheable prod install)
+FROM builder AS manifests
+
+RUN mkdir /manifests && \
+    cd /app && \
+    find packages -name 'package.json' -not -path '*/node_modules/*' | while read f; do \
+      mkdir -p "/manifests/$(dirname "$f")"; \
+      cp "$f" "/manifests/$f"; \
+    done
+
+# Stage 3: Production
 FROM node:22-alpine AS production
 
 ARG VERSION=dev
@@ -31,8 +41,13 @@ RUN mkdir -p /data/config /data/data /data/state /data/.auxiora/workspace && \
 
 WORKDIR /app
 
-# Copy manifests and workspace config for prod dependency install
+# Copy only manifests + lockfile first — this layer caches until deps change
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY --from=manifests /manifests/packages/ packages/
+
+RUN pnpm install --frozen-lockfile --prod
+
+# Now overlay built artifacts (changes every code commit, but install is cached)
 COPY --from=builder /app/packages/ packages/
 
 # Strip dev artifacts: source, tests, tsconfig, tsbuildinfo
@@ -40,10 +55,7 @@ RUN find packages -type d -name src -exec rm -rf {} + 2>/dev/null; \
     find packages -type d -name tests -exec rm -rf {} + 2>/dev/null; \
     find packages -name 'tsconfig*.json' -delete 2>/dev/null; \
     find packages -name '*.tsbuildinfo' -delete 2>/dev/null; \
-    find packages -type d -name node_modules -exec rm -rf {} + 2>/dev/null; \
     true
-
-RUN pnpm install --frozen-lockfile --prod
 
 ENV NODE_ENV=production
 ENV AUXIORA_GATEWAY_HOST=0.0.0.0
