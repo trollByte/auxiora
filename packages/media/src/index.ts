@@ -2,3 +2,4 @@ export type { Attachment, MediaResult, MediaProvider, MediaConfig } from './type
 export { DEFAULT_LIMITS } from './types.js';
 export { formatMediaResults } from './format.js';
 export { FileExtractor } from './providers/file-extractor.js';
+export { WhisperProvider, type WhisperProviderConfig } from './providers/whisper.js';
