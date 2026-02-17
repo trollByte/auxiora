@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { audit } from '@auxiora/audit';
+import { chunkMarkdown } from '../chunk.js';
 import type {
   ChannelAdapter,
   InboundMessage,
@@ -227,7 +228,7 @@ export class ZaloAdapter implements ChannelAdapter {
 
   async send(channelId: string, message: OutboundMessage): Promise<SendResult> {
     try {
-      const chunks = this.chunkMessage(message.content);
+      const chunks = chunkMarkdown(message.content, MAX_MESSAGE_LENGTH);
       let lastMessageId: string | undefined;
 
       for (const chunk of chunks) {
@@ -278,35 +279,6 @@ export class ZaloAdapter implements ChannelAdapter {
       });
       return { success: false, error: errorMessage };
     }
-  }
-
-  private chunkMessage(content: string): string[] {
-    if (content.length <= MAX_MESSAGE_LENGTH) {
-      return [content];
-    }
-
-    const chunks: string[] = [];
-    let remaining = content;
-
-    while (remaining.length > 0) {
-      if (remaining.length <= MAX_MESSAGE_LENGTH) {
-        chunks.push(remaining);
-        break;
-      }
-
-      let breakPoint = remaining.lastIndexOf('\n', MAX_MESSAGE_LENGTH);
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = remaining.lastIndexOf(' ', MAX_MESSAGE_LENGTH);
-      }
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = MAX_MESSAGE_LENGTH;
-      }
-
-      chunks.push(remaining.slice(0, breakPoint));
-      remaining = remaining.slice(breakPoint).trimStart();
-    }
-
-    return chunks;
   }
 
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {
