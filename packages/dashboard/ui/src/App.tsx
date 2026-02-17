@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from './components/Layout';
+import { DesktopShell } from './components/DesktopShell';
 import { Login } from './pages/Login';
 import { UnlockVault } from './pages/UnlockVault';
 import { Overview } from './pages/Overview';
@@ -42,7 +42,7 @@ export function App() {
       <Route path="/setup/channels" element={<SetupChannels />} />
       <Route path="/setup/connections" element={<SetupConnections />} />
       <Route path="/setup/complete" element={<SetupComplete />} />
-      <Route element={<Layout />}>
+      <Route element={<DesktopShell />}>
         <Route index element={<Overview />} />
         <Route path="chat" element={<Chat />} />
         <Route path="behaviors" element={<Behaviors />} />
