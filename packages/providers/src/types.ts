@@ -113,6 +113,7 @@ export interface Provider {
 export interface ProviderConfig {
   anthropic?: {
     apiKey?: string;
+    apiKeys?: string[];
     oauthToken?: string;
     model?: string;
     maxTokens?: number;
@@ -124,12 +125,14 @@ export interface ProviderConfig {
     tokenExpiresAt?: number;
   };
   openai?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
   google?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
@@ -146,27 +149,32 @@ export interface ProviderConfig {
     name?: string;
   };
   groq?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
   replicate?: {
-    apiToken: string;
+    apiToken?: string;
+    apiTokens?: string[];
     model?: string;
     pollInterval?: number;
   };
   deepseek?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
   cohere?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
   xai?: {
-    apiKey: string;
+    apiKey?: string;
+    apiKeys?: string[];
     model?: string;
     maxTokens?: number;
   };
