@@ -1105,7 +1105,7 @@ export class Auxiora {
 
     // Initialize connector registry and wire ambient scheduler
     this.connectorRegistry = new ConnectorRegistry();
-    this.connectorAuthManager = new ConnectorAuthManager();
+    this.connectorAuthManager = new ConnectorAuthManager(this.vault);
     this.connectorRegistry.register(googleWorkspaceConnector);
     this.connectorRegistry.register(microsoftConnector);
     this.connectorRegistry.register(githubConnector);
@@ -1118,17 +1118,18 @@ export class Auxiora {
     this.connectorRegistry.register(instagramConnector);
     this.triggerManager = new TriggerManager(this.connectorRegistry, this.connectorAuthManager);
 
-    // Restore connector tokens from vault
-    try {
-      for (const connector of this.connectorRegistry.list()) {
+    // Restore connector tokens from vault (per-connector try-catch so one
+    // failure doesn't prevent others from loading)
+    for (const connector of this.connectorRegistry.list()) {
+      try {
         const tokenData = this.vault.get(`connectors.${connector.id}.tokens`);
         if (tokenData) {
           const tokens = typeof tokenData === 'string' ? JSON.parse(tokenData) : tokenData;
           await this.connectorAuthManager.authenticate(connector.id, connector.auth, tokens);
         }
+      } catch (err) {
+        this.logger.warn(`Failed to restore tokens for connector ${connector.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
-    } catch {
-      // Vault locked or no tokens stored
     }
 
     // Register connector actions as AI-callable tools
