@@ -433,4 +433,97 @@ describe('Tool Loop Detection', () => {
       expect(result.detector).toBe('circuit_breaker');
     });
   });
+
+  // ── Integration Flow ─────────────────────────────────────────────
+
+  describe('Integration Flow', () => {
+    it('should detect a full stuck loop scenario', () => {
+      const state = createLoopDetectionState({
+        genericRepeatWarn: 3,
+        genericRepeatCritical: 6,
+      });
+
+      // Simulate a stuck loop: bash ls called 6 times with identical results
+      for (let i = 0; i < 6; i++) {
+        recordToolCall(state, `call-${i}`, 'bash', { command: 'ls /nonexistent' });
+        recordToolOutcome(state, `call-${i}`, 'Error: No such file or directory');
+      }
+
+      const result = detectLoop(state);
+      expect(result.severity).toBe('critical');
+      expect(result.message).toContain('bash');
+      expect(result.message).toContain('6');
+    });
+
+    it('should handle mixed productive and stuck calls', () => {
+      const state = createLoopDetectionState({
+        genericRepeatWarn: 4,
+        genericRepeatCritical: 8,
+        noProgressWarn: 3,
+        noProgressCritical: 5,
+      });
+
+      // Some productive calls
+      recordToolCall(state, 'c1', 'bash', { command: 'ls' });
+      recordToolOutcome(state, 'c1', 'file1.txt');
+      recordToolCall(state, 'c2', 'bash', { command: 'cat file1.txt' });
+      recordToolOutcome(state, 'c2', 'contents');
+
+      // Now gets stuck polling
+      for (let i = 0; i < 3; i++) {
+        recordToolCall(state, `poll-${i}`, 'check_status', { id: '123' });
+        recordToolOutcome(state, `poll-${i}`, 'status: pending');
+      }
+
+      const result = detectLoop(state);
+      expect(result.severity).toBe('warning');
+      expect(result.detector).toBe('no_progress');
+    });
+
+    it('should detect ping-pong between two tools', () => {
+      const state = createLoopDetectionState({
+        pingPongWarnCycles: 2,
+        pingPongCriticalCycles: 3,
+        genericRepeatWarn: 100,
+        genericRepeatCritical: 100,
+      });
+
+      for (let i = 0; i < 3; i++) {
+        recordToolCall(state, `read-${i}`, 'read_file', { path: '/app/config.json' });
+        recordToolOutcome(state, `read-${i}`, '{"key": "value"}');
+        recordToolCall(state, `write-${i}`, 'write_file', { path: '/app/config.json', content: '{"key": "new"}' });
+        recordToolOutcome(state, `write-${i}`, 'Success');
+      }
+
+      const result = detectLoop(state);
+      expect(result.severity).toBe('critical');
+      expect(result.detector).toBe('ping_pong');
+    });
+
+    it('circuit breaker catches diverse no-progress across tools', () => {
+      const state = createLoopDetectionState({
+        circuitBreakerLimit: 6,
+        genericRepeatWarn: 100,
+        genericRepeatCritical: 100,
+        noProgressWarn: 100,
+        noProgressCritical: 100,
+        pingPongWarnCycles: 100,
+        pingPongCriticalCycles: 100,
+      });
+
+      // Different tools, all stuck
+      for (let i = 0; i < 4; i++) {
+        recordToolCall(state, `a${i}`, 'tool_a', { x: 1 });
+        recordToolOutcome(state, `a${i}`, 'error A');
+      }
+      for (let i = 0; i < 4; i++) {
+        recordToolCall(state, `b${i}`, 'tool_b', { y: 2 });
+        recordToolOutcome(state, `b${i}`, 'error B');
+      }
+      // no-progress: 3 (tool_a repeats) + 3 (tool_b repeats) = 6
+      const result = detectLoop(state);
+      expect(result.severity).toBe('critical');
+      expect(result.detector).toBe('circuit_breaker');
+    });
+  });
 });
