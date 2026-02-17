@@ -361,10 +361,12 @@ export function Chat() {
           case 'auth_success':
             break;
           case 'chunk':
-            currentResponseRef.current += msg.payload?.content ?? '';
             setToolStatus(''); // Clear any lingering tool/status indicators
             // Ignore chunks for detached requests (user switched chats)
+            // or chunks from a different request ID (prevents interleaving)
             if (requestIdRef.current !== activeRequestIdRef.current) break;
+            if (msg.id != null && String(msg.id) !== String(activeRequestIdRef.current)) break;
+            currentResponseRef.current += msg.payload?.content ?? '';
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'assistant' && last.id === `resp-${activeRequestIdRef.current}`) {
@@ -426,7 +428,9 @@ export function Chat() {
             setToolStatus('');
             currentResponseRef.current = '';
             // Ignore done for detached requests (user switched chats)
+            // or done messages from a different request ID
             if (requestIdRef.current !== activeRequestIdRef.current) break;
+            if (msg.id != null && String(msg.id) !== String(activeRequestIdRef.current)) break;
             const routing = msg.payload?.routing;
             const architect = msg.payload?.architect;
             const updates: Partial<ChatMessage> = {};
@@ -444,15 +448,24 @@ export function Chat() {
               updates.recommendation = architect.recommendation;
             }
             if (Object.keys(updates).length > 0) {
+              const doneRequestId = msg.id != null ? String(msg.id) : null;
               setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant') {
-                  // Link the preceding user message for correction recording
-                  const userMsg = prev.slice(0, -1).reverse().find(m => m.role === 'user');
-                  if (userMsg) updates.userMessage = userMsg.content;
-                  return [...prev.slice(0, -1), { ...last, ...updates }];
+                // Find the assistant message for this request (by ID if available, else last)
+                const targetId = doneRequestId ? `resp-${doneRequestId}` : null;
+                let idx = -1;
+                for (let i = prev.length - 1; i >= 0; i--) {
+                  if (targetId ? prev[i].id === targetId : prev[i].role === 'assistant') {
+                    idx = i;
+                    break;
+                  }
                 }
-                return prev;
+                if (idx === -1) return prev;
+                const target = prev[idx];
+                if (target.role !== 'assistant') return prev;
+                // Link the preceding user message for correction recording
+                const userMsg = prev.slice(0, idx).reverse().find(m => m.role === 'user');
+                if (userMsg) updates.userMessage = userMsg.content;
+                return [...prev.slice(0, idx), { ...target, ...updates }, ...prev.slice(idx + 1)];
               });
             }
             break;
