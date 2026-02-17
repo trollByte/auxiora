@@ -103,7 +103,7 @@ describe('SessionManager', () => {
         await manager.addMessage(session.id, 'assistant', 'y'.repeat(100));
       }
 
-      const context = manager.getContextMessages(session.id, 125);
+      const context = manager.getContextMessages(session.id, 2700, 0);
       expect(context.length).toBeLessThan(20);
       expect(context.length).toBeGreaterThan(0);
     });

@@ -4,6 +4,7 @@ import * as crypto from 'node:crypto';
 import { getSessionsDir } from '@auxiora/core';
 import { audit } from '@auxiora/audit';
 import { SessionDatabase } from './db.js';
+import { estimateTokens } from './token-estimator.js';
 import type { Session, SessionConfig, Message, MessageRole, SessionMetadata, Chat, ListChatsOptions } from './types.js';
 
 function generateMessageId(): string {
@@ -13,6 +14,18 @@ function generateMessageId(): string {
 }
 
 export class SessionManager {
+  /** Fixed 20% safety margin for estimation inaccuracy. */
+  private static readonly SAFETY_MARGIN = 0.80;
+
+  /** Reserved tokens for system prompt, tool definitions, etc. */
+  private static readonly SYSTEM_RESERVE = 2000;
+
+  /** Default output token reserve when not specified. */
+  private static readonly DEFAULT_OUTPUT_RESERVE = 4096;
+
+  /** Minimum effective budget before warning. */
+  private static readonly MIN_BUDGET_WARNING = 4000;
+
   private sessions: Map<string, Session> = new Map();
   private config: SessionConfig;
   private db: SessionDatabase;
@@ -213,8 +226,20 @@ export class SessionManager {
     return this.db.getMessages(sessionId);
   }
 
-  getContextMessages(sessionId: string, maxTokens?: number): Message[] {
-    const limit = maxTokens || this.config.maxContextTokens;
+  getContextMessages(sessionId: string, maxTokens?: number, outputReserve?: number): Message[] {
+    const rawLimit = maxTokens || this.config.maxContextTokens;
+    const reserve = outputReserve ?? SessionManager.DEFAULT_OUTPUT_RESERVE;
+    const effectiveBudget = Math.max(
+      rawLimit * SessionManager.SAFETY_MARGIN - reserve - SessionManager.SYSTEM_RESERVE,
+      0,
+    );
+
+    if (effectiveBudget < SessionManager.MIN_BUDGET_WARNING) {
+      console.warn(
+        `[auxiora] Context budget very low (${Math.round(effectiveBudget)} tokens). ` +
+        `Consider increasing maxContextTokens (current: ${rawLimit}).`,
+      );
+    }
 
     // Try in-memory first
     const session = this.sessions.get(sessionId);
@@ -223,8 +248,8 @@ export class SessionManager {
       let tokenCount = 0;
       for (let i = session.messages.length - 1; i >= 0; i--) {
         const msg = session.messages[i];
-        const msgTokens = Math.ceil(msg.content.length / 4);
-        if (tokenCount + msgTokens > limit) break;
+        const msgTokens = estimateTokens(msg.content);
+        if (tokenCount + msgTokens > effectiveBudget) break;
         messages.unshift(msg);
         tokenCount += msgTokens;
       }
@@ -232,7 +257,7 @@ export class SessionManager {
     }
 
     // Fall back to DB
-    return this.db.getContextMessages(sessionId, limit);
+    return this.db.getContextMessages(sessionId, effectiveBudget);
   }
 
   async setSystemPrompt(sessionId: string, prompt: string): Promise<void> {

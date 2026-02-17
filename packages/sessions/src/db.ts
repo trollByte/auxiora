@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import * as crypto from 'node:crypto';
+import { estimateTokens } from './token-estimator.js';
 import type { Message, Chat, ListChatsOptions } from './types.js';
 
 function generateId(): string {
@@ -114,7 +115,7 @@ export class SessionDatabase {
     let tokenCount = 0;
     for (const row of rows) {
       const msg = this.rowToMessage(row);
-      const msgTokens = Math.ceil(msg.content.length / 4);
+      const msgTokens = estimateTokens(msg.content);
       if (tokenCount + msgTokens > maxTokens) break;
       messages.unshift(msg);
       tokenCount += msgTokens;
