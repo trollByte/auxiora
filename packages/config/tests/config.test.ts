@@ -232,7 +232,7 @@ describe('Config', () => {
     it('should have google provider defaults', () => {
       const config = ConfigSchema.parse({});
       expect(config.provider.google.model).toBe('gemini-2.5-flash');
-      expect(config.provider.google.maxTokens).toBe(4096);
+      expect(config.provider.google.maxTokens).toBe(16384);
     });
 
     it('should have ollama provider defaults', () => {

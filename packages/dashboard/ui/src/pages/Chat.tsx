@@ -147,6 +147,7 @@ export function Chat() {
   const [input, setInput] = useState('');
   const [connected, setConnected] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [toolStatus, setToolStatus] = useState('');
   const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
   const [lastModel, setLastModel] = useState('');
   const [activeMode, setActiveMode] = useState('auto');
@@ -366,8 +367,30 @@ export function Chat() {
               }]);
             }
             break;
+          case 'tool_use': {
+            const toolName = msg.payload?.tool ?? 'tool';
+            const friendlyNames: Record<string, string> = {
+              web_browser: 'Reading web page',
+              browser_navigate: 'Navigating browser',
+              browser_click: 'Clicking element',
+              browser_type: 'Typing text',
+              browser_screenshot: 'Taking screenshot',
+              browser_extract: 'Extracting data',
+              browse: 'Browsing',
+              bash: 'Running command',
+              file_read: 'Reading file',
+              file_write: 'Writing file',
+              file_list: 'Listing files',
+            };
+            setToolStatus(friendlyNames[toolName] || `Using ${toolName}`);
+            break;
+          }
+          case 'tool_result':
+            setToolStatus('');
+            break;
           case 'done': {
             setStreaming(false);
+            setToolStatus('');
             currentResponseRef.current = '';
             // Ignore done for detached requests (user switched chats)
             if (requestIdRef.current !== activeRequestIdRef.current) break;
@@ -423,6 +446,7 @@ export function Chat() {
             break;
           case 'error':
             setStreaming(false);
+            setToolStatus('');
             currentResponseRef.current = '';
             setMessages(prev => [...prev, {
               id: `err-${Date.now()}`,
@@ -865,6 +889,12 @@ export function Chat() {
                 )}
               </div>
             ))}
+            {(streaming && toolStatus) && (
+              <div className="chat-tool-status">
+                <span className="tool-status-dot" />
+                {toolStatus}...
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
           <div className="chat-input-area">

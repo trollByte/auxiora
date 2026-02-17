@@ -231,6 +231,7 @@ export class GroqProvider implements Provider {
           if (chunk.choices[0]?.finish_reason) {
             yield {
               type: 'done',
+              finishReason: chunk.choices[0].finish_reason,
               usage: { inputTokens, outputTokens },
             };
           }

@@ -257,6 +257,7 @@ export class OpenAIProvider implements Provider {
 
           yield {
             type: 'done',
+            finishReason: choice.finish_reason || 'stop',
             usage: { inputTokens, outputTokens },
           };
         }

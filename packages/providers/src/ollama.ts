@@ -159,6 +159,7 @@ export class OllamaProvider implements Provider {
           if (chunk.done) {
             yield {
               type: 'done',
+              finishReason: 'stop',
               usage: {
                 inputTokens: chunk.prompt_eval_count ?? 0,
                 outputTokens: chunk.eval_count ?? 0,

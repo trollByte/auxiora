@@ -622,6 +622,7 @@ export class AnthropicProvider implements Provider {
         const finalMessage = await stream.finalMessage();
         yield {
           type: 'done',
+          finishReason: finalMessage.stop_reason || 'end_turn',
           usage: {
             inputTokens: finalMessage.usage.input_tokens,
             outputTokens: finalMessage.usage.output_tokens,

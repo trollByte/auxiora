@@ -2364,6 +2364,7 @@ export class Auxiora {
     options?: { maxToolRounds?: number; tools?: Array<{ name: string; description: string; input_schema: any }> }
   ): Promise<{ response: string; usage: { inputTokens: number; outputTokens: number } }> {
     const maxRounds = options?.maxToolRounds ?? 10;
+    const maxContinuations = 3; // Safety cap for auto-continue on truncation
     const tools = options?.tools ?? toolRegistry.toProviderFormat();
     let currentMessages = [...messages];
     let totalUsage = { inputTokens: 0, outputTokens: 0 };
@@ -2373,6 +2374,7 @@ export class Auxiora {
     for (let round = 0; round < maxRounds; round++) {
       let roundResponse = '';
       let roundUsage = { inputTokens: 0, outputTokens: 0 };
+      let roundFinishReason = '';
       const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
       for await (const chunk of provider.stream(currentMessages as any, {
@@ -2390,6 +2392,7 @@ export class Auxiora {
           onChunk('tool_use', { tool: chunk.toolUse.name, params: chunk.toolUse.input });
         } else if (chunk.type === 'done') {
           roundUsage = chunk.usage || roundUsage;
+          roundFinishReason = chunk.finishReason || '';
         } else if (chunk.type === 'error') {
           throw new Error(chunk.error);
         }
@@ -2398,9 +2401,50 @@ export class Auxiora {
       totalUsage.inputTokens += roundUsage.inputTokens;
       totalUsage.outputTokens += roundUsage.outputTokens;
 
-      // No tool calls — this round's text is the final response
+      // No tool calls — check if response was truncated
       if (toolUses.length === 0) {
-        fullResponse = roundResponse; // Only keep final text, not intermediate narration
+        fullResponse += roundResponse;
+
+        // Auto-continue if response was cut off by token limit
+        const wasTruncated = roundFinishReason === 'max_tokens' || roundFinishReason === 'length';
+        if (wasTruncated && fullResponse.length > 0) {
+          let continuations = 0;
+          while (continuations < maxContinuations) {
+            continuations++;
+            this.logger.info('Response truncated, auto-continuing', { continuations, finishReason: roundFinishReason });
+
+            currentMessages.push({ role: 'assistant', content: fullResponse });
+            currentMessages.push({ role: 'user', content: 'Continue where you left off.' });
+
+            let contResponse = '';
+            let contUsage = { inputTokens: 0, outputTokens: 0 };
+            let contFinishReason = '';
+
+            for await (const chunk of provider.stream(currentMessages as any, {
+              systemPrompt: enrichedPrompt,
+            })) {
+              if (chunk.type === 'text' && chunk.content) {
+                contResponse += chunk.content;
+                onChunk('text', chunk.content);
+              } else if (chunk.type === 'done') {
+                contUsage = chunk.usage || contUsage;
+                contFinishReason = chunk.finishReason || '';
+              } else if (chunk.type === 'error') {
+                throw new Error(chunk.error);
+              }
+            }
+
+            totalUsage.inputTokens += contUsage.inputTokens;
+            totalUsage.outputTokens += contUsage.outputTokens;
+            fullResponse += contResponse;
+
+            // Stop if the model finished naturally
+            if (contFinishReason !== 'max_tokens' && contFinishReason !== 'length') {
+              break;
+            }
+          }
+        }
+
         lastRoundHadTools = false;
         break;
       }

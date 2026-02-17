@@ -49,6 +49,7 @@ export interface StreamChunk {
   content?: string;
   toolUse?: ToolUse;
   error?: string;
+  finishReason?: string;
   usage?: {
     inputTokens: number;
     outputTokens: number;

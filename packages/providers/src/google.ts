@@ -131,8 +131,10 @@ export class GoogleProvider implements Provider {
 
       const finalResponse = await result.response;
       const usage = finalResponse.usageMetadata;
+      const candidate = finalResponse.candidates?.[0];
       yield {
         type: 'done',
+        finishReason: candidate?.finishReason === 'MAX_TOKENS' ? 'max_tokens' : (candidate?.finishReason?.toLowerCase() || 'stop'),
         usage: {
           inputTokens: usage?.promptTokenCount ?? 0,
           outputTokens: usage?.candidatesTokenCount ?? 0,

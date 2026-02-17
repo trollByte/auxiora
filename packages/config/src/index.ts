@@ -60,42 +60,42 @@ const ProviderConfigSchema = z.object({
   fallback: z.string().optional(),
   anthropic: z.object({
     model: z.string().default('claude-sonnet-4-20250514'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   openai: z.object({
     model: z.string().default('gpt-5.2'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   google: z.object({
     model: z.string().default('gemini-2.5-flash'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   ollama: z.object({
     model: z.string().default('llama3'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
     baseUrl: z.string().default('http://localhost:11434'),
   }).default({}),
   openaiCompatible: z.object({
     model: z.string().default(''),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
     baseUrl: z.string().default(''),
     name: z.string().default('custom'),
   }).default({}),
   groq: z.object({
     model: z.string().default('llama-3.3-70b-versatile'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   deepseek: z.object({
     model: z.string().default('deepseek-chat'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   cohere: z.object({
     model: z.string().default('command-r-plus'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   xai: z.object({
     model: z.string().default('grok-2'),
-    maxTokens: z.number().int().positive().default(4096),
+    maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   replicate: z.object({
     model: z.string().default('meta/meta-llama-3-70b-instruct'),
