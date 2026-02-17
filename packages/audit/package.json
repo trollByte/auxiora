@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auxiora/core": "workspace:*"
+    "@auxiora/core": "workspace:*",
+    "@auxiora/logger": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

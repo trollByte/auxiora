@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { getAuditLogPath, isWindows } from '@auxiora/core';
+import { getRequestContext } from '@auxiora/logger';
 
 export type AuditEventType =
   | 'vault.unlock'
@@ -231,6 +232,12 @@ export class AuditLogger {
     this.sequence++;
     const timestamp = new Date().toISOString();
     const redactedDetails = redactSensitive(details);
+
+    // Auto-inject requestId from AsyncLocalStorage
+    const reqCtx = getRequestContext();
+    if (reqCtx?.requestId && !redactedDetails.requestId) {
+      redactedDetails.requestId = reqCtx.requestId;
+    }
 
     const entryData = JSON.stringify({
       timestamp,
