@@ -8,6 +8,7 @@ import { ReplicateProvider, type ReplicateProviderOptions } from './replicate.js
 import { DeepSeekProvider, type DeepSeekProviderOptions } from './deepseek.js';
 import { CohereProvider, type CohereProviderOptions } from './cohere.js';
 import { XAIProvider, type XAIProviderOptions } from './xai.js';
+import { ProfileRotator } from './profile-rotator.js';
 import { readClaudeCliCredentials } from './claude-oauth.js';
 import { getLogger } from '@auxiora/logger';
 import type { Provider, ProviderConfig } from './types.js';
@@ -32,22 +33,52 @@ export class ProviderFactory {
     this.fallback = options.fallback;
 
     // Initialize configured providers
+
+    // Anthropic: supports apiKeys rotation, but also has OAuth/CLI fallback
     const anthropicConfig = options.config.anthropic;
-    const hasAnthropicCredentials =
-      anthropicConfig?.apiKey ||
-      anthropicConfig?.oauthToken ||
-      (anthropicConfig?.useCliCredentials !== false && readClaudeCliCredentials() !== null);
-
-    if (hasAnthropicCredentials && anthropicConfig) {
-      this.providers.set('anthropic', new AnthropicProvider(anthropicConfig));
+    if (anthropicConfig) {
+      const keys = anthropicConfig.apiKeys ?? (anthropicConfig.apiKey ? [anthropicConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new AnthropicProvider({ ...anthropicConfig, apiKey: keys[0]! });
+        this.providers.set('anthropic', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      } else {
+        // OAuth / CLI credentials path — no rotation
+        const hasAnthropicCredentials =
+          anthropicConfig.oauthToken ||
+          (anthropicConfig.useCliCredentials !== false && readClaudeCliCredentials() !== null);
+        if (hasAnthropicCredentials) {
+          this.providers.set('anthropic', new AnthropicProvider(anthropicConfig));
+        }
+      }
     }
 
-    if (options.config.openai?.apiKey) {
-      this.providers.set('openai', new OpenAIProvider(options.config.openai));
+    // OpenAI
+    const openaiConfig = options.config.openai;
+    if (openaiConfig) {
+      const keys = openaiConfig.apiKeys ?? (openaiConfig.apiKey ? [openaiConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new OpenAIProvider({ ...openaiConfig, apiKey: keys[0]! });
+        this.providers.set('openai', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
-    if (options.config.google?.apiKey) {
-      this.providers.set('google', new GoogleProvider(options.config.google));
+    // Google
+    const googleConfig = options.config.google;
+    if (googleConfig) {
+      const keys = googleConfig.apiKeys ?? (googleConfig.apiKey ? [googleConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new GoogleProvider({ ...googleConfig, apiKey: keys[0]! });
+        this.providers.set('google', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
     if (options.config.ollama) {
@@ -68,24 +99,60 @@ export class ProviderFactory {
       );
     }
 
-    if (options.config.groq?.apiKey) {
-      this.providers.set('groq', new GroqProvider(options.config.groq));
+    // Groq
+    const groqConfig = options.config.groq;
+    if (groqConfig) {
+      const keys = groqConfig.apiKeys ?? (groqConfig.apiKey ? [groqConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new GroqProvider({ ...groqConfig, apiKey: keys[0]! });
+        this.providers.set('groq', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
     if (options.config.replicate?.apiToken) {
       this.providers.set('replicate', new ReplicateProvider(options.config.replicate));
     }
 
-    if (options.config.deepseek?.apiKey) {
-      this.providers.set('deepseek', new DeepSeekProvider(options.config.deepseek));
+    // DeepSeek
+    const deepseekConfig = options.config.deepseek;
+    if (deepseekConfig) {
+      const keys = deepseekConfig.apiKeys ?? (deepseekConfig.apiKey ? [deepseekConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new DeepSeekProvider({ ...deepseekConfig, apiKey: keys[0]! });
+        this.providers.set('deepseek', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
-    if (options.config.cohere?.apiKey) {
-      this.providers.set('cohere', new CohereProvider(options.config.cohere));
+    // Cohere
+    const cohereConfig = options.config.cohere;
+    if (cohereConfig) {
+      const keys = cohereConfig.apiKeys ?? (cohereConfig.apiKey ? [cohereConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new CohereProvider({ ...cohereConfig, apiKey: keys[0]! });
+        this.providers.set('cohere', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
-    if (options.config.xai?.apiKey) {
-      this.providers.set('xai', new XAIProvider(options.config.xai));
+    // XAI
+    const xaiConfig = options.config.xai;
+    if (xaiConfig) {
+      const keys = xaiConfig.apiKeys ?? (xaiConfig.apiKey ? [xaiConfig.apiKey] : []);
+      if (keys.length > 0) {
+        const provider = new XAIProvider({ ...xaiConfig, apiKey: keys[0]! });
+        this.providers.set('xai', keys.length > 1
+          ? new ProfileRotator(provider, keys)
+          : provider,
+        );
+      }
     }
 
     // Auto-fallback: if configured primary isn't available, use first registered provider

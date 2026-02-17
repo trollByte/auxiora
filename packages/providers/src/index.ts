@@ -9,6 +9,15 @@ export { DeepSeekProvider, type DeepSeekProviderOptions } from './deepseek.js';
 export { CohereProvider, type CohereProviderOptions } from './cohere.js';
 export { XAIProvider, type XAIProviderOptions } from './xai.js';
 export { ProviderFactory, type ProviderFactoryOptions, type ProviderName } from './factory.js';
+export { ProfileRotator, type RotatableProvider } from './profile-rotator.js';
+export {
+  isProfileInCooldown,
+  markProfileCooldown,
+  clearProfileCooldown,
+  shouldProbeProfile,
+  recordProfileProbeResult,
+  resetAllProfileCooldowns,
+} from './profile-cooldown.js';
 export {
   getAnthropicThinkingBudget,
   getOpenAIReasoningEffort,
