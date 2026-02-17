@@ -114,6 +114,13 @@ export class OpenAIProvider implements Provider {
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
   }
 
+  setActiveKey(apiKey: string): void {
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: this.client.baseURL,
+    });
+  }
+
   async complete(
     messages: ChatMessage[],
     options?: CompletionOptions

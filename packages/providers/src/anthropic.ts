@@ -235,6 +235,11 @@ export class AnthropicProvider implements Provider {
     }
   }
 
+  setActiveKey(apiKey: string): void {
+    this.authMode = 'api-key';
+    this.client = new Anthropic({ apiKey });
+  }
+
   /**
    * Get the Claude Code version (detected or cached).
    */

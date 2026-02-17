@@ -125,6 +125,10 @@ export class GroqProvider implements Provider {
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
   }
 
+  setActiveKey(apiKey: string): void {
+    this.apiKey = apiKey;
+  }
+
   async complete(
     messages: ChatMessage[],
     options?: CompletionOptions,

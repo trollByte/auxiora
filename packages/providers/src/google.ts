@@ -64,6 +64,10 @@ export class GoogleProvider implements Provider {
     this.defaultMaxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
   }
 
+  setActiveKey(apiKey: string): void {
+    this.client = new GoogleGenerativeAI(apiKey);
+  }
+
   async complete(
     messages: ChatMessage[],
     options?: CompletionOptions,
