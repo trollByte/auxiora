@@ -298,21 +298,35 @@ export function Chat() {
 
   const scrollToBottom = useCallback(() => {
     if (isNearBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
   }, []);
 
-  // Track whether the user is near the bottom of the messages container
+  // Track whether the user is near the bottom of the messages container.
+  // Uses wheel events to detect user intent (scrolling up) so programmatic
+  // scrolls don't interfere with the user reading earlier messages.
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    const handleScroll = () => {
-      const threshold = 80;
-      isNearBottomRef.current =
-        container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    const handleWheel = (e: WheelEvent) => {
+      // User scrolling up during streaming — respect their intent
+      if (e.deltaY < 0) {
+        isNearBottomRef.current = false;
+      }
     };
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Only resume auto-scroll when user has scrolled back to the bottom
+      if (scrollHeight - scrollTop - clientHeight < 40) {
+        isNearBottomRef.current = true;
+      }
+    };
+    container.addEventListener('wheel', handleWheel, { passive: true });
     container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   useEffect(() => {
