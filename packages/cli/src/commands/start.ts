@@ -2,16 +2,9 @@ import { Command } from 'commander';
 import { password as passwordPrompt } from '@inquirer/prompts';
 import open from 'open';
 import { startAuxiora, type Auxiora } from '@auxiora/runtime';
+import { setupProcessGuard } from '../process-guard.js';
 
 let auxiora: Auxiora | null = null;
-
-async function gracefulShutdown(): Promise<void> {
-  console.log('\nShutting down...');
-  if (auxiora) {
-    await auxiora.stop();
-  }
-  process.exit(0);
-}
 
 export function createStartCommand(): Command {
   return new Command('start')
@@ -44,21 +37,11 @@ export function createStartCommand(): Command {
         }
       }
 
-      // Handle shutdown signals (SIGINT: Ctrl+C on all platforms, SIGTERM: Unix,
-      // SIGBREAK: Windows console close / Ctrl+Break)
-      process.on('SIGINT', gracefulShutdown);
-      process.on('SIGTERM', gracefulShutdown);
-      if (process.platform === 'win32') {
-        process.on('SIGBREAK', gracefulShutdown);
-      }
-
-      process.on('unhandledRejection', (reason) => {
-        console.error('Unhandled rejection:', reason instanceof Error ? reason.message : reason);
-      });
-
-      process.on('uncaughtException', (error) => {
-        console.error('Uncaught exception:', error.message);
-        gracefulShutdown();
+      // Install process-level error handling with intelligent classification
+      setupProcessGuard(async () => {
+        if (auxiora) {
+          await auxiora.stop();
+        }
       });
 
       try {
