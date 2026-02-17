@@ -2021,7 +2021,11 @@ export class Auxiora {
     }
 
     // Get context messages
-    const contextMessages = this.sessions.getContextMessages(session.id);
+    const contextMessages = this.sessions.getContextMessages(
+      session.id,
+      undefined,
+      4096,
+    );
     const chatMessages = contextMessages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -2666,7 +2670,11 @@ export class Auxiora {
 
         await this.sessions.addMessage(session.id, 'user', transcription.text);
 
-        const contextMessages = this.sessions.getContextMessages(session.id);
+        const contextMessages = this.sessions.getContextMessages(
+          session.id,
+          undefined,
+          4096,
+        );
         const chatMessages = contextMessages.map((m) => ({
           role: m.role,
           content: m.content,
@@ -2873,7 +2881,11 @@ export class Auxiora {
     }
 
     // Get context messages
-    const contextMessages = this.sessions.getContextMessages(session.id);
+    const contextMessages = this.sessions.getContextMessages(
+      session.id,
+      undefined,
+      4096,
+    );
     const chatMessages = contextMessages.map((m) => ({
       role: m.role,
       content: m.content,
