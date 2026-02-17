@@ -2132,13 +2132,19 @@ body {
 
 .content:has(.chat-layout) .page {
   flex: 1;
-  height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
+.content:has(.chat-layout) .page > h2 {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem 0;
+}
+
 .content:has(.chat-layout) .chat-layout {
-  height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* ── Chat Layout ────────────────────────────── */
