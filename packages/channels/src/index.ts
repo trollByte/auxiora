@@ -76,3 +76,6 @@ export {
   ChannelManager,
   type ChannelManagerConfig,
 } from './manager.js';
+
+// Dedup
+export { isDuplicate, resetInboundDedup } from './inbound-dedup.js';

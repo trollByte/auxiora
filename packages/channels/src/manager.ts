@@ -22,6 +22,7 @@ import { WhatsAppAdapter, type WhatsAppAdapterConfig } from './adapters/whatsapp
 import { GoogleChatAdapter, type GoogleChatAdapterConfig } from './adapters/googlechat.js';
 import { BlueBubblesAdapter, type BlueBubblesAdapterConfig } from './adapters/bluebubbles.js';
 import { ZaloAdapter, type ZaloAdapterConfig } from './adapters/zalo.js';
+import { isDuplicate } from './inbound-dedup.js';
 
 export interface ChannelManagerConfig {
   discord?: DiscordAdapterConfig;
@@ -100,6 +101,10 @@ export class ChannelManager {
         try {
           // Set up message handler
           adapter.onMessage(async (message) => {
+            if (isDuplicate(message.channelType, message.channelId, message.id)) {
+              logger.debug(`Duplicate inbound dropped: ${message.channelType}:${message.id}`);
+              return;
+            }
             if (this.messageHandler) {
               await this.messageHandler(message);
             }
