@@ -191,6 +191,19 @@ export class ChannelManager {
     return adapter.startTyping(channelId);
   }
 
+  async editMessage(
+    channelType: ChannelType,
+    channelId: string,
+    messageId: string,
+    message: OutboundMessage,
+  ): Promise<SendResult> {
+    const adapter = this.adapters.get(channelType);
+    if (!adapter?.editMessage || !adapter.isConnected()) {
+      return { success: false, error: `Edit not supported for ${channelType}` };
+    }
+    return adapter.editMessage(channelId, messageId, message);
+  }
+
   getDefaultChannelId(channelType: ChannelType): string | undefined {
     return this.adapters.get(channelType)?.getDefaultChannelId?.();
   }

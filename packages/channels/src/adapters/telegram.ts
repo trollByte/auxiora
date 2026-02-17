@@ -176,6 +176,16 @@ export class TelegramAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  async editMessage(channelId: string, messageId: string, message: OutboundMessage): Promise<SendResult> {
+    try {
+      const chatId = Number(channelId);
+      await this.bot.api.editMessageText(chatId, Number(messageId), message.content);
+      return { success: true, messageId };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Edit failed' };
+    }
+  }
+
   async startTyping(channelId: string): Promise<() => void> {
     const chatId = parseInt(channelId, 10);
     // Send immediately, then repeat every 4s (Telegram typing expires after ~5s)

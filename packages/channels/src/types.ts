@@ -53,6 +53,9 @@ export interface ChannelAdapter {
   // Typing indicator — returns a cleanup function to stop the indicator
   startTyping?(channelId: string): Promise<() => void>;
 
+  // Edit a previously sent message
+  editMessage?(channelId: string, messageId: string, message: OutboundMessage): Promise<SendResult>;
+
   // Default channel for proactive delivery (e.g. first text channel in Discord)
   getDefaultChannelId?(): string | undefined;
 

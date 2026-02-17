@@ -222,6 +222,20 @@ export class DiscordAdapter implements ChannelAdapter {
     return chunks;
   }
 
+  async editMessage(channelId: string, messageId: string, message: OutboundMessage): Promise<SendResult> {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel?.isTextBased() || !('messages' in channel)) {
+        return { success: false, error: 'Channel not text-based' };
+      }
+      const msg = await channel.messages.fetch(messageId);
+      await msg.edit(message.content);
+      return { success: true, messageId };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Edit failed' };
+    }
+  }
+
   getDefaultChannelId(): string | undefined {
     const textChannel = this.client.channels.cache.find(
       (ch) => ch.type === DiscordChannelType.GuildText

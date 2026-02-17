@@ -213,6 +213,19 @@ export class SlackAdapter implements ChannelAdapter {
     }
   }
 
+  async editMessage(channelId: string, messageId: string, message: OutboundMessage): Promise<SendResult> {
+    try {
+      await this.app.client.chat.update({
+        channel: channelId,
+        ts: messageId,
+        text: message.content,
+      });
+      return { success: true, messageId };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Edit failed' };
+    }
+  }
+
   private chunkMessage(content: string): string[] {
     if (content.length <= MAX_MESSAGE_LENGTH) {
       return [content];
