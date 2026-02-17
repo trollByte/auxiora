@@ -1329,7 +1329,12 @@ export class Auxiora {
     }
 
     // Initialize media processor with auto-detected providers
-    this.mediaProcessor = new MediaProcessor(detectProviders(this.vault));
+    // detectProviders() calls vault.get() — guard against locked vault
+    try {
+      this.mediaProcessor = new MediaProcessor(detectProviders(this.vault));
+    } catch {
+      this.mediaProcessor = new MediaProcessor([]);
+    }
 
     // Check for Claude CLI credentials as fallback
     const cliCreds = readClaudeCliCredentials();
