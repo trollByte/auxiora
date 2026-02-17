@@ -2,7 +2,7 @@ import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway
 import { SessionManager, type Message } from '@auxiora/sessions';
 import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
-import { ChannelManager, type InboundMessage } from '@auxiora/channels';
+import { ChannelManager, DraftStreamLoop, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
 import { Vault, vaultExists } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
@@ -2940,17 +2940,65 @@ export class Auxiora {
       const provider = this.providers.getPrimaryProvider();
       this.agentStart(channelAgentId, 'channel', `Processing message on ${inbound.channelType}`, inbound.channelType);
 
+      // Draft streaming: edit message in place if adapter supports it
+      const adapter = this.channels?.getAdapter(inbound.channelType);
+      const supportsDraft = !!adapter?.editMessage;
+
+      let draftMessageId: string | null = null;
+      let accumulatedText = '';
+      let draftLoop: DraftStreamLoop | null = null;
+
+      if (supportsDraft && this.channels) {
+        const channels = this.channels;
+        draftLoop = new DraftStreamLoop(async (text) => {
+          try {
+            if (!draftMessageId) {
+              const result = await channels.send(inbound.channelType, inbound.channelId, {
+                content: text,
+                replyToId: inbound.id,
+              });
+              if (result.success && result.messageId) {
+                draftMessageId = result.messageId;
+              }
+              return result.success;
+            } else {
+              const result = await channels.editMessage(
+                inbound.channelType,
+                inbound.channelId,
+                draftMessageId,
+                { content: text },
+              );
+              return result.success;
+            }
+          } catch {
+            return false;
+          }
+        }, 1000);
+      }
+
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
         session.id,
         chatMessages,
         enrichedPrompt,
         provider,
-        (_type, _data) => {
-          // Channels: don't stream individual chunks — send complete response at end
+        (type, data) => {
+          if (type === 'text' && data && draftLoop) {
+            accumulatedText += data;
+            draftLoop.update(accumulatedText);
+          }
         },
         { tools, fallbackCandidates },
       );
+
+      // Flush final draft text
+      if (draftLoop) {
+        if (channelResponse && channelResponse !== accumulatedText) {
+          draftLoop.update(channelResponse);
+        }
+        await draftLoop.flush();
+        draftLoop.stop();
+      }
 
       stopTyping();
 
@@ -2965,8 +3013,8 @@ export class Auxiora {
         void this.extractAndLearn(inbound.content, channelResponse, session.id);
       }
 
-      // Send response
-      if (this.channels) {
+      // Send response (skip if draft streaming already delivered it)
+      if (!draftMessageId && this.channels) {
         await this.channels.send(inbound.channelType, inbound.channelId, {
           content: channelResponse,
           replyToId: inbound.id,

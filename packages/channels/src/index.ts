@@ -79,3 +79,6 @@ export {
 
 // Dedup
 export { isDuplicate, resetInboundDedup } from './inbound-dedup.js';
+
+// Draft streaming
+export { DraftStreamLoop } from './draft-stream-loop.js';
