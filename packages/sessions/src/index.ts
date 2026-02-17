@@ -10,3 +10,4 @@ export type {
   Chat,
   ListChatsOptions,
 } from './types.js';
+export { sanitizeTranscript } from './sanitize-transcript.js';

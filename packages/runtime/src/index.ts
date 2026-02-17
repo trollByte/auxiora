@@ -1,5 +1,5 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
-import { SessionManager, type Message } from '@auxiora/sessions';
+import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, DraftStreamLoop, type InboundMessage } from '@auxiora/channels';
@@ -2026,7 +2026,7 @@ export class Auxiora {
       undefined,
       4096,
     );
-    const chatMessages = contextMessages.map((m) => ({
+    const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -2675,7 +2675,7 @@ export class Auxiora {
           undefined,
           4096,
         );
-        const chatMessages = contextMessages.map((m) => ({
+        const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
           role: m.role,
           content: m.content,
         }));
@@ -2886,7 +2886,7 @@ export class Auxiora {
       undefined,
       4096,
     );
-    const chatMessages = contextMessages.map((m) => ({
+    const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
       role: m.role,
       content: m.content,
     }));
