@@ -2033,7 +2033,7 @@ export class Auxiora {
     // Get context messages
     const contextMessages = this.sessions.getContextMessages(
       session.id,
-      undefined,
+      this.getProviderMaxTokens(this.providers.getPrimaryProvider()),
       4096,
     );
     const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
@@ -2682,7 +2682,7 @@ export class Auxiora {
 
         const contextMessages = this.sessions.getContextMessages(
           session.id,
-          undefined,
+          this.getProviderMaxTokens(this.providers.getPrimaryProvider()),
           4096,
         );
         const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
@@ -2899,7 +2899,7 @@ export class Auxiora {
     // Get context messages
     const contextMessages = this.sessions.getContextMessages(
       session.id,
-      undefined,
+      this.getProviderMaxTokens(this.providers.getPrimaryProvider()),
       4096,
     );
     const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
@@ -3143,9 +3143,17 @@ export class Auxiora {
     }
   }
 
+  private getProviderMaxTokens(provider: import('@auxiora/providers').Provider): number | undefined {
+    const model = provider.defaultModel;
+    return provider.metadata?.models?.[model]?.maxContextTokens;
+  }
+
   private async extractAndLearn(userMessage: string, assistantResponse: string, sessionId: string): Promise<void> {
     try {
-      const recentMessages = this.sessions.getContextMessages(sessionId);
+      const recentMessages = this.sessions.getContextMessages(
+        sessionId,
+        this.getProviderMaxTokens(this.providers.getPrimaryProvider()),
+      );
 
       // AI-powered extraction
       if (this.memoryExtractor) {
