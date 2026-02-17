@@ -139,4 +139,38 @@ export class ProviderFactory {
   listAvailable(): ProviderName[] {
     return Array.from(this.providers.keys());
   }
+
+  resolveFallbackCandidates(modelOverride?: string): Array<{
+    provider: Provider;
+    name: string;
+    model: string;
+  }> {
+    const seen = new Set<string>();
+    const candidates: Array<{ provider: Provider; name: string; model: string }> = [];
+
+    const add = (name: string) => {
+      if (seen.has(name)) return;
+      const provider = this.providers.get(name);
+      if (!provider) return;
+      seen.add(name);
+      candidates.push({
+        provider,
+        name,
+        model: modelOverride ?? provider.defaultModel,
+      });
+    };
+
+    // 1. Primary first
+    add(this.primary);
+
+    // 2. Configured fallback
+    if (this.fallback) add(this.fallback);
+
+    // 3. All remaining available providers
+    for (const name of this.providers.keys()) {
+      add(name);
+    }
+
+    return candidates;
+  }
 }

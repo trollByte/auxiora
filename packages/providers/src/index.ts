@@ -27,6 +27,30 @@ export {
   writeClaudeCliCredentials,
   type ClaudeOAuthCredentials,
 } from './claude-oauth.js';
+export {
+  FailoverError,
+  coerceToFailoverError,
+  isContextOverflow,
+  isUserAbort,
+  isTimeoutError,
+  type FailoverReason,
+} from './failover-error.js';
+export {
+  isProviderInCooldown,
+  markProviderCooldown,
+  clearProviderCooldown,
+  shouldProbe,
+  recordProbeResult,
+  resetAllCooldowns,
+} from './provider-cooldown.js';
+export {
+  runWithModelFallback,
+  streamWithModelFallback,
+  type FallbackCandidate,
+  type FallbackOptions,
+  type FallbackResult,
+  type AttemptRecord,
+} from './model-failover.js';
 export type {
   Provider,
   ProviderConfig,
