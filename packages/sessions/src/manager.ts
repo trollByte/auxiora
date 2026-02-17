@@ -5,6 +5,7 @@ import { getSessionsDir } from '@auxiora/core';
 import { audit } from '@auxiora/audit';
 import { SessionDatabase } from './db.js';
 import { estimateTokens } from './token-estimator.js';
+import { degradeContext } from './context-degradation.js';
 import type { Session, SessionConfig, Message, MessageRole, SessionMetadata, Chat, ListChatsOptions } from './types.js';
 
 function generateMessageId(): string {
@@ -244,16 +245,16 @@ export class SessionManager {
     // Try in-memory first
     const session = this.sessions.get(sessionId);
     if (session) {
-      const messages: Message[] = [];
+      const selected: Message[] = [];
       let tokenCount = 0;
       for (let i = session.messages.length - 1; i >= 0; i--) {
         const msg = session.messages[i];
         const msgTokens = estimateTokens(msg.content);
         if (tokenCount + msgTokens > effectiveBudget) break;
-        messages.unshift(msg);
+        selected.unshift(msg);
         tokenCount += msgTokens;
       }
-      return messages;
+      return degradeContext(session.messages, selected, effectiveBudget);
     }
 
     // Fall back to DB
