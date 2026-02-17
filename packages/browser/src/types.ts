@@ -18,7 +18,7 @@ export const DEFAULT_BROWSER_CONFIG: BrowserConfig = {
   screenshotDir: 'screenshots',
 };
 
-export const BLOCKED_PROTOCOLS = ['file:', 'javascript:', 'data:', 'blob:'];
+export { BLOCKED_PROTOCOLS } from '@auxiora/ssrf-guard';
 
 export interface PageInfo {
   url: string;
