@@ -261,3 +261,111 @@ describe('Model Failover', () => {
     });
   });
 });
+
+describe('Model Failover — Integration Scenarios', () => {
+  beforeEach(() => {
+    resetAllCooldowns();
+  });
+
+  it('full chain: primary rate-limited, fallback succeeds', async () => {
+    const p1 = mockProvider('anthropic');
+    const p2 = mockProvider('openai');
+    const p3 = mockProvider('google');
+
+    const result = await runWithModelFallback(
+      { candidates: [candidate(p1), candidate(p2), candidate(p3)] },
+      async (provider) => {
+        if (provider.name === 'anthropic') {
+          throw Object.assign(new Error('Rate limited'), { status: 429 });
+        }
+        return `success from ${provider.name}`;
+      },
+    );
+
+    expect(result.result).toBe('success from openai');
+    expect(result.usedFallback).toBe(true);
+    expect(result.attempts).toHaveLength(2);
+    expect(isProviderInCooldown('anthropic')).toBe(true);
+    expect(isProviderInCooldown('openai')).toBe(false);
+  });
+
+  it('all providers fail, throws last error with all attempts', async () => {
+    const p1 = mockProvider('anthropic');
+    const p2 = mockProvider('openai');
+
+    try {
+      await runWithModelFallback(
+        { candidates: [candidate(p1), candidate(p2)] },
+        async (provider) => {
+          throw Object.assign(new Error(`${provider.name} failed`), { status: 429 });
+        },
+      );
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(FailoverError);
+      expect((err as FailoverError).provider).toBe('openai');
+    }
+  });
+
+  it('streaming: primary fails pre-chunk, fallback streams successfully', async () => {
+    const p1 = mockProvider('anthropic');
+    const p2 = mockProvider('openai');
+
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of streamWithModelFallback(
+      { candidates: [candidate(p1), candidate(p2)] },
+      (provider) => {
+        if (provider.name === 'anthropic') {
+          return (async function* (): AsyncGenerator<StreamChunk> {
+            throw Object.assign(new Error('Service unavailable'), { status: 429 });
+          })();
+        }
+        return (async function* () {
+          yield { type: 'text' as const, content: 'Hello from fallback' };
+          yield { type: 'done' as const, finishReason: 'end_turn' };
+        })();
+      },
+    )) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0]!.content).toBe('Hello from fallback');
+    expect(isProviderInCooldown('anthropic')).toBe(true);
+  });
+
+  it('cooldown persists across calls', async () => {
+    const p1 = mockProvider('anthropic');
+    const p2 = mockProvider('openai');
+
+    // Mark anthropic with 2 consecutive failures so backoff (300s) exceeds the
+    // 2-minute probe window — this ensures the provider is truly skipped rather
+    // than probe-attempted.
+    const { markProviderCooldown } = await import('../src/provider-cooldown.js');
+    markProviderCooldown('anthropic', 'rate_limit');
+    markProviderCooldown('anthropic', 'rate_limit');
+
+    // First call: anthropic is in cooldown, openai succeeds
+    await runWithModelFallback(
+      { candidates: [candidate(p1), candidate(p2)] },
+      async (provider) => {
+        if (provider.name === 'anthropic') {
+          throw Object.assign(new Error('Rate limited'), { status: 429 });
+        }
+        return 'ok';
+      },
+    );
+
+    // Second call: anthropic should still be skipped (in cooldown)
+    let anthropicCalled = false;
+    await runWithModelFallback(
+      { candidates: [candidate(p1), candidate(p2)] },
+      async (provider) => {
+        if (provider.name === 'anthropic') anthropicCalled = true;
+        return 'ok';
+      },
+    );
+
+    expect(anthropicCalled).toBe(false);
+  });
+});
