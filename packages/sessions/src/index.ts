@@ -11,3 +11,4 @@ export type {
   ListChatsOptions,
 } from './types.js';
 export { sanitizeTranscript } from './sanitize-transcript.js';
+export { degradeContext, insertOmissionMarker, truncateLargeMessage } from './context-degradation.js';
