@@ -348,6 +348,7 @@ export function Chat() {
             break;
           case 'chunk':
             currentResponseRef.current += msg.payload?.content ?? '';
+            setToolStatus(''); // Clear any lingering tool/status indicators
             // Ignore chunks for detached requests (user switched chats)
             if (requestIdRef.current !== activeRequestIdRef.current) break;
             setMessages(prev => {
@@ -369,6 +370,7 @@ export function Chat() {
             break;
           case 'tool_use': {
             const toolName = msg.payload?.tool ?? 'tool';
+            const params = msg.payload?.params;
             const friendlyNames: Record<string, string> = {
               web_browser: 'Reading web page',
               browser_navigate: 'Navigating browser',
@@ -382,11 +384,28 @@ export function Chat() {
               file_write: 'Writing file',
               file_list: 'Listing files',
             };
-            setToolStatus(friendlyNames[toolName] || `Using ${toolName}`);
+            let status = friendlyNames[toolName] || `Using ${toolName}`;
+            // Show command details for bash and URL for web tools
+            if (toolName === 'bash' && params?.command) {
+              const cmd = String(params.command);
+              status = `Running: ${cmd.length > 60 ? cmd.slice(0, 57) + '...' : cmd}`;
+            } else if ((toolName === 'web_browser' || toolName === 'browse') && params?.url) {
+              try {
+                const hostname = new URL(String(params.url)).hostname;
+                status = `Reading ${hostname}`;
+              } catch { /* keep default */ }
+            } else if (toolName === 'file_read' && params?.path) {
+              const filename = String(params.path).split('/').pop();
+              status = `Reading ${filename}`;
+            }
+            setToolStatus(status);
             break;
           }
           case 'tool_result':
             setToolStatus('');
+            break;
+          case 'status':
+            setToolStatus(msg.payload?.message ?? 'Processing');
             break;
           case 'done': {
             setStreaming(false);

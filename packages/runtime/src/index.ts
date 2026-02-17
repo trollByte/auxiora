@@ -2093,6 +2093,8 @@ export class Auxiora {
             this.sendToClient(client, { type: 'tool_use', id: requestId, payload: data });
           } else if (type === 'tool_result') {
             this.sendToClient(client, { type: 'tool_result', id: requestId, payload: data });
+          } else if (type === 'status') {
+            this.sendToClient(client, { type: 'status', id: requestId, payload: data });
           }
         },
         { tools },
@@ -2493,6 +2495,9 @@ export class Auxiora {
       const toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
       currentMessages.push({ role: 'user', content: toolResultsMessage });
       await this.sessions.addMessage(sessionId, 'user', toolResultsMessage);
+
+      // Notify the client that tool processing is done and AI is thinking about results
+      onChunk('status', { message: 'Analyzing results...' });
     }
 
     // If the loop ended because we hit maxRounds while still using tools,
