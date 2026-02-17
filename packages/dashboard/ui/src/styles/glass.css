@@ -418,6 +418,7 @@
   flex-direction: column;
   align-items: center;
   position: relative;
+  transition: transform 150ms ease;
 }
 
 .dock-icon {
@@ -475,6 +476,12 @@
 .dock-icon-wrapper:hover .dock-tooltip {
   opacity: 1;
 }
+
+/* ── Dock magnification ───────────────────────────────────────────────────── */
+
+.dock-icon-wrapper.mag-center { transform: scale(1.5) translateY(-8px); }
+.dock-icon-wrapper.mag-near   { transform: scale(1.25) translateY(-4px); }
+.dock-icon-wrapper.mag-far    { transform: scale(1.1) translateY(-2px); }
 
 /* ── 11. Responsive ──────────────────────────────────── */
 
