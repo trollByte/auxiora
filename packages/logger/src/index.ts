@@ -11,6 +11,7 @@
  */
 
 import pino, { type Logger as PinoLogger, type LoggerOptions } from 'pino';
+import { getRequestContext } from './context.js';
 import { getLogDir } from '@auxiora/core';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
@@ -216,7 +217,8 @@ export class Logger {
    * Enrich context with request ID
    */
   private enrichContext(context?: LogContext): LogContext {
-    if (!context && !this.requestId) {
+    const alsContext = getRequestContext();
+    if (!context && !this.requestId && !alsContext) {
       return {};
     }
 
@@ -224,6 +226,8 @@ export class Logger {
 
     if (this.requestId && !enriched.requestId) {
       enriched.requestId = this.requestId;
+    } else if (!enriched.requestId && alsContext?.requestId) {
+      enriched.requestId = alsContext.requestId;
     }
 
     return this.sanitizeContext(enriched);
@@ -308,6 +312,8 @@ export function withRequestId<T>(
   const logger = getLogger(loggerName, { requestId });
   return fn(logger);
 }
+
+export { getRequestContext, runWithRequestId, type RequestContext } from './context.js';
 
 // Export default logger for convenience
 export const logger = getLogger('auxiora');
