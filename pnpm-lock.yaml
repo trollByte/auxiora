@@ -56,6 +56,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/autonomy:
     dependencies:
@@ -198,6 +201,9 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@auxiora/marketplace':
         specifier: workspace:*
         version: link:../marketplace

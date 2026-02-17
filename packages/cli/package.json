@@ -41,6 +41,7 @@
     "@auxiora/core": "workspace:*",
     "@auxiora/daemon": "workspace:*",
     "@auxiora/gateway": "workspace:*",
+    "@auxiora/logger": "workspace:*",
     "@auxiora/marketplace": "workspace:*",
     "@auxiora/memory": "workspace:*",
     "@auxiora/onboarding": "workspace:*",
