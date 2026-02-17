@@ -6,6 +6,7 @@ import type {
   OutboundMessage,
   SendResult,
 } from '../types.js';
+import { chunkMarkdown } from '../chunk.js';
 
 export interface SlackAdapterConfig {
   botToken: string;
@@ -182,7 +183,7 @@ export class SlackAdapter implements ChannelAdapter {
   async send(channelId: string, message: OutboundMessage): Promise<SendResult> {
     try {
       // Chunk long messages
-      const chunks = this.chunkMessage(message.content);
+      const chunks = chunkMarkdown(message.content, MAX_MESSAGE_LENGTH);
       let lastTs: string | undefined;
 
       for (const chunk of chunks) {
@@ -224,35 +225,6 @@ export class SlackAdapter implements ChannelAdapter {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Edit failed' };
     }
-  }
-
-  private chunkMessage(content: string): string[] {
-    if (content.length <= MAX_MESSAGE_LENGTH) {
-      return [content];
-    }
-
-    const chunks: string[] = [];
-    let remaining = content;
-
-    while (remaining.length > 0) {
-      if (remaining.length <= MAX_MESSAGE_LENGTH) {
-        chunks.push(remaining);
-        break;
-      }
-
-      let breakPoint = remaining.lastIndexOf('\n', MAX_MESSAGE_LENGTH);
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = remaining.lastIndexOf(' ', MAX_MESSAGE_LENGTH);
-      }
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = MAX_MESSAGE_LENGTH;
-      }
-
-      chunks.push(remaining.slice(0, breakPoint));
-      remaining = remaining.slice(breakPoint).trimStart();
-    }
-
-    return chunks;
   }
 
   onMessage(handler: (message: InboundMessage) => Promise<void>): void {

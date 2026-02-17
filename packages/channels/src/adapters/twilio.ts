@@ -6,6 +6,7 @@ import type {
   OutboundMessage,
   SendResult,
 } from '../types.js';
+import { chunkMarkdown } from '../chunk.js';
 
 export interface TwilioAdapterConfig {
   accountSid: string;
@@ -132,7 +133,7 @@ export class TwilioAdapter implements ChannelAdapter {
       }
 
       const maxLength = isWhatsApp ? MAX_WHATSAPP_LENGTH : MAX_SMS_LENGTH;
-      const chunks = this.chunkMessage(message.content, maxLength);
+      const chunks = chunkMarkdown(message.content, maxLength);
       let lastMessageSid: string | undefined;
 
       for (const chunk of chunks) {
@@ -180,35 +181,6 @@ export class TwilioAdapter implements ChannelAdapter {
     const phoneNumber = to.replace('whatsapp:', '');
     const whatsappTo = `whatsapp:${phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`}`;
     return this.send(whatsappTo, { content: message });
-  }
-
-  private chunkMessage(content: string, maxLength: number): string[] {
-    if (content.length <= maxLength) {
-      return [content];
-    }
-
-    const chunks: string[] = [];
-    let remaining = content;
-
-    while (remaining.length > 0) {
-      if (remaining.length <= maxLength) {
-        chunks.push(remaining);
-        break;
-      }
-
-      let breakPoint = remaining.lastIndexOf('\n', maxLength);
-      if (breakPoint === -1 || breakPoint < maxLength / 2) {
-        breakPoint = remaining.lastIndexOf(' ', maxLength);
-      }
-      if (breakPoint === -1 || breakPoint < maxLength / 2) {
-        breakPoint = maxLength;
-      }
-
-      chunks.push(remaining.slice(0, breakPoint));
-      remaining = remaining.slice(breakPoint).trimStart();
-    }
-
-    return chunks;
   }
 
   /**

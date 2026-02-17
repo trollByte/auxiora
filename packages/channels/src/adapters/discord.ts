@@ -12,6 +12,7 @@ import type {
   OutboundMessage,
   SendResult,
 } from '../types.js';
+import { chunkMarkdown } from '../chunk.js';
 
 export interface DiscordAdapterConfig {
   token: string;
@@ -161,7 +162,7 @@ export class DiscordAdapter implements ChannelAdapter {
       }
 
       // Chunk long messages
-      const chunks = this.chunkMessage(message.content);
+      const chunks = chunkMarkdown(message.content, MAX_MESSAGE_LENGTH);
       let lastMessageId: string | undefined;
 
       for (const chunk of chunks) {
@@ -190,36 +191,6 @@ export class DiscordAdapter implements ChannelAdapter {
       });
       return { success: false, error: errorMessage };
     }
-  }
-
-  private chunkMessage(content: string): string[] {
-    if (content.length <= MAX_MESSAGE_LENGTH) {
-      return [content];
-    }
-
-    const chunks: string[] = [];
-    let remaining = content;
-
-    while (remaining.length > 0) {
-      if (remaining.length <= MAX_MESSAGE_LENGTH) {
-        chunks.push(remaining);
-        break;
-      }
-
-      // Find a good break point
-      let breakPoint = remaining.lastIndexOf('\n', MAX_MESSAGE_LENGTH);
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = remaining.lastIndexOf(' ', MAX_MESSAGE_LENGTH);
-      }
-      if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
-        breakPoint = MAX_MESSAGE_LENGTH;
-      }
-
-      chunks.push(remaining.slice(0, breakPoint));
-      remaining = remaining.slice(breakPoint).trimStart();
-    }
-
-    return chunks;
   }
 
   async editMessage(channelId: string, messageId: string, message: OutboundMessage): Promise<SendResult> {
