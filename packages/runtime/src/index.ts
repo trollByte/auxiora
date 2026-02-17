@@ -1,6 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, type Message } from '@auxiora/sessions';
-import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken } from '@auxiora/providers';
+import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -404,7 +404,8 @@ export class Auxiora {
             const provider = this.providers.getPrimaryProvider();
             const noopChunk = () => {};
             try {
-              const result = await this.executeWithTools(session.id, messages, systemPrompt, provider, noopChunk);
+              const fallbackCandidates = this.providers.resolveFallbackCandidates();
+              const result = await this.executeWithTools(session.id, messages, systemPrompt, provider, noopChunk, { fallbackCandidates });
               this.agentEnd(execId, true);
               return { content: result.response, usage: result.usage };
             } catch (err) {
@@ -2113,6 +2114,7 @@ export class Auxiora {
       }
 
       // Execute streaming AI call with tool follow-up loop
+      const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const { response: fullResponse, usage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -2131,7 +2133,7 @@ export class Auxiora {
             this.sendToClient(client, { type: 'status', id: requestId, payload: data });
           }
         },
-        { tools },
+        { tools, fallbackCandidates },
       );
 
       // Save assistant message (skip if empty — happens when response is tool-only)
@@ -2397,7 +2399,11 @@ export class Auxiora {
     enrichedPrompt: string,
     provider: import('@auxiora/providers').Provider,
     onChunk: (type: string, data: any) => void,
-    options?: { maxToolRounds?: number; tools?: Array<{ name: string; description: string; input_schema: any }> }
+    options?: {
+      maxToolRounds?: number;
+      tools?: Array<{ name: string; description: string; input_schema: any }>;
+      fallbackCandidates?: Array<{ provider: import('@auxiora/providers').Provider; name: string; model: string }>;
+    }
   ): Promise<{ response: string; usage: { inputTokens: number; outputTokens: number } }> {
     const maxRounds = options?.maxToolRounds ?? 10;
     const maxContinuations = 3; // Safety cap for auto-continue on truncation
@@ -2414,11 +2420,20 @@ export class Auxiora {
       let roundFinishReason = '';
       const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
-      for await (const chunk of provider.stream(currentMessages as any, {
+      const streamOptions = {
         systemPrompt: enrichedPrompt,
         tools: tools.length > 0 ? tools : undefined,
         passThroughAllTools: true,
-      })) {
+      };
+
+      const candidates = options?.fallbackCandidates ?? [
+        { provider, name: provider.name, model: provider.defaultModel },
+      ];
+
+      for await (const chunk of streamWithModelFallback(
+        { candidates },
+        (p) => p.stream(currentMessages as any, streamOptions),
+      )) {
         if (chunk.type === 'text' && chunk.content) {
           roundResponse += chunk.content;
           onChunk('text', chunk.content);
@@ -2669,6 +2684,7 @@ export class Auxiora {
 
         // Use executeWithTools for voice — tools execute silently, only final text goes to TTS
         const provider = this.providers.getPrimaryProvider();
+        const fallbackCandidates = this.providers.resolveFallbackCandidates();
         const { response: voiceResponse, usage: voiceUsage } = await this.executeWithTools(
           session.id,
           chatMessages,
@@ -2677,6 +2693,7 @@ export class Auxiora {
           (_type, _data) => {
             // Voice: don't stream chunks to client — we synthesize the final text
           },
+          { fallbackCandidates },
         );
 
         await this.sessions.addMessage(session.id, 'assistant', voiceResponse, {
@@ -2911,6 +2928,7 @@ export class Auxiora {
       const provider = this.providers.getPrimaryProvider();
       this.agentStart(channelAgentId, 'channel', `Processing message on ${inbound.channelType}`, inbound.channelType);
 
+      const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -2919,7 +2937,7 @@ export class Auxiora {
         (_type, _data) => {
           // Channels: don't stream individual chunks — send complete response at end
         },
-        { tools },
+        { tools, fallbackCandidates },
       );
 
       stopTyping();
