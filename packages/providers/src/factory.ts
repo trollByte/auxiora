@@ -113,7 +113,10 @@ export class ProviderFactory {
     }
 
     if (options.config.replicate?.apiToken) {
-      this.providers.set('replicate', new ReplicateProvider(options.config.replicate));
+      this.providers.set('replicate', new ReplicateProvider({
+        ...options.config.replicate,
+        apiToken: options.config.replicate.apiToken,
+      }));
     }
 
     // DeepSeek
