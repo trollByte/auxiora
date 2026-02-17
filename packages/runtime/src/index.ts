@@ -582,6 +582,22 @@ export class Auxiora {
                 this.logger.info('Channels connected after vault unlock');
               }
             }
+            // Restore connector tokens now that vault is accessible
+            if (this.connectorRegistry && this.connectorAuthManager) {
+              for (const connector of this.connectorRegistry.list()) {
+                try {
+                  const tokenData = this.vault.get(`connectors.${connector.id}.tokens`);
+                  if (tokenData) {
+                    const tokens = typeof tokenData === 'string' ? JSON.parse(tokenData) : tokenData;
+                    await this.connectorAuthManager.authenticate(connector.id, connector.auth, tokens);
+                  }
+                } catch (err) {
+                  this.logger.warn(`Failed to restore tokens for connector ${connector.id}: ${err instanceof Error ? err.message : String(err)}`);
+                }
+              }
+              this.registerConnectorTools();
+              this.logger.info('Connector tools registered after vault unlock');
+            }
           },
           behaviors: this.behaviors ? {
             list: (filter?: { type?: string; status?: string }) => this.behaviors!.list(filter as any),
@@ -905,6 +921,22 @@ export class Auxiora {
               if (channels) {
                 await channels.connectAll();
                 this.logger.info('Channels connected after setup');
+              }
+              // Restore connector tokens now that vault is accessible
+              if (this.connectorRegistry && this.connectorAuthManager) {
+                for (const connector of this.connectorRegistry.list()) {
+                  try {
+                    const tokenData = this.vault.get(`connectors.${connector.id}.tokens`);
+                    if (tokenData) {
+                      const tokens = typeof tokenData === 'string' ? JSON.parse(tokenData) : tokenData;
+                      await this.connectorAuthManager.authenticate(connector.id, connector.auth, tokens);
+                    }
+                  } catch (err) {
+                    this.logger.warn(`Failed to restore tokens for connector ${connector.id}: ${err instanceof Error ? err.message : String(err)}`);
+                  }
+                }
+                this.registerConnectorTools();
+                this.logger.info('Connector tools registered after setup');
               }
             },
           },
