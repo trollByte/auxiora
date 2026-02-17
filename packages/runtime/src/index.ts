@@ -1,5 +1,6 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
+import { MediaProcessor, detectProviders } from '@auxiora/media';
 import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, DraftStreamLoop, type InboundMessage } from '@auxiora/channels';
@@ -177,6 +178,7 @@ export class Auxiora {
   private memoryExtractor?: MemoryExtractor;
   private patternDetector?: PatternDetector;
   private personalityAdapter?: PersonalityAdapter;
+  private mediaProcessor?: MediaProcessor;
   private memoryCleanupInterval?: ReturnType<typeof setInterval>;
   private trustEngine?: TrustEngine;
   private trustAuditTrail?: ActionAuditTrail;
@@ -1325,6 +1327,9 @@ export class Auxiora {
     } catch {
       vaultLocked = true;
     }
+
+    // Initialize media processor with auto-detected providers
+    this.mediaProcessor = new MediaProcessor(detectProviders(this.vault));
 
     // Check for Claude CLI credentials as fallback
     const cliCreds = readClaudeCliCredentials();
@@ -2866,8 +2871,12 @@ export class Auxiora {
       return;
     }
 
-    // Add user message
-    await this.sessions.addMessage(session.id, 'user', inbound.content);
+    // Process media attachments and add user message
+    let messageContent = inbound.content;
+    if (inbound.attachments && inbound.attachments.length > 0 && this.mediaProcessor) {
+      messageContent = await this.mediaProcessor.process(inbound.attachments, inbound.content);
+    }
+    await this.sessions.addMessage(session.id, 'user', messageContent);
 
     // Check if providers are available
     if (!this.providers) {
