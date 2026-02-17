@@ -26,6 +26,7 @@
     "@auxiora/metrics": "workspace:*",
     "@auxiora/orchestrator": "workspace:*",
     "@auxiora/providers": "workspace:*",
+    "@auxiora/ssrf-guard": "workspace:*",
     "@auxiora/webhooks": "workspace:*"
   },
   "engines": {

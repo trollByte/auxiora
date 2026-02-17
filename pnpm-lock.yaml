@@ -99,6 +99,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/ssrf-guard':
+        specifier: workspace:*
+        version: link:../ssrf-guard
       playwright:
         specifier: ^1.50.0
         version: 1.58.1
@@ -548,6 +551,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/ssrf-guard':
+        specifier: workspace:*
+        version: link:../ssrf-guard
 
   packages/memory:
     dependencies:
@@ -682,6 +688,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/ssrf-guard':
+        specifier: workspace:*
+        version: link:../ssrf-guard
       nanoid:
         specifier: ^5.1.2
         version: 5.1.6
@@ -913,6 +922,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/ssrf-guard: {}
+
   packages/stt:
     dependencies:
       '@auxiora/logger':
@@ -954,6 +965,9 @@ importers:
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
+      '@auxiora/ssrf-guard':
+        specifier: workspace:*
+        version: link:../ssrf-guard
       '@auxiora/webhooks':
         specifier: workspace:*
         version: link:../webhooks

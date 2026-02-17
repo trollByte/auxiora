@@ -12,6 +12,7 @@
 import type { Tool, ToolParameter, ExecutionContext, ToolResult } from './index.js';
 import { ToolPermission } from './index.js';
 import { getLogger } from '@auxiora/logger';
+import { validateUrl } from '@auxiora/ssrf-guard';
 
 const logger = getLogger('tools:web');
 
@@ -135,11 +136,10 @@ export const WebBrowserTool: Tool = {
       return 'url must be a non-empty string';
     }
 
-    // Validate URL format
-    try {
-      new URL(params.url);
-    } catch {
-      return 'url must be a valid URL';
+    // Validate URL format and SSRF protection
+    const ssrfError = validateUrl(params.url);
+    if (ssrfError) {
+      return ssrfError;
     }
 
     if (params.method && !['GET', 'POST'].includes(params.method.toUpperCase())) {

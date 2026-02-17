@@ -1,4 +1,5 @@
 import type { BraveSearchResponse, BraveWebResult } from './types.js';
+import { validateUrl } from '@auxiora/ssrf-guard';
 
 const BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search';
 const USER_AGENT = 'Auxiora/1.0 (Research Engine)';
@@ -54,6 +55,10 @@ export class BraveSearchClient {
   }
 
   async fetchPage(url: string): Promise<string> {
+    const ssrfError = validateUrl(url);
+    if (ssrfError) {
+      return `[SSRF blocked: ${ssrfError}]`;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.fetchTimeout);
 
