@@ -24,6 +24,8 @@
     { "path": "packages/connector-github" },
     { "path": "packages/connector-homeassistant" },
     { "path": "packages/connector-notion" },
-    { "path": "packages/connector-linear" }
+    { "path": "packages/connector-linear" },
+    { "path": "packages/ssrf-guard" },
+    { "path": "packages/media" }
   ]
 }
