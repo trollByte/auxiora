@@ -65,6 +65,7 @@ import {
 } from '@auxiora/memory';
 import { TrustEngine, ActionAuditTrail, RollbackManager, TrustGate } from '@auxiora/autonomy';
 import { IntentParser, ActionPlanner } from '@auxiora/intent';
+import { createLoopDetectionState, recordToolCall, recordToolOutcome, detectLoop } from './tool-loop-detection.js';
 import { UserManager } from '@auxiora/social';
 import { WorkflowEngine, ApprovalManager, AutonomousExecutor } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
@@ -2405,6 +2406,7 @@ export class Auxiora {
     let totalUsage = { inputTokens: 0, outputTokens: 0 };
     let fullResponse = '';
     let lastRoundHadTools = false;
+    const loopState = createLoopDetectionState();
 
     for (let round = 0; round < maxRounds; round++) {
       let roundResponse = '';
@@ -2502,6 +2504,7 @@ export class Auxiora {
       for (const toolUse of toolUses) {
         // Map Claude Code emulation tool names to our actual tools
         const mapped = mapCCToolCall(toolUse.name, toolUse.input);
+        recordToolCall(loopState, toolUse.id, mapped.name, mapped.input);
         try {
           const result = await toolExecutor.execute(mapped.name, mapped.input, context);
           onChunk('tool_result', {
@@ -2516,10 +2519,12 @@ export class Auxiora {
             output = output.slice(0, 50000) + '\n... [truncated]';
           }
           toolResultParts.push(`[${toolUse.name}]: ${output}`);
+          recordToolOutcome(loopState, toolUse.id, output);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           onChunk('tool_result', { tool: toolUse.name, success: false, error: errorMessage });
           toolResultParts.push(`[${toolUse.name}]: Error: ${errorMessage}`);
+          recordToolOutcome(loopState, toolUse.id, errorMessage);
         }
       }
 
@@ -2528,6 +2533,26 @@ export class Auxiora {
       const toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
       currentMessages.push({ role: 'user', content: toolResultsMessage });
       await this.sessions.addMessage(sessionId, 'user', toolResultsMessage);
+
+      // Check for tool loop patterns
+      const detection = detectLoop(loopState);
+      if (detection.severity === 'critical') {
+        this.logger.warn('Tool loop detected — forcing synthesis', {
+          detector: detection.detector,
+          message: detection.message,
+          details: detection.details,
+        });
+        onChunk('status', { message: 'Loop detected, synthesizing results...' });
+        lastRoundHadTools = true;
+        break;
+      }
+      if (detection.severity === 'warning') {
+        this.logger.info('Tool loop warning', {
+          detector: detection.detector,
+          message: detection.message,
+        });
+        currentMessages.push({ role: 'user', content: `⚠️ Loop detection warning: ${detection.message}\nPlease try a different approach or different parameters.` });
+      }
 
       // Notify the client that tool processing is done and AI is thinking about results
       onChunk('status', { message: 'Analyzing results...' });
