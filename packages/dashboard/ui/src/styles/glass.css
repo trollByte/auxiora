@@ -1,0 +1,503 @@
+/* ═══════════════════════════════════════════════════════
+   LIQUID GLASS — Design System Foundation
+   macOS-style glassmorphism tokens, utilities, and
+   desktop shell chrome.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 1. Glass Tokens ─────────────────────────────────── */
+
+:root {
+  /* Surface base colour (RGB triplet, no alpha) */
+  --surface-rgb: 10, 10, 10;
+
+  /* Far tier — deepest background panels */
+  --glass-blur-far: 40px;
+  --glass-alpha-far: 0.12;
+  --glass-bg-far: rgba(var(--surface-rgb), var(--glass-alpha-far));
+
+  /* Mid tier — cards, dialogs */
+  --glass-blur-mid: 30px;
+  --glass-alpha-mid: 0.18;
+  --glass-bg-mid: rgba(var(--surface-rgb), var(--glass-alpha-mid));
+
+  /* Near tier — menus, popovers */
+  --glass-blur-near: 20px;
+  --glass-alpha-near: 0.25;
+  --glass-bg-near: rgba(var(--surface-rgb), var(--glass-alpha-near));
+
+  /* Shared borders & shadows */
+  --glass-border-top: rgba(255, 255, 255, 0.15);
+  --glass-border-bottom: rgba(255, 255, 255, 0.05);
+  --glass-shadow-inner: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --glass-specular: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
+
+  /* Animation */
+  --glass-transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Desktop shell geometry */
+  --dock-height: 68px;
+  --topbar-height: 32px;
+  --window-min-width: 360px;
+  --window-min-height: 240px;
+}
+
+/* ── 2. Glass Utility Classes ────────────────────────── */
+
+.glass-far {
+  background: var(--glass-bg-far);
+  backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
+  border: 1px solid;
+  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
+}
+
+.glass-mid {
+  background: var(--glass-bg-mid);
+  backdrop-filter: blur(var(--glass-blur-mid)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-mid)) saturate(180%);
+  border: 1px solid;
+  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
+}
+
+.glass-near {
+  background: var(--glass-bg-near);
+  backdrop-filter: blur(var(--glass-blur-near)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-near)) saturate(180%);
+  border: 1px solid;
+  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
+}
+
+/* ── 3. Fallback (no backdrop-filter support) ────────── */
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-far {
+    background: rgba(var(--surface-rgb), 0.85);
+  }
+
+  .glass-mid {
+    background: rgba(var(--surface-rgb), 0.9);
+  }
+
+  .glass-near {
+    background: rgba(var(--surface-rgb), 0.95);
+  }
+}
+
+/* ── 4. Reduced Motion ───────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --glass-transition: 0ms;
+    --glass-spring: 0ms;
+  }
+
+  .window {
+    animation-duration: 0ms !important;
+  }
+}
+
+/* ── 5. Theme Surface Overrides ──────────────────────── */
+
+[data-theme="nebula"] {
+  --surface-rgb: 8, 11, 22;
+}
+
+[data-theme="monolith"] {
+  --surface-rgb: 18, 18, 18;
+}
+
+[data-theme="signal"] {
+  --surface-rgb: 10, 15, 20;
+}
+
+[data-theme="polar"] {
+  --surface-rgb: 240, 245, 250;
+  --glass-border-top: rgba(0, 0, 0, 0.1);
+  --glass-border-bottom: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="neon"] {
+  --surface-rgb: 5, 5, 15;
+}
+
+[data-theme="terra"] {
+  --surface-rgb: 20, 18, 15;
+}
+
+/* ── 6. Desktop Shell ────────────────────────────────── */
+
+.desktop-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 7. Desktop Background ───────────────────────────── */
+
+.desktop-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(var(--surface-rgb), 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse at 80% 50%, rgba(var(--surface-rgb), 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 100%, var(--accent-glow, rgba(124, 58, 237, 0.12)) 0%, transparent 50%),
+    var(--bg-primary, #0a0a0a);
+}
+
+/* ── 8. Top Bar ──────────────────────────────────────── */
+
+.topbar {
+  position: relative;
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: rgba(var(--surface-rgb), 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── 9. Window Chrome ────────────────────────────────── */
+
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  min-width: var(--window-min-width);
+  min-height: var(--window-min-height);
+  animation: windowOpen var(--glass-spring) both;
+  box-shadow: var(--glass-shadow-outer);
+  z-index: 10;
+}
+
+.window.focused {
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 20;
+}
+
+.window-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  cursor: grab;
+  background: rgba(var(--surface-rgb), 0.4);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.window-titlebar:active {
+  cursor: grabbing;
+}
+
+.window-traffic-lights {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.window-traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: filter var(--glass-transition);
+}
+
+.window-traffic-light:hover {
+  filter: brightness(1.2);
+}
+
+.window-traffic-light.close {
+  background: #ff5f57;
+}
+
+.window-traffic-light.minimize {
+  background: #febc2e;
+}
+
+.window-traffic-light.maximize {
+  background: #28c840;
+}
+
+.window-title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.window-body {
+  flex: 1;
+  overflow: auto;
+}
+
+.window-body > .page > h2:first-child {
+  display: none;
+}
+
+/* Resize handles */
+.window-resize-n,
+.window-resize-s,
+.window-resize-e,
+.window-resize-w,
+.window-resize-ne,
+.window-resize-nw,
+.window-resize-se,
+.window-resize-sw {
+  position: absolute;
+  z-index: 30;
+}
+
+.window-resize-n {
+  top: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: n-resize;
+}
+
+.window-resize-s {
+  bottom: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: s-resize;
+}
+
+.window-resize-e {
+  top: 8px;
+  right: -3px;
+  bottom: 8px;
+  width: 6px;
+  cursor: e-resize;
+}
+
+.window-resize-w {
+  top: 8px;
+  left: -3px;
+  bottom: 8px;
+  width: 6px;
+  cursor: w-resize;
+}
+
+.window-resize-ne {
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+}
+
+.window-resize-nw {
+  top: -3px;
+  left: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+}
+
+.window-resize-se {
+  bottom: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+}
+
+.window-resize-sw {
+  bottom: -3px;
+  left: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
+}
+
+/* Window animations */
+@keyframes windowOpen {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes windowClose {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.window.maximized {
+  border-radius: 0;
+}
+
+/* ── 10. Dock ────────────────────────────────────────── */
+
+.dock-container {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 18px;
+  background: var(--glass-bg-far);
+  backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
+  border: 1px solid;
+  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
+  z-index: 50;
+}
+
+.dock-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.dock-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 22px;
+  transition: transform var(--glass-spring);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+}
+
+.dock-icon:hover {
+  transform: scale(1.15) translateY(-4px);
+}
+
+.dock-icon-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  opacity: 0;
+  margin-top: 2px;
+  transition: opacity var(--glass-transition);
+}
+
+.dock-icon-dot.active {
+  opacity: 1;
+}
+
+.dock-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-primary);
+  background: rgba(var(--surface-rgb), 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--glass-transition);
+}
+
+.dock-icon-wrapper:hover .dock-tooltip {
+  opacity: 1;
+}
+
+/* ── 11. Responsive ──────────────────────────────────── */
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .window {
+    position: fixed !important;
+    inset: var(--topbar-height) 0 var(--dock-height) 0 !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .window-resize-n,
+  .window-resize-s,
+  .window-resize-e,
+  .window-resize-w,
+  .window-resize-ne,
+  .window-resize-nw,
+  .window-resize-se,
+  .window-resize-sw {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktop-shell {
+    display: none;
+  }
+}
