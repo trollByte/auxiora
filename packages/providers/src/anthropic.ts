@@ -21,7 +21,7 @@ import {
 import { CLAUDE_CODE_TOOLS } from './claude-code-tools.js';
 import { getAnthropicThinkingBudget } from './thinking-levels.js';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const DEFAULT_MAX_TOKENS = 4096;
 
 // Fallback version if detection fails (keep in sync with real Claude Code)
@@ -97,6 +97,17 @@ export class AnthropicProvider implements Provider {
         supportsImageGen: false,
         costPer1kInput: 0.015,
         costPer1kOutput: 0.075,
+        strengths: ['reasoning', 'code', 'long-context', 'creative'],
+        isLocal: false,
+      },
+      'claude-sonnet-4-6': {
+        maxContextTokens: 1000000,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.003,
+        costPer1kOutput: 0.015,
         strengths: ['reasoning', 'code', 'long-context', 'creative'],
         isLocal: false,
       },

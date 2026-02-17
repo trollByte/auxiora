@@ -59,7 +59,7 @@ const ProviderConfigSchema = z.object({
   primary: z.string().default('anthropic'),
   fallback: z.string().optional(),
   anthropic: z.object({
-    model: z.string().default('claude-sonnet-4-20250514'),
+    model: z.string().default('claude-sonnet-4-6'),
     maxTokens: z.number().int().positive().default(16384),
   }).default({}),
   openai: z.object({

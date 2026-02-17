@@ -20,7 +20,7 @@ export class VisionProvider implements MediaProvider {
   constructor(config: VisionProviderConfig) {
     this.apiKey = config.apiKey;
     this.provider = config.provider;
-    this.model = config.model ?? (config.provider === 'anthropic' ? 'claude-sonnet-4-5-20250929' : 'gpt-4o-mini');
+    this.model = config.model ?? (config.provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini');
     this.id = `vision-${config.provider}`;
   }
 
