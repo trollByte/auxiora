@@ -273,7 +273,30 @@
 
 .window-body {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Generic pages still scroll via an inner wrapper */
+.window-body > .page {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+
+/* Chat manages its own scrolling — lock the outer page */
+.window-body > .page:has(.chat-layout) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.window-body > .page:has(.chat-layout) .chat-layout {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .window-body > .page > h2:first-child {
