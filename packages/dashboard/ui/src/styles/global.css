@@ -2118,6 +2118,11 @@ body {
 .cost-summary .cost-box.over-budget .cost-value { color: var(--danger); }
 
 /* ── Chat scroll fix — chat manages its own scrolling ── */
+.layout:has(.chat-layout) {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .content:has(.chat-layout) {
   overflow: hidden;
   max-height: 100vh;
@@ -2221,6 +2226,7 @@ body {
 .chat-sidebar-list {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.25rem 0;
 }
 
@@ -2417,6 +2423,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 1rem 0;
 }
 
