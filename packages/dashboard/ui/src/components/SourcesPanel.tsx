@@ -59,16 +59,6 @@ export function SourcesPanel({
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="sources-backdrop"
-        onClick={onClose}
-        aria-hidden="true"
-        data-testid="sources-backdrop"
-      />
-
-      {/* Panel */}
       <div
         className="sources-panel"
         role="dialog"
@@ -162,6 +152,5 @@ export function SourcesPanel({
           </button>
         </div>
       </div>
-    </>
   );
 }

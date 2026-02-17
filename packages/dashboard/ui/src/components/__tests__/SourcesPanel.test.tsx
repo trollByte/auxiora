@@ -186,14 +186,6 @@ describe('SourcesPanel', () => {
   });
 
   describe('close behavior', () => {
-    it('calls onClose when backdrop is clicked', async () => {
-      const onClose = vi.fn();
-      renderPanel({ onClose });
-
-      await userEvent.click(screen.getByTestId('sources-backdrop'));
-      expect(onClose).toHaveBeenCalledOnce();
-    });
-
     it('calls onClose when close button is clicked', async () => {
       const onClose = vi.fn();
       renderPanel({ onClose });

@@ -79,7 +79,7 @@ describe('SourcesButton', () => {
     expect(screen.getByText(/What shaped this response/)).toBeTruthy();
   });
 
-  it('closes SourcesPanel when backdrop is clicked', async () => {
+  it('toggles SourcesPanel on second click', async () => {
     render(
       <SourcesButton
         sources={[makeSource('inversion')]}
@@ -91,8 +91,8 @@ describe('SourcesButton', () => {
     await userEvent.click(screen.getByLabelText('View sources'));
     expect(screen.getByRole('dialog')).toBeTruthy();
 
-    // Click backdrop to close
-    await userEvent.click(screen.getByTestId('sources-backdrop'));
+    // Click button again to close
+    await userEvent.click(screen.getByLabelText('View sources'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

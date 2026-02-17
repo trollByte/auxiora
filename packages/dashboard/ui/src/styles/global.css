@@ -974,61 +974,51 @@ body {
   font-weight: 500;
 }
 
-/* ── Sources panel ────────────────────────────── */
+/* ── Sources panel (popover) ──────────────────── */
+
+.sources-button-container {
+  position: relative;
+  display: inline-block;
+}
 
 .sources-backdrop {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(0, 0, 0, 0.4);
-  animation: sources-backdrop-in var(--transition-base) forwards;
-}
-
-@keyframes sources-backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  background: transparent;
 }
 
 .sources-panel {
-  position: fixed;
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
   z-index: 91;
+  width: 380px;
+  max-height: 50vh;
   background: var(--bg-secondary);
   border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
   overflow: hidden;
+  animation: sources-pop-in 150ms ease both;
 }
 
-/* Mobile: slide-up from bottom */
+@keyframes sources-pop-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .sources-panel {
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    width: auto;
+    max-height: 60vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    animation: sources-slide-up var(--transition-base) forwards;
-  }
-  @keyframes sources-slide-up {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
-  }
-}
-
-/* Desktop: slide-in from right */
-@media (min-width: 769px) {
-  .sources-panel {
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 400px;
-    border-radius: 0;
-    border-left: 1px solid var(--border-strong);
-    animation: sources-slide-right var(--transition-base) forwards;
-  }
-  @keyframes sources-slide-right {
-    from { transform: translateX(100%); }
-    to   { transform: translateX(0); }
   }
 }
 
