@@ -53,8 +53,8 @@
   background: var(--glass-bg-far);
   backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
-  border: 1px solid;
-  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  border: 1px solid var(--glass-border-top);
+  border-bottom-color: var(--glass-border-bottom);
   box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
 }
 
@@ -62,8 +62,8 @@
   background: var(--glass-bg-mid);
   backdrop-filter: blur(var(--glass-blur-mid)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--glass-blur-mid)) saturate(180%);
-  border: 1px solid;
-  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  border: 1px solid var(--glass-border-top);
+  border-bottom-color: var(--glass-border-bottom);
   box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
 }
 
@@ -71,8 +71,8 @@
   background: var(--glass-bg-near);
   backdrop-filter: blur(var(--glass-blur-near)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--glass-blur-near)) saturate(180%);
-  border: 1px solid;
-  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  border: 1px solid var(--glass-border-top);
+  border-bottom-color: var(--glass-border-bottom);
   box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
 }
 
@@ -148,11 +148,11 @@
 .desktop-bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(var(--surface-rgb), 0.6) 0%, transparent 70%),
-    radial-gradient(ellipse at 80% 50%, rgba(var(--surface-rgb), 0.4) 0%, transparent 70%),
-    radial-gradient(ellipse at 50% 100%, var(--accent-glow, rgba(124, 58, 237, 0.12)) 0%, transparent 50%),
-    var(--bg-primary, #0a0a0a);
+  z-index: 0;
+  background: var(--bg-primary);
+  background-image:
+    radial-gradient(ellipse 900px 700px at 80% 10%, var(--accent-glow) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 500px at 20% 80%, var(--accent-subtle) 0%, transparent 60%);
 }
 
 /* ── 8. Top Bar ──────────────────────────────────────── */
@@ -167,7 +167,7 @@
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   background: rgba(var(--surface-rgb), 0.35);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 100;
+  z-index: 9999;
   flex-shrink: 0;
 }
 
@@ -203,16 +203,13 @@
   overflow: hidden;
   min-width: var(--window-min-width);
   min-height: var(--window-min-height);
-  animation: windowOpen var(--glass-spring) both;
   box-shadow: var(--glass-shadow-outer);
-  z-index: 10;
 }
 
 .window.focused {
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.08);
-  z-index: 20;
 }
 
 .window-titlebar {
@@ -383,6 +380,14 @@
   }
 }
 
+.window-enter {
+  animation: windowOpen var(--glass-spring) both;
+}
+
+.window-exit {
+  animation: windowClose var(--glass-spring) both;
+}
+
 .window.maximized {
   border-radius: 0;
 }
@@ -402,10 +407,10 @@
   background: var(--glass-bg-far);
   backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--glass-blur-far)) saturate(180%);
-  border: 1px solid;
-  border-image: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom)) 1;
+  border: 1px solid var(--glass-border-top);
+  border-bottom-color: var(--glass-border-bottom);
   box-shadow: var(--glass-shadow-inner), var(--glass-shadow-outer);
-  z-index: 50;
+  z-index: 9998;
 }
 
 .dock-icon-wrapper {
@@ -475,8 +480,9 @@
 
 @media (max-width: 1023px) and (min-width: 768px) {
   .window {
+    /* !important overrides inline drag/resize styles from Window component */
     position: fixed !important;
-    inset: var(--topbar-height) 0 var(--dock-height) 0 !important;
+    inset: var(--topbar-height) 0 calc(var(--dock-height) + 16px) 0 !important;
     width: auto !important;
     height: auto !important;
     border-radius: 0;
