@@ -105,6 +105,14 @@ describe('VisionProvider', () => {
     vi.unstubAllGlobals();
   });
 
+  it('should block SSRF attempts on private URLs', async () => {
+    const provider = new VisionProvider({ apiKey: 'test-key', provider: 'anthropic' });
+    const attachment: Attachment = { type: 'image', url: 'http://192.168.1.1/camera' };
+    const result = await provider.processAttachment(attachment);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('SSRF');
+  });
+
   it('should handle missing data and URL', async () => {
     const provider = new VisionProvider({ apiKey: 'test-key', provider: 'anthropic' });
     const attachment: Attachment = { type: 'image' };

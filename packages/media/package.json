@@ -19,6 +19,7 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@auxiora/logger": "workspace:*"
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/ssrf-guard": "workspace:*"
   }
 }

@@ -69,6 +69,14 @@ describe('WhisperProvider', () => {
     vi.unstubAllGlobals();
   });
 
+  it('should block SSRF attempts on private URLs', async () => {
+    const provider = new WhisperProvider({ apiKey: 'test-key' });
+    const attachment: Attachment = { type: 'audio', url: 'http://10.0.0.1/internal-audio' };
+    const result = await provider.processAttachment(attachment);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('SSRF');
+  });
+
   it('should handle missing data and URL', async () => {
     const provider = new WhisperProvider({ apiKey: 'test-key' });
     const attachment: Attachment = { type: 'audio' };

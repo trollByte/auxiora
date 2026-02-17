@@ -1,3 +1,4 @@
+import { safeFetch } from '@auxiora/ssrf-guard';
 import type { Attachment, MediaProvider, MediaResult } from '../types.js';
 
 const MAX_TEXT_CHARS = 50_000;
@@ -31,7 +32,7 @@ export class FileExtractor implements MediaProvider {
       if (attachment.data) {
         text = attachment.data.toString('utf-8');
       } else if (attachment.url) {
-        const response = await fetch(attachment.url);
+        const response = await safeFetch(attachment.url);
         if (!response.ok) {
           return { type: 'file', success: false, error: `Fetch failed: ${response.status}`, filename: attachment.filename };
         }

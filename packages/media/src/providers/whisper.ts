@@ -1,4 +1,5 @@
 import { getLogger } from '@auxiora/logger';
+import { safeFetch } from '@auxiora/ssrf-guard';
 import type { Attachment, MediaProvider, MediaResult } from '../types.js';
 
 const logger = getLogger('media:whisper');
@@ -29,7 +30,7 @@ export class WhisperProvider implements MediaProvider {
       if (attachment.data) {
         audioBuffer = attachment.data;
       } else if (attachment.url) {
-        const response = await fetch(attachment.url);
+        const response = await safeFetch(attachment.url);
         if (!response.ok) {
           return { type: 'audio', success: false, error: `Fetch failed: ${response.status}` };
         }

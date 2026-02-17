@@ -60,6 +60,18 @@ describe('FileExtractor', () => {
     expect(result.success).toBe(false);
   });
 
+  it('should block SSRF attempts on private URLs', async () => {
+    const attachment: Attachment = {
+      type: 'file',
+      url: 'http://169.254.169.254/latest/meta-data/',
+      filename: 'metadata.txt',
+      mimeType: 'text/plain',
+    };
+    const result = await extractor.processAttachment(attachment);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('SSRF');
+  });
+
   it('should truncate large files', async () => {
     const bigText = 'x'.repeat(100_000);
     const attachment: Attachment = {

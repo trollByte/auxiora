@@ -1,4 +1,5 @@
 import { getLogger } from '@auxiora/logger';
+import { safeFetch } from '@auxiora/ssrf-guard';
 import type { Attachment, MediaProvider, MediaResult } from '../types.js';
 
 const logger = getLogger('media:vision');
@@ -35,7 +36,7 @@ export class VisionProvider implements MediaProvider {
         if (this.provider === 'openai') {
           return this.describeWithOpenAI(attachment.url, resultType);
         }
-        const response = await fetch(attachment.url);
+        const response = await safeFetch(attachment.url);
         if (!response.ok) {
           return { type: resultType, success: false, error: `Fetch failed: ${response.status}` };
         }
