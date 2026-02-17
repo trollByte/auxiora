@@ -6,7 +6,7 @@ import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { type Config } from '@auxiora/config';
 import { audit } from '@auxiora/audit';
-import { getLogger } from '@auxiora/logger';
+import { getLogger, generateRequestId, runWithRequestId } from '@auxiora/logger';
 import { RateLimiter } from './rate-limiter.js';
 
 const logger = getLogger('gateway');
@@ -246,6 +246,8 @@ export class Gateway {
   }
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
+    const requestId = generateRequestId();
+    return runWithRequestId(requestId, async () => {
     const { type, id, payload } = message;
 
     switch (type) {
@@ -323,6 +325,7 @@ export class Gateway {
           payload: { message: `Unknown message type: ${type}` },
         });
     }
+    }); // end runWithRequestId
   }
 
   private async handleAuth(

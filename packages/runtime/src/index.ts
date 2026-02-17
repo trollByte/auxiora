@@ -111,7 +111,7 @@ import {
 } from '@auxiora/personality';
 import { getModesDir } from '@auxiora/core';
 import { fileURLToPath } from 'node:url';
-import { getLogger } from '@auxiora/logger';
+import { getLogger, generateRequestId, runWithRequestId } from '@auxiora/logger';
 import {
   SelfAwarenessAssembler,
   InMemoryAwarenessStorage,
@@ -2846,6 +2846,8 @@ export class Auxiora {
   }
 
   private async handleChannelMessage(inbound: InboundMessage): Promise<void> {
+    const requestId = generateRequestId();
+    return runWithRequestId(requestId, async () => {
     // Track last-active channel ID for proactive delivery and persist to disk
     this.lastActiveChannels.set(inbound.channelType, inbound.channelId);
     void this.saveChannelTargets();
@@ -3052,6 +3054,7 @@ export class Auxiora {
         });
       }
     }
+    }); // end runWithRequestId
   }
 
   private async handleChannelCommand(command: string, sessionId: string): Promise<string> {
