@@ -340,6 +340,32 @@ describe('Tool Loop Detection', () => {
       expect(second.severity).toBe('none');
     });
 
+    it('should still escalate ping-pong to critical after warning suppressed', () => {
+      const state = createLoopDetectionState({
+        pingPongWarnCycles: 2,
+        pingPongCriticalCycles: 4,
+        genericRepeatWarn: 100,
+        genericRepeatCritical: 100,
+      });
+      // 2 cycles → warning
+      for (let i = 0; i < 4; i++) {
+        const tool = i % 2 === 0 ? 'tool_a' : 'tool_b';
+        const args = i % 2 === 0 ? { x: 'a' } : { x: 'b' };
+        recordToolCall(state, `c${i}`, tool, args);
+      }
+      const first = detectLoop(state);
+      expect(first.severity).toBe('warning');
+      // Add enough to reach critical (4 cycles total = 8 entries)
+      for (let i = 4; i < 8; i++) {
+        const tool = i % 2 === 0 ? 'tool_a' : 'tool_b';
+        const args = i % 2 === 0 ? { x: 'a' } : { x: 'b' };
+        recordToolCall(state, `c${i}`, tool, args);
+      }
+      const second = detectLoop(state);
+      expect(second.severity).toBe('critical');
+      expect(second.detector).toBe('ping_pong');
+    });
+
     it('should not trigger on interleaved non-alternating (A-B-C-A)', () => {
       const state = createLoopDetectionState({ pingPongWarnCycles: 2, pingPongCriticalCycles: 4 });
       recordToolCall(state, 'tc-1', 'a', { v: 1 });

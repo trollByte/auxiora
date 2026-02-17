@@ -24,7 +24,7 @@ Add a 4-detector sliding-window tool loop detection system inside `packages/runt
 
 ```typescript
 createLoopDetectionState(config?: Partial<LoopDetectionConfig>): LoopDetectionState
-recordToolCall(state: LoopDetectionState, toolName: string, args: unknown): void
+recordToolCall(state: LoopDetectionState, toolCallId: string, toolName: string, args: unknown): void
 recordToolOutcome(state: LoopDetectionState, toolCallId: string, result: string): void
 detectLoop(state: LoopDetectionState): LoopDetectionResult
 ```

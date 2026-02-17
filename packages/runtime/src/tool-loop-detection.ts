@@ -15,12 +15,16 @@ import { createHash } from 'node:crypto';
 function stableStringify(value: unknown): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return '[' + value.map((v) => stableStringify(v)).join(',') + ']';
+  try {
+    if (Array.isArray(value)) {
+      return '[' + value.map((v) => stableStringify(v)).join(',') + ']';
+    }
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+  } catch {
+    return String(value);
   }
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
 }
 
 // ── Hashing ─────────────────────────────────────────────────────────
@@ -187,7 +191,7 @@ function detectNoProgress(state: LoopDetectionState): LoopDetectionResult {
   }
 
   for (const [argsHash, { outcomes, toolName }] of groups) {
-    for (const [, count] of outcomes) {
+    for (const [outcomeHash, count] of outcomes) {
       if (count >= config.noProgressCritical) {
         return {
           severity: 'critical',
@@ -197,7 +201,7 @@ function detectNoProgress(state: LoopDetectionState): LoopDetectionResult {
         };
       }
       if (count >= config.noProgressWarn) {
-        const patternKey = `no_progress:${argsHash}`;
+        const patternKey = `no_progress:${argsHash}:${outcomeHash}`;
         if (warnedPatterns.has(patternKey)) {
           continue; // suppress re-warn
         }
