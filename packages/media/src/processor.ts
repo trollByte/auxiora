@@ -49,7 +49,7 @@ export class MediaProcessor {
       } catch (error) {
         logger.debug('Attachment processing failed', {
           type: attachment.type,
-          error: error instanceof Error ? error.message : 'Unknown',
+          error: error instanceof Error ? error : new Error('Unknown'),
         });
       }
     }

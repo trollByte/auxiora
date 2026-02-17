@@ -48,7 +48,7 @@ export class WhisperProvider implements MediaProvider {
         : 'ogg';
 
       const formData = new FormData();
-      formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
+      formData.append('file', new Blob([new Uint8Array(audioBuffer)], { type: mimeType }), `audio.${ext}`);
       formData.append('model', this.model);
       formData.append('response_format', 'verbose_json');
 
