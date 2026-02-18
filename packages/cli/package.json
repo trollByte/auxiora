@@ -1,8 +1,14 @@
 {
   "name": "auxiora",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Self-hosted AI assistant — install and run with a single command",
-  "keywords": ["ai", "assistant", "self-hosted", "chatbot", "llm"],
+  "keywords": [
+    "ai",
+    "assistant",
+    "self-hosted",
+    "chatbot",
+    "llm"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -64,5 +70,8 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

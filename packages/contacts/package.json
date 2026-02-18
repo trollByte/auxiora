@@ -1,12 +1,33 @@
 {
   "name": "@auxiora/contacts",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "Unified contact graph with relationship scoring, deduplication, and context recall",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "scripts": { "build": "tsc", "clean": "rm -rf dist", "typecheck": "tsc --noEmit" },
-  "dependencies": { "@auxiora/logger": "workspace:*", "@auxiora/audit": "workspace:*", "nanoid": "^5.1.2" },
-  "engines": { "node": ">=22.0.0" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/audit": "workspace:*",
+    "nanoid": "^5.1.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/"
+  ]
 }

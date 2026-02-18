@@ -1,5 +1,6 @@
 {
   "name": "@auxiora/canvas",
+  "private": true,
   "version": "1.0.0",
   "description": "Live Canvas / A2UI - shared visual workspace for agent-driven UI interactions",
   "type": "module",

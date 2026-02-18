@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/dashboard",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,5 +28,11 @@
     "@types/express": "^5.0.0",
     "@types/supertest": "^6.0.0",
     "supertest": "^7.1.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/"
+  ]
 }

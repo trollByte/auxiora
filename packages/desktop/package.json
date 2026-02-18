@@ -1,5 +1,6 @@
 {
   "name": "@auxiora/desktop",
+  "private": true,
   "version": "1.0.0",
   "description": "Desktop shell for Auxiora — Tauri integration, tray, hotkeys, notifications, auto-update",
   "type": "module",
