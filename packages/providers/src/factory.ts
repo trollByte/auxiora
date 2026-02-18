@@ -181,6 +181,14 @@ export class ProviderFactory {
     return this.getProvider(this.primary);
   }
 
+  setPrimary(name: string): void {
+    const providerName = name as ProviderName;
+    if (!this.providers.has(providerName)) {
+      throw new Error(`Provider not configured: ${name}`);
+    }
+    this.primary = providerName;
+  }
+
   getFallbackProvider(): Provider | null {
     if (!this.fallback) return null;
 

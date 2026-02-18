@@ -221,6 +221,7 @@ export class Auxiora {
   private dndManager?: DoNotDisturbManager;
   private notificationOrchestrator?: NotificationOrchestrator;
 
+  private researchEngine?: ResearchEngine;
   private capabilityCatalog?: CapabilityCatalogImpl;
   private healthMonitor?: HealthMonitorImpl;
   private capabilityPromptFragment: string = '';
@@ -325,6 +326,7 @@ export class Auxiora {
             searchTimeout: this.config.research?.searchTimeout ?? 10_000,
             fetchTimeout: this.config.research?.fetchTimeout ?? 15_000,
           });
+          this.researchEngine = researchEngine;
           setResearchEngine(researchEngine);
           this.logger.info(`Research engine initialized (Brave Search configured${provider ? ', AI extraction enabled' : ''})`);
         } catch (err) {
@@ -378,12 +380,15 @@ export class Auxiora {
           sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
             this.logger.info('sendToChannel called', { channelType, channelId, hasChannels: !!this.channels });
 
+            let delivered = false;
+
             // Always broadcast to webchat + persist
             this.gateway.broadcast({
               type: 'message',
               payload: { role: 'assistant', content: message.content },
             });
             this.persistToWebchat(message.content);
+            delivered = true; // webchat broadcast is best-effort but counts
 
             // Deliver to all connected external channels
             if (this.channels) {
@@ -396,13 +401,15 @@ export class Auxiora {
                 this.logger.info('Channel delivery target', { channel: ct, targetId, fromLastActive: this.lastActiveChannels.get(ct) });
                 if (!targetId) continue;
                 const result = await this.channels.send(ct as any, targetId, { content: message.content });
-                if (!result.success) {
+                if (result.success) {
+                  delivered = true;
+                } else {
                   this.logger.warn('Channel delivery failed', { channel: ct, targetId, error: new Error(result.error ?? 'unknown') });
                 }
               }
             }
 
-            return { success: true };
+            return { success: delivered };
           },
           getSystemPrompt: () => this.systemPrompt,
           executeWithTools: async (messages, systemPrompt) => {
@@ -1253,12 +1260,13 @@ export class Auxiora {
         toolCount: p.toolCount, behaviorNames: p.behaviorNames,
       })),
       getFeatures: () => ({
-        behaviors: (this.config as any).features?.behaviors !== false,
-        browser: (this.config as any).features?.browser !== false,
-        voice: !!(this.config as any).features?.voice,
-        webhooks: !!(this.config as any).features?.webhooks,
-        plugins: !!(this.config as any).features?.plugins,
-        memory: this.config.memory?.enabled !== false,
+        behaviors: !!this.behaviors,
+        browser: !!this.browserManager,
+        voice: !!this.voiceManager,
+        webhooks: !!this.webhookManager,
+        plugins: !!(this.pluginLoader && this.pluginLoader.listPlugins().length > 0),
+        memory: !!this.memoryStore,
+        research: !!this.researchEngine,
       }),
       getAuditEntries: async (limit) => {
         const al = getAuditLogger();
@@ -1274,10 +1282,43 @@ export class Auxiora {
     this.capabilityPromptFragment = generatePromptFragment(this.capabilityCatalog.getCatalog(), initialHealth, this.getSelfAwarenessContext());
 
     const autoFixActions: AutoFixActions = {
-      reconnectChannel: async () => false,
-      restartBehavior: async (_id) => {
-        // BehaviorManager does not yet expose a resume() method
-        return false;
+      reconnectChannel: async (type) => {
+        if (!this.channels) return false;
+        try {
+          await this.channels.disconnect(type as any);
+          await this.channels.connect(type as any);
+          this.logger.info('Auto-fix: reconnected channel', { type });
+          return true;
+        } catch (err) {
+          this.logger.warn('Auto-fix: channel reconnect failed', { type, error: err instanceof Error ? err : new Error(String(err)) });
+          return false;
+        }
+      },
+      restartBehavior: async (id) => {
+        if (!this.behaviors) return false;
+        try {
+          const result = await this.behaviors.update(id, { status: 'active' });
+          if (!result) return false;
+          this.logger.info('Auto-fix: restarted behavior', { id });
+          return true;
+        } catch (err) {
+          this.logger.warn('Auto-fix: behavior restart failed', { id, error: err instanceof Error ? err : new Error(String(err)) });
+          return false;
+        }
+      },
+      switchToFallbackProvider: async () => {
+        const fallbackName = this.config.provider.fallback;
+        if (!fallbackName) return false;
+        const fallback = this.providers.getFallbackProvider();
+        if (!fallback) return false;
+        try {
+          this.providers.setPrimary(fallbackName);
+          this.logger.info('Auto-fix: switched to fallback provider', { name: fallbackName });
+          return true;
+        } catch (err) {
+          this.logger.warn('Auto-fix: provider switch failed', { error: err instanceof Error ? err : new Error(String(err)) });
+          return false;
+        }
       },
     };
 
@@ -2879,7 +2920,11 @@ export class Auxiora {
   private persistToWebchat(content: string): void {
     this.sessions.getOrCreate('webchat', { channelType: 'webchat' })
       .then(session => this.sessions.addMessage(session.id, 'assistant', content))
-      .catch(() => { /* non-fatal */ });
+      .catch((err) => {
+        this.logger.warn('Failed to persist webchat message', {
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
+      });
   }
 
   /** Deliver a proactive message to all connected channel adapters using tracked channel IDs.

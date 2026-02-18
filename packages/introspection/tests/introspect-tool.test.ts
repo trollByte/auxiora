@@ -82,4 +82,11 @@ describe('createIntrospectTool', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('Unknown query type');
   });
+
+  it('includes active model in providers output', async () => {
+    const tool = makeTool();
+    const result = await tool.execute({ query: 'providers' });
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('Active model: claude-sonnet');
+  });
 });

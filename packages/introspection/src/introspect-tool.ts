@@ -149,6 +149,10 @@ function formatProviders(catalog: CapabilityCatalog): string {
     const availability = p.available ? 'available' : 'unavailable';
     lines.push(`- **${p.displayName}**${roleStr} [${availability}]: ${p.models.join(', ')}`);
   }
+  const primary = catalog.providers.find(p => p.isPrimary);
+  if (primary?.models?.length) {
+    lines.push(`\nActive model: ${primary.models[0]}`);
+  }
   return lines.join('\n');
 }
 
