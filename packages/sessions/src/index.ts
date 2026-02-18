@@ -12,3 +12,4 @@ export type {
 } from './types.js';
 export { sanitizeTranscript } from './sanitize-transcript.js';
 export { degradeContext, insertOmissionMarker, truncateLargeMessage } from './context-degradation.js';
+export { summarizeMessages, type SummarizeFn } from './compaction-summarizer.js';
