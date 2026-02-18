@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { SetupProgress } from '../components/SetupProgress';
@@ -17,6 +17,15 @@ export function SetupIdentity() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Pre-fill with existing agent name if already configured
+  useEffect(() => {
+    api.getSetupStatus().then(status => {
+      if (status.agentName && status.agentName !== 'Auxiora') {
+        setName(status.agentName);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
