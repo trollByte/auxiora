@@ -33,6 +33,18 @@ export interface Role {
   createdAt: number;
 }
 
+/** Per-account overrides for streaming/coalescing behavior. */
+export interface StreamingOverrides {
+  /** Coalescing idle timeout in milliseconds. Default: 1000 */
+  coalescingIdleMs?: number;
+  /** Minimum characters per coalesced chunk. Default: 800 */
+  minChunkChars?: number;
+  /** Maximum characters per coalesced chunk. Default: 1200 */
+  maxChunkChars?: number;
+  /** Typing indicator delay in milliseconds. Default: 4000 */
+  typingDelayMs?: number;
+}
+
 /** A user identity within the system. */
 export interface UserIdentity {
   id: string;
@@ -42,6 +54,7 @@ export interface UserIdentity {
   trustOverrides: Record<string, number>;
   memoryPartition: string;
   personalityRelationship: string;
+  streamingOverrides?: StreamingOverrides;
   createdAt: number;
   updatedAt: number;
   lastActiveAt: number;

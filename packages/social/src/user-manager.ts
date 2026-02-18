@@ -62,7 +62,7 @@ export class UserManager {
 
   async updateUser(
     id: string,
-    updates: Partial<Pick<UserIdentity, 'name' | 'role' | 'channels' | 'trustOverrides' | 'memoryPartition' | 'personalityRelationship'>>,
+    updates: Partial<Pick<UserIdentity, 'name' | 'role' | 'channels' | 'trustOverrides' | 'memoryPartition' | 'personalityRelationship' | 'streamingOverrides'>>,
   ): Promise<UserIdentity | undefined> {
     const users = await this.readFile();
     const user = users.find(u => u.id === id);
@@ -74,6 +74,7 @@ export class UserManager {
     if (updates.trustOverrides !== undefined) user.trustOverrides = updates.trustOverrides;
     if (updates.memoryPartition !== undefined) user.memoryPartition = updates.memoryPartition;
     if (updates.personalityRelationship !== undefined) user.personalityRelationship = updates.personalityRelationship;
+    if (updates.streamingOverrides !== undefined) user.streamingOverrides = updates.streamingOverrides;
     user.updatedAt = Date.now();
 
     await this.writeFile(users);

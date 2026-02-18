@@ -10,11 +10,16 @@ export class DraftStreamLoop {
   private inFlightPromise: Promise<void> | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastSentAt = 0;
+  private readonly throttleMs: number;
 
   constructor(
     private readonly sendOrEdit: (text: string) => Promise<boolean>,
-    private readonly throttleMs = 1000,
-  ) {}
+    overrides?: { coalescingIdleMs?: number; typingDelayMs?: number } | number,
+  ) {
+    this.throttleMs = typeof overrides === 'number'
+      ? overrides
+      : overrides?.coalescingIdleMs ?? 1000;
+  }
 
   /** Set the latest full text to display. Schedules or triggers a flush. */
   update(text: string): void {

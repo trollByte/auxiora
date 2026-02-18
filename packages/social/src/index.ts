@@ -4,6 +4,7 @@ export type {
   UserIdentity,
   UserChannelMapping,
   TeamConfig,
+  StreamingOverrides,
 } from './types.js';
 export { BUILT_IN_ROLES } from './types.js';
 export { UserManager } from './user-manager.js';
