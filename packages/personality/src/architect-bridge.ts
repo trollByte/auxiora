@@ -1,30 +1,12 @@
 import type { ArchitectAwarenessCollector, ArchitectSnapshot } from './architect-awareness-collector.js';
 
 export interface ArchitectLike {
-  generatePrompt(userMessage: string): {
-    basePrompt: string;
-    contextModifier: string;
-    fullPrompt: string;
-    activeTraits: unknown[];
-    detectedContext: {
-      domain: string;
-      emotionalRegister: string;
-      stakes: string;
-      complexity: string;
-      detectionConfidence: number;
-      conversationTheme?: string;
-    };
-    emotionalTrajectory: string;
-    escalationAlert?: string;
-    recommendation?: unknown;
-  };
-  getTraitMix(context: unknown): Record<string, number>;
   getConversationSummary(): { theme: string | null; messageCount: number };
 }
 
 export interface VaultLike {
   get(key: string): string | undefined;
-  set(key: string, value: string): void;
+  add(key: string, value: string): Promise<void>;
   has(key: string): boolean;
 }
 
@@ -32,6 +14,13 @@ export interface BridgeOptions {
   onEscalation?: (alert: string, context: ArchitectSnapshot['detectedContext']) => void;
 }
 
+/**
+ * Orchestrates Architect side effects: conversation state persistence,
+ * awareness collector feeding, and escalation alert callbacks.
+ *
+ * The runtime calls `architect.generatePrompt()` directly (for typed output),
+ * then passes the output here for side effects via `afterPrompt()`.
+ */
 export class ArchitectBridge {
   private restoredChats = new Set<string>();
 
@@ -42,17 +31,22 @@ export class ArchitectBridge {
     private readonly options: BridgeOptions = {},
   ) {}
 
-  processMessage(userMessage: string, chatId: string) {
+  /** Call after architect.generatePrompt() to handle persistence, awareness, and escalation. */
+  afterPrompt(detectedContext: Record<string, unknown>, emotionalTrajectory: string | undefined, escalationAlert: boolean | undefined, chatId: string): void {
     // Restore conversation state on first message per chat
     this.maybeRestore(chatId);
 
-    const output = this.architect.generatePrompt(userMessage);
-
     // Update awareness collector
     const snapshot: ArchitectSnapshot = {
-      detectedContext: output.detectedContext,
-      emotionalTrajectory: output.emotionalTrajectory,
-      escalationAlert: output.escalationAlert,
+      detectedContext: {
+        domain: String(detectedContext.domain ?? 'general'),
+        emotionalRegister: String(detectedContext.emotionalRegister ?? 'neutral'),
+        stakes: String(detectedContext.stakes ?? 'moderate'),
+        complexity: String(detectedContext.complexity ?? 'moderate'),
+        detectionConfidence: typeof detectedContext.detectionConfidence === 'number' ? detectedContext.detectionConfidence : undefined,
+      },
+      emotionalTrajectory,
+      escalationAlert,
     };
     this.awarenessCollector.updateOutput(snapshot);
 
@@ -60,22 +54,19 @@ export class ArchitectBridge {
     this.persistState(chatId);
 
     // Fire escalation callback if alert present
-    if (output.escalationAlert && this.options.onEscalation) {
-      this.options.onEscalation(output.escalationAlert, output.detectedContext);
+    if (escalationAlert && this.options.onEscalation) {
+      this.options.onEscalation(
+        'Emotional escalation detected',
+        snapshot.detectedContext,
+      );
     }
-
-    return output;
   }
 
   private maybeRestore(chatId: string): void {
     if (this.restoredChats.has(chatId)) return;
     this.restoredChats.add(chatId);
     try {
-      const stored = this.vault.get(`architect:chat:${chatId}`);
-      if (stored) {
-        // State exists — marked as restored. Full ConversationContext.restore()
-        // integration happens in the runtime glue (Task 5).
-      }
+      this.vault.get(`architect:chat:${chatId}`);
     } catch {
       // Vault locked or missing — proceed with fresh state
     }
@@ -89,7 +80,7 @@ export class ArchitectBridge {
         messageCount: summary.messageCount,
         lastUpdated: Date.now(),
       });
-      this.vault.set(`architect:chat:${chatId}`, state);
+      this.vault.add(`architect:chat:${chatId}`, state).catch(() => {});
     } catch {
       // Vault locked — skip persistence
     }

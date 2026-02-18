@@ -24,12 +24,13 @@ describe('ArchitectAwarenessCollector', () => {
     expect(signals[0].dimension).toBe('architect-context');
     expect(signals[0].priority).toBe(0.6);
     expect(signals[0].text).toContain('security_review');
+    expect(signals[0].text).toContain('0.85');
   });
 
   it('should emit emotional trajectory signal when not stable', async () => {
     const collector = new ArchitectAwarenessCollector();
     collector.updateOutput({
-      detectedContext: { domain: 'general', emotionalRegister: 'stressed', stakes: 'medium', complexity: 'low', detectionConfidence: 0.5 },
+      detectedContext: { domain: 'general', emotionalRegister: 'stressed', stakes: 'medium', complexity: 'low' },
       emotionalTrajectory: 'escalating',
     });
     const signals = await collector.collect(ctx());
@@ -44,14 +45,14 @@ describe('ArchitectAwarenessCollector', () => {
     collector.updateOutput({
       detectedContext: { domain: 'crisis_management', emotionalRegister: 'stressed', stakes: 'critical', complexity: 'high', detectionConfidence: 0.95 },
       emotionalTrajectory: 'escalating',
-      escalationAlert: 'User emotional state is escalating rapidly',
+      escalationAlert: true,
     });
     const signals = await collector.collect(ctx());
     expect(signals).toHaveLength(3);
     const escalation = signals.find(s => s.dimension === 'architect-escalation');
     expect(escalation).toBeDefined();
     expect(escalation!.priority).toBe(1.0);
-    expect(escalation!.text).toBe('User emotional state is escalating rapidly');
+    expect(escalation!.text).toContain('escalation detected');
   });
 
   it('should be named "architect-bridge"', () => {

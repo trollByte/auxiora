@@ -126,6 +126,7 @@ import {
   EnvironmentSensor,
   MetaCognitor,
 } from '@auxiora/self-awareness';
+import type { SignalCollector } from '@auxiora/self-awareness';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -1875,7 +1876,7 @@ export class Auxiora {
     if (this.config.selfAwareness?.enabled) {
       const storage = new InMemoryAwarenessStorage();
       const collectorConfig = this.config.selfAwareness.collectors ?? {};
-      const collectors = [
+      const collectors: SignalCollector[] = [
         ...(collectorConfig.conversationReflector !== false ? [new ConversationReflector(storage)] : []),
         ...(collectorConfig.capacityMonitor !== false ? [new CapacityMonitor()] : []),
         ...(collectorConfig.knowledgeBoundary !== false ? [new KnowledgeBoundary(storage)] : []),
@@ -1929,17 +1930,20 @@ export class Auxiora {
       activeTraits: import('@auxiora/personality/architect').TraitSource[];
       traitWeights: Record<string, number>;
       recommendation?: ContextRecommendation;
-      escalationAlert?: string;
+      escalationAlert?: boolean;
     };
   } {
     if (!this.architect) return { prompt };
-    const output = this.architectBridge && chatId
-      ? this.architectBridge.processMessage(userMessage, chatId)
-      : this.architect.generatePrompt(userMessage);
+    const output = this.architect.generatePrompt(userMessage);
+
+    // Bridge handles side effects: persistence, awareness feeding, escalation logging
+    if (this.architectBridge && chatId) {
+      this.architectBridge.afterPrompt(output.detectedContext, output.emotionalTrajectory, output.escalationAlert, chatId);
+    }
     const mix = this.architect.getTraitMix(output.detectedContext);
     const traitWeights: Record<string, number> = {};
     for (const [key, val] of Object.entries(mix)) {
-      traitWeights[key] = val;
+      traitWeights[key] = val as number;
     }
     return {
       prompt: prompt + '\n\n' + output.contextModifier,

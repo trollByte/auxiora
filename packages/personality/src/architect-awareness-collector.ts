@@ -6,10 +6,10 @@ export interface ArchitectSnapshot {
     emotionalRegister: string;
     stakes: string;
     complexity: string;
-    detectionConfidence: number;
+    detectionConfidence?: number;
   };
-  emotionalTrajectory: string;
-  escalationAlert?: string;
+  emotionalTrajectory?: string;
+  escalationAlert?: boolean;
 }
 
 export class ArchitectAwarenessCollector implements SignalCollector {
@@ -28,15 +28,16 @@ export class ArchitectAwarenessCollector implements SignalCollector {
     const { detectedContext, emotionalTrajectory, escalationAlert } = this.latest;
 
     if (detectedContext.domain !== 'general') {
+      const conf = detectedContext.detectionConfidence;
       signals.push({
         dimension: 'architect-context',
         priority: 0.6,
-        text: `Currently in ${detectedContext.domain} context (confidence: ${detectedContext.detectionConfidence.toFixed(2)}, stakes: ${detectedContext.stakes})`,
-        data: { domain: detectedContext.domain, confidence: detectedContext.detectionConfidence, stakes: detectedContext.stakes },
+        text: `Currently in ${detectedContext.domain} context (confidence: ${conf != null ? conf.toFixed(2) : 'n/a'}, stakes: ${detectedContext.stakes})`,
+        data: { domain: detectedContext.domain, confidence: conf ?? 0, stakes: detectedContext.stakes },
       });
     }
 
-    if (emotionalTrajectory !== 'stable') {
+    if (emotionalTrajectory && emotionalTrajectory !== 'stable') {
       signals.push({
         dimension: 'architect-emotion',
         priority: 0.8,
@@ -49,8 +50,8 @@ export class ArchitectAwarenessCollector implements SignalCollector {
       signals.push({
         dimension: 'architect-escalation',
         priority: 1.0,
-        text: escalationAlert,
-        data: { alert: escalationAlert, domain: detectedContext.domain },
+        text: 'Emotional escalation detected — user may need de-escalation support',
+        data: { escalation: true, domain: detectedContext.domain },
       });
     }
 
