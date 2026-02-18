@@ -87,6 +87,7 @@ import { ConversationExporter } from './conversation-export.js';
 import { PreferenceHistory } from './preference-history.js';
 import { DecisionLog } from './decision-log.js';
 import { FeedbackStore } from './feedback-store.js';
+import { UserModelSynthesizer } from './user-model-synthesizer.js';
 // Re-export building blocks for advanced consumers
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -107,6 +108,7 @@ export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-ada
 export { PreferenceHistory } from './preference-history.js';
 export { DecisionLog } from './decision-log.js';
 export { FeedbackStore } from './feedback-store.js';
+export { UserModelSynthesizer } from './user-model-synthesizer.js';
 // ────────────────────────────────────────────────────────────────────────────
 // Domain metadata
 // ────────────────────────────────────────────────────────────────────────────
@@ -447,6 +449,18 @@ export class TheArchitect {
         prefs.feedbackStore = this.feedbackStore.serialize();
         await this.persistence.save(prefs);
         this.preferences = prefs;
+    }
+    // ── User model ───────────────────────────────────────────────────────
+    /** Synthesize a complete user model from all data stores. */
+    getUserModel() {
+        const synthesizer = new UserModelSynthesizer({
+            preferenceHistory: this.preferenceHistory,
+            decisionLog: this.decisionLog,
+            feedbackStore: this.feedbackStore,
+            correctionStore: this.correctionStore,
+            preferences: this.preferences,
+        });
+        return synthesizer.synthesize();
     }
     // ── Trajectory multipliers ──────────────────────────────────────────
     /**

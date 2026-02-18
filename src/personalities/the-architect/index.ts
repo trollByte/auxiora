@@ -96,6 +96,8 @@ import { DecisionLog } from './decision-log.js';
 import type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
 import { FeedbackStore } from './feedback-store.js';
 import type { FeedbackRating, FeedbackInsight } from './feedback-store.js';
+import { UserModelSynthesizer } from './user-model-synthesizer.js';
+import type { UserModel } from './user-model-synthesizer.js';
 
 // Re-export all types for consumer convenience
 export type {
@@ -142,6 +144,9 @@ export { DecisionLog } from './decision-log.js';
 export type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
 export { FeedbackStore } from './feedback-store.js';
 export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './feedback-store.js';
+export { UserModelSynthesizer } from './user-model-synthesizer.js';
+export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary }
+  from './user-model-synthesizer.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Message type
@@ -538,6 +543,20 @@ export class TheArchitect {
     prefs.feedbackStore = this.feedbackStore.serialize();
     await this.persistence.save(prefs);
     this.preferences = prefs;
+  }
+
+  // ── User model ───────────────────────────────────────────────────────
+
+  /** Synthesize a complete user model from all data stores. */
+  getUserModel(): UserModel {
+    const synthesizer = new UserModelSynthesizer({
+      preferenceHistory: this.preferenceHistory,
+      decisionLog: this.decisionLog,
+      feedbackStore: this.feedbackStore,
+      correctionStore: this.correctionStore,
+      preferences: this.preferences,
+    });
+    return synthesizer.synthesize();
   }
 
   // ── Trajectory multipliers ──────────────────────────────────────────

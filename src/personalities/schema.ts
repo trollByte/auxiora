@@ -291,4 +291,7 @@ export interface PromptOutput {
 
   /** Actionable feedback insights (trait adjustments, weak domains, trends). */
   feedbackInsight?: import('./the-architect/feedback-store.js').FeedbackInsight;
+
+  /** Synthesized user model — opt-in, not populated by generatePrompt(). */
+  userModel?: import('./the-architect/user-model-synthesizer.js').UserModel;
 }

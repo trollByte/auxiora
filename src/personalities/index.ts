@@ -55,3 +55,8 @@ export { DecisionLog } from './the-architect/decision-log.js';
 export type { Decision, DecisionQuery, DecisionStatus } from './the-architect/decision-log.js';
 export { FeedbackStore } from './the-architect/feedback-store.js';
 export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './the-architect/feedback-store.js';
+
+// Phase 5: user model synthesizer
+export { UserModelSynthesizer } from './the-architect/user-model-synthesizer.js';
+export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary }
+  from './the-architect/user-model-synthesizer.js';

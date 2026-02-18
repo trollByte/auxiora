@@ -6,6 +6,7 @@ import type { WeightPreset } from './custom-weights.js';
 import type { ChatMessage, ExportedConversation } from './conversation-export.js';
 import type { Decision, DecisionQuery } from './decision-log.js';
 import type { FeedbackRating, FeedbackInsight } from './feedback-store.js';
+import type { UserModel } from './user-model-synthesizer.js';
 export type { TraitMix, TraitValue, TaskContext, TraitSource, ContextDomain, EmotionalRegister, ContextSignal, PromptOutput, } from '../schema.js';
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -37,6 +38,8 @@ export { DecisionLog } from './decision-log.js';
 export type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
 export { FeedbackStore } from './feedback-store.js';
 export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './feedback-store.js';
+export { UserModelSynthesizer } from './user-model-synthesizer.js';
+export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary } from './user-model-synthesizer.js';
 type Message = {
     role: string;
     content: string;
@@ -159,6 +162,8 @@ export declare class TheArchitect {
     getFeedbackTrend(windowSize?: number): 'improving' | 'declining' | 'stable';
     /** Persist feedback store to encrypted storage. */
     private persistFeedbackStore;
+    /** Synthesize a complete user model from all data stores. */
+    getUserModel(): UserModel;
     /**
      * Apply trajectory-based multipliers on top of standard emotional overrides.
      * Caps all values at 1.0.

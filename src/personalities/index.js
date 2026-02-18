@@ -29,4 +29,6 @@ export { ConversationExporter } from './the-architect/conversation-export.js';
 export { PreferenceHistory } from './the-architect/preference-history.js';
 export { DecisionLog } from './the-architect/decision-log.js';
 export { FeedbackStore } from './the-architect/feedback-store.js';
+// Phase 5: user model synthesizer
+export { UserModelSynthesizer } from './the-architect/user-model-synthesizer.js';
 //# sourceMappingURL=index.js.map
