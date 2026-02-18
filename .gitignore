@@ -38,3 +38,4 @@ auxiora.txt
 auxiora_origin.txt
 test-token.js
 .npmrc
+.worktrees/
