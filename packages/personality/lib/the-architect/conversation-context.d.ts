@@ -1,4 +1,16 @@
 import type { ContextDomain } from '../schema.js';
+export interface DetectionRecord {
+    message: string;
+    domain: ContextDomain;
+    confidence: number;
+    timestamp: number;
+}
+export interface ConversationState {
+    theme: ContextDomain | null;
+    dominantDomain: ContextDomain;
+    domainStreak: number;
+    history: DetectionRecord[];
+}
 export interface ConversationSummary {
     theme: ContextDomain | null;
     messageCount: number;
@@ -50,5 +62,9 @@ export declare class ConversationContext {
     getSummary(): ConversationSummary;
     /** Reset for a new conversation — clears all state. */
     reset(): void;
+    /** Serialize state for vault persistence. Caps history at 50 records. */
+    serialize(): ConversationState;
+    /** Restore a ConversationContext from previously serialized state. */
+    static restore(state: ConversationState): ConversationContext;
 }
 //# sourceMappingURL=conversation-context.d.ts.map

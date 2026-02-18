@@ -4,11 +4,18 @@ import type { ContextDomain } from '../schema.js';
 // Types
 // ────────────────────────────────────────────────────────────────────────────
 
-interface DetectionRecord {
+export interface DetectionRecord {
   message: string;
   domain: ContextDomain;
   confidence: number;
   timestamp: number;
+}
+
+export interface ConversationState {
+  theme: ContextDomain | null;
+  dominantDomain: ContextDomain;
+  domainStreak: number;
+  history: DetectionRecord[];
 }
 
 export interface ConversationSummary {
@@ -164,5 +171,27 @@ export class ConversationContext {
     this.dominantDomain = 'general';
     this.domainStreak = 0;
     this.conversationTheme = null;
+  }
+
+  // ── Persistence ──────────────────────────────────────────────────────
+
+  /** Serialize state for vault persistence. Caps history at 50 records. */
+  serialize(): ConversationState {
+    return {
+      theme: this.conversationTheme,
+      dominantDomain: this.dominantDomain,
+      domainStreak: this.domainStreak,
+      history: this.history.slice(-50),
+    };
+  }
+
+  /** Restore a ConversationContext from previously serialized state. */
+  static restore(state: ConversationState): ConversationContext {
+    const ctx = new ConversationContext();
+    ctx.conversationTheme = state.theme;
+    ctx.dominantDomain = state.dominantDomain;
+    ctx.domainStreak = state.domainStreak;
+    ctx.history = [...state.history];
+    return ctx;
   }
 }

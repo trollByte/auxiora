@@ -117,7 +117,7 @@ export type { DetectionCorrection, CorrectionPattern } from './correction-store.
 export { ContextRecommender } from './recommender.js';
 export type { ContextRecommendation } from './recommender.js';
 export { ConversationContext } from './conversation-context.js';
-export type { ConversationSummary } from './conversation-context.js';
+export type { ConversationSummary, ConversationState, DetectionRecord } from './conversation-context.js';
 export { EmotionalTracker, estimateIntensity } from './emotional-tracker.js';
 export type { EmotionalTrajectory, EffectiveEmotion } from './emotional-tracker.js';
 export { CustomWeights, WEIGHT_PRESETS } from './custom-weights.js';

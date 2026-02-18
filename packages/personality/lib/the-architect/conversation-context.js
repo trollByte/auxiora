@@ -121,5 +121,24 @@ export class ConversationContext {
         this.domainStreak = 0;
         this.conversationTheme = null;
     }
+    // ── Persistence ──────────────────────────────────────────────────────
+    /** Serialize state for vault persistence. Caps history at 50 records. */
+    serialize() {
+        return {
+            theme: this.conversationTheme,
+            dominantDomain: this.dominantDomain,
+            domainStreak: this.domainStreak,
+            history: this.history.slice(-50),
+        };
+    }
+    /** Restore a ConversationContext from previously serialized state. */
+    static restore(state) {
+        const ctx = new ConversationContext();
+        ctx.conversationTheme = state.theme;
+        ctx.dominantDomain = state.dominantDomain;
+        ctx.domainStreak = state.domainStreak;
+        ctx.history = [...state.history];
+        return ctx;
+    }
 }
 //# sourceMappingURL=conversation-context.js.map
