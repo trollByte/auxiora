@@ -278,6 +278,16 @@ export class Auxiora {
     if (this.providers) {
       this.initializeRouter();
       setProviderFactory(this.providers);
+
+      // Inject summarizer for auto-compaction
+      this.sessions.setSummarizer(async (prompt: string) => {
+        const provider = this.providers!.getPrimaryProvider();
+        const result = await provider.complete(
+          [{ role: 'user', content: prompt }],
+          { maxTokens: 1024 },
+        );
+        return result.content;
+      });
     }
 
     // Initialize orchestration engine (if enabled and providers available)

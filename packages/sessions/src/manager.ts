@@ -6,6 +6,8 @@ import { audit } from '@auxiora/audit';
 import { SessionDatabase } from './db.js';
 import { estimateTokens } from './token-estimator.js';
 import { degradeContext } from './context-degradation.js';
+import { summarizeMessages } from './compaction-summarizer.js';
+import type { SummarizeFn } from './compaction-summarizer.js';
 import type { Session, SessionConfig, Message, MessageRole, SessionMetadata, Chat, ListChatsOptions } from './types.js';
 
 function generateMessageId(): string {
@@ -27,7 +29,15 @@ export class SessionManager {
   /** Minimum effective budget before warning. */
   private static readonly MIN_BUDGET_WARNING = 4000;
 
+  /** Minimum fraction of messages that must be dropped to trigger compaction. */
+  private static readonly COMPACTION_THRESHOLD = 0.40;
+
+  /** Minimum cooldown between compaction attempts per session (ms). */
+  private static readonly COMPACTION_COOLDOWN_MS = 5 * 60 * 1000;
+
   private sessions: Map<string, Session> = new Map();
+  private summarizer: SummarizeFn | null = null;
+  private compactionCooldowns: Map<string, number> = new Map();
   private config: SessionConfig;
   private db: SessionDatabase;
   private sessionsDir: string;
@@ -254,7 +264,12 @@ export class SessionManager {
         selected.unshift(msg);
         tokenCount += msgTokens;
       }
-      return degradeContext(session.messages, selected, effectiveBudget);
+      const degraded = degradeContext(session.messages, selected, effectiveBudget);
+
+      // Auto-compaction: fire-and-forget when too many messages dropped
+      this.maybeAutoCompact(sessionId, session.messages, selected);
+
+      return degraded;
     }
 
     // Fall back to DB
@@ -364,6 +379,30 @@ export class SessionManager {
 
   getChatMessages(chatId: string): Message[] {
     return this.db.getMessages(chatId);
+  }
+
+  setSummarizer(fn: SummarizeFn): void {
+    this.summarizer = fn;
+  }
+
+  private maybeAutoCompact(sessionId: string, allMessages: Message[], selected: Message[]): void {
+    if (!this.summarizer || !this.config.compactionEnabled) return;
+    if (allMessages.length === 0) return;
+
+    const droppedFraction = 1 - selected.length / allMessages.length;
+    if (droppedFraction < SessionManager.COMPACTION_THRESHOLD) return;
+
+    // Debounce per session
+    const lastCompaction = this.compactionCooldowns.get(sessionId) ?? 0;
+    if (Date.now() - lastCompaction < SessionManager.COMPACTION_COOLDOWN_MS) return;
+    this.compactionCooldowns.set(sessionId, Date.now());
+
+    const droppedMessages = allMessages.slice(0, allMessages.length - selected.length);
+    const summarizer = this.summarizer;
+
+    summarizeMessages(droppedMessages, summarizer)
+      .then((summary) => this.compact(sessionId, summary))
+      .catch(() => {});
   }
 
   destroy(): void {
