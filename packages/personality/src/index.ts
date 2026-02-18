@@ -56,3 +56,5 @@ export type { ValidationResult } from './marketplace/schema.js';
 // Architect awareness bridge
 export { ArchitectAwarenessCollector } from './architect-awareness-collector.js';
 export type { ArchitectSnapshot } from './architect-awareness-collector.js';
+// SOUL.md domain bias parser
+export { parseSoulBiases } from './soul-bias-parser.js';
