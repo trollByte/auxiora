@@ -121,9 +121,24 @@ describe('sanitizeTranscript', () => {
         msg('user', '[Tool Results]\nread_file: file contents'),
       ];
       const result = sanitizeTranscript(messages);
-      expect(result).toHaveLength(2);
+      // Tool results and tool announce stripped, empty dropped;
+      // "Read file.ts" is a real user message and preserved
+      expect(result).toHaveLength(3);
       expect(result[0].content).toBe('Hello');
       expect(result[1].content).toBe('Hi!');
+      expect(result[2].content).toBe('Read file.ts');
+    });
+
+    it('should never strip the trailing user message (non-tool)', () => {
+      const messages = [
+        msg('user', 'Hello'),
+        msg('assistant', 'Hi there!'),
+        msg('user', 'How are you?'),
+      ];
+      const result = sanitizeTranscript(messages);
+      expect(result).toHaveLength(3);
+      expect(result[2].role).toBe('user');
+      expect(result[2].content).toBe('How are you?');
     });
   });
 });

@@ -26,13 +26,6 @@ function dropTrailingOrphans(messages: Message[]): Message[] {
       changed = true;
       continue;
     }
-
-    // Drop trailing user message left without an assistant reply
-    // (happens after stripping tool results and announcements above)
-    if (last.role === 'user' && result.length >= 2) {
-      result.pop();
-      changed = true;
-    }
   }
 
   return result;
