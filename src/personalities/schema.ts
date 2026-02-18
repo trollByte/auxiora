@@ -285,4 +285,10 @@ export interface PromptOutput {
 
   /** True when sustained high-intensity frustration triggers a proactive check-in. */
   escalationAlert?: boolean;
+
+  /** Decisions relevant to the current domain/conversation, surfaced for follow-up. */
+  relevantDecisions?: import('./the-architect/decision-log.js').Decision[];
+
+  /** Actionable feedback insights (trait adjustments, weak domains, trends). */
+  feedbackInsight?: import('./the-architect/feedback-store.js').FeedbackInsight;
 }

@@ -1,4 +1,5 @@
-import type { TraitMix } from '../schema.js';
+import type { TraitMix, ContextDomain } from '../schema.js';
+import type { PreferenceHistory } from './preference-history.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -148,6 +149,27 @@ export class CustomWeights {
     for (const [trait, offset] of Object.entries(this.overrides) as Array<[keyof TraitMix, number]>) {
       result[trait] = Math.min(1.0, Math.max(0.0, result[trait] + offset));
     }
+    return result;
+  }
+
+  /**
+   * Apply overrides using history-resolved offsets instead of raw last-write values.
+   * Falls back to standard apply() when no history entries exist for a trait.
+   */
+  applyWithHistory(baseMix: TraitMix, currentDomain: ContextDomain | undefined, history: PreferenceHistory): TraitMix {
+    const result = { ...baseMix };
+    const rawOverrides = this.overrides;
+
+    // Collect all traits that have either raw overrides or history entries
+    const traits = new Set<keyof TraitMix>(Object.keys(rawOverrides) as Array<keyof TraitMix>);
+
+    for (const trait of traits) {
+      const historyOffset = history.getEffectiveOffset(trait, currentDomain ?? undefined);
+      // Use history-resolved offset if history has entries for this trait, otherwise fall back to raw
+      const offset = historyOffset !== 0 ? historyOffset : (rawOverrides[trait] ?? 0);
+      result[trait] = Math.min(1.0, Math.max(0.0, result[trait] + offset));
+    }
+
     return result;
   }
 

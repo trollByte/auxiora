@@ -24,7 +24,7 @@ describe('ArchitectPersistence.load — defaults', () => {
   it('returns defaults when no data exists', async () => {
     const prefs = await persistence.load();
 
-    expect(prefs.version).toBe(1);
+    expect(prefs.version).toBe(2);
     expect(prefs.showContextIndicator).toBe(true);
     expect(prefs.showSourcesButton).toBe(true);
     expect(prefs.autoDetectContext).toBe(true);
@@ -185,7 +185,7 @@ describe('ArchitectPersistence.exportAll', () => {
     const json = await persistence.exportAll();
     const parsed = JSON.parse(json) as ArchitectPreferences;
 
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.totalInteractions).toBe(1);
     expect(parsed.contextUsageHistory['security_review']).toBe(1);
     expect(parsed.showContextIndicator).toBe(true);
@@ -206,7 +206,7 @@ describe('ArchitectPersistence.exportAll', () => {
 // ────────────────────────────────────────────────────────────────────────────
 
 describe('ArchitectPersistence — migration', () => {
-  it('migrates version 0 data to version 1 with missing fields filled', async () => {
+  it('migrates version 0 data to version 2 with missing fields filled', async () => {
     // Simulate a version 0 stored preference with minimal fields
     const v0Data = {
       corrections: new CorrectionStore().serialize(),
@@ -216,7 +216,7 @@ describe('ArchitectPersistence — migration', () => {
 
     const prefs = await persistence.load();
 
-    expect(prefs.version).toBe(1);
+    expect(prefs.version).toBe(2);
     expect(prefs.showContextIndicator).toBe(true);
     expect(prefs.showSourcesButton).toBe(true);
     expect(prefs.autoDetectContext).toBe(true);
@@ -225,7 +225,7 @@ describe('ArchitectPersistence — migration', () => {
     expect(Object.keys(prefs.contextUsageHistory)).toHaveLength(17);
   });
 
-  it('migrates data with undefined version to version 1', async () => {
+  it('migrates data with undefined version to version 2', async () => {
     const noVersionData = {
       corrections: new CorrectionStore().serialize(),
       showContextIndicator: false, // user had changed this before migration
@@ -234,7 +234,7 @@ describe('ArchitectPersistence — migration', () => {
 
     const prefs = await persistence.load();
 
-    expect(prefs.version).toBe(1);
+    expect(prefs.version).toBe(2);
     // Existing user preference preserved
     expect(prefs.showContextIndicator).toBe(false);
     // Missing fields filled with defaults
@@ -247,7 +247,7 @@ describe('ArchitectPersistence — migration', () => {
     await persistence.save(prefs);
 
     const loaded = await persistence.load();
-    expect(loaded.version).toBe(1);
+    expect(loaded.version).toBe(2);
     expect(loaded.totalInteractions).toBe(99);
   });
 
@@ -261,7 +261,7 @@ describe('ArchitectPersistence — migration', () => {
     // Second load should get the migrated data directly (no re-migration)
     const raw = await storage.get('architect_preferences');
     const stored = JSON.parse(raw!) as ArchitectPreferences;
-    expect(stored.version).toBe(1);
+    expect(stored.version).toBe(2);
     expect(stored.showContextIndicator).toBe(true);
   });
 });

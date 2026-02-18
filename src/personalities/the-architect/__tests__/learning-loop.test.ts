@@ -409,7 +409,7 @@ describe('Phase 3 — data export', () => {
     const json = await architect.exportData();
     const parsed = JSON.parse(json) as ArchitectPreferences;
 
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.corrections).toBeTruthy();
     expect(parsed.showContextIndicator).toBe(true);
     expect(parsed.contextUsageHistory).toBeDefined();
@@ -420,7 +420,7 @@ describe('Phase 3 — data export', () => {
     const json = await noStorage.exportData();
     const parsed = JSON.parse(json) as ArchitectPreferences;
 
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.totalInteractions).toBe(0);
   });
 });

@@ -4,6 +4,8 @@ import type { ArchitectPreferences } from './persistence.js';
 import type { EncryptedStorage } from './persistence-adapter.js';
 import type { WeightPreset } from './custom-weights.js';
 import type { ChatMessage, ExportedConversation } from './conversation-export.js';
+import type { Decision, DecisionQuery } from './decision-log.js';
+import type { FeedbackRating, FeedbackInsight } from './feedback-store.js';
 export type { TraitMix, TraitValue, TaskContext, TraitSource, ContextDomain, EmotionalRegister, ContextSignal, PromptOutput, } from '../schema.js';
 export { ARCHITECT_BASE_PROMPT } from './system-prompt.js';
 export { CONTEXT_PROFILES } from './context-profiles.js';
@@ -29,6 +31,12 @@ export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
 export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 export type { VaultLike } from './persistence-adapter.js';
+export { PreferenceHistory } from './preference-history.js';
+export type { PreferenceEntry, PreferenceConflict } from './preference-history.js';
+export { DecisionLog } from './decision-log.js';
+export type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
+export { FeedbackStore } from './feedback-store.js';
+export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './feedback-store.js';
 type Message = {
     role: string;
     content: string;
@@ -51,6 +59,9 @@ export declare class TheArchitect {
     private conversationContext;
     private emotionalTracker;
     private customWeights;
+    private preferenceHistory;
+    private decisionLog;
+    private feedbackStore;
     private persistence?;
     private preferences?;
     private initialized;
@@ -109,18 +120,45 @@ export declare class TheArchitect {
     getConversationSummary(): import("./conversation-context.js").ConversationSummary;
     /** Get the current emotional trajectory. */
     getEmotionalState(): import("./emotional-tracker.js").EffectiveEmotion;
-    /** Set a custom trait weight offset. Persists if storage is available. */
-    setTraitOverride(trait: keyof TraitMix, offset: number): Promise<void>;
+    /** Set a custom trait weight offset. Records in preference history and persists. */
+    setTraitOverride(trait: keyof TraitMix, offset: number, source?: 'user' | 'preset' | 'feedback', reason?: string): Promise<void>;
     /** Remove a custom trait weight override. */
     removeTraitOverride(trait: keyof TraitMix): Promise<void>;
-    /** Load a preset weight configuration. */
+    /** Load a preset weight configuration. Records each override in preference history. */
     loadPreset(presetName: string): Promise<void>;
     /** Returns available weight presets. */
     listPresets(): Record<string, WeightPreset>;
     /** Returns current custom weight overrides. */
     getActiveOverrides(): Partial<Record<keyof TraitMix, number>>;
-    /** Persist custom weights to encrypted storage. */
+    /** Persist custom weights and preference history to encrypted storage. */
     private persistCustomWeights;
+    /** Get conflicts in preference history. */
+    getPreferenceConflicts(): import("./preference-history.js").PreferenceConflict[];
+    /** Get preference change history for a trait. */
+    getPreferenceHistory(trait: keyof TraitMix): import("./preference-history.js").PreferenceEntry[];
+    /** Record a decision for cross-session tracking. */
+    recordDecision(decision: Omit<Decision, 'id' | 'timestamp' | 'tags'>): Promise<Decision>;
+    /** Update a decision's status or outcome. */
+    updateDecision(id: string, updates: Partial<Pick<Decision, 'status' | 'outcome' | 'followUpDate'>>): Promise<void>;
+    /** Query decisions with filters. */
+    queryDecisions(q: DecisionQuery): Decision[];
+    /** Get decisions due for follow-up. */
+    getDueFollowUps(): Decision[];
+    /** Persist decision log to encrypted storage. */
+    private persistDecisionLog;
+    /** Record feedback on a response. */
+    recordFeedback(feedback: {
+        domain: ContextDomain;
+        rating: FeedbackRating;
+        traitSnapshot?: Partial<Record<keyof TraitMix, number>>;
+        note?: string;
+    }): Promise<void>;
+    /** Get actionable feedback insights. */
+    getFeedbackInsights(): FeedbackInsight;
+    /** Get satisfaction trend over recent feedback. */
+    getFeedbackTrend(windowSize?: number): 'improving' | 'declining' | 'stable';
+    /** Persist feedback store to encrypted storage. */
+    private persistFeedbackStore;
     /**
      * Apply trajectory-based multipliers on top of standard emotional overrides.
      * Caps all values at 1.0.
@@ -141,7 +179,7 @@ export declare class TheArchitect {
     getPreferences(): Promise<ArchitectPreferences>;
     /** Update a single preference and persist. */
     updatePreference<K extends keyof ArchitectPreferences>(key: K, value: ArchitectPreferences[K]): Promise<void>;
-    /** Clear all persisted data: corrections, preferences, usage history. */
+    /** Clear all persisted data: corrections, preferences, usage history, and self-awareness stores. */
     clearAllData(): Promise<void>;
     /**
      * Export a conversation with full personality engine metadata.

@@ -25,4 +25,8 @@ export { EmotionalTracker, estimateIntensity } from './the-architect/emotional-t
 // Phase 4: custom weights, conversation export
 export { CustomWeights, WEIGHT_PRESETS } from './the-architect/custom-weights.js';
 export { ConversationExporter } from './the-architect/conversation-export.js';
+// Phase 5: self-awareness modules
+export { PreferenceHistory } from './the-architect/preference-history.js';
+export { DecisionLog } from './the-architect/decision-log.js';
+export { FeedbackStore } from './the-architect/feedback-store.js';
 //# sourceMappingURL=index.js.map

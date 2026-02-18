@@ -13,6 +13,15 @@ export interface ArchitectPreferences {
   /** Serialized CustomWeights (user trait adjustments). */
   customWeights?: string;
 
+  /** Serialized PreferenceHistory (timestamped preference changes). */
+  preferenceHistory?: string;
+
+  /** Serialized DecisionLog (cross-session decision tracking). */
+  decisionLog?: string;
+
+  /** Serialized FeedbackStore (response feedback collection). */
+  feedbackStore?: string;
+
   /** Whether to show the context indicator pill in the chat UI. */
   showContextIndicator: boolean;
 
@@ -45,7 +54,7 @@ export interface ArchitectPreferences {
 // Constants
 // ────────────────────────────────────────────────────────────────────────────
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 const ALL_DOMAINS: ContextDomain[] = [
   'security_review', 'code_engineering', 'architecture_design', 'debugging',
@@ -171,9 +180,19 @@ export class ArchitectPersistence {
         prefs.contextUsageHistory[domain] ??= 0;
       }
 
-      prefs.version = CURRENT_VERSION;
-      await this.save(prefs);
+      prefs.version = 1;
     }
+
+    // Version 1 → 2: add self-awareness modules (preference history, decision log, feedback store)
+    if (prefs.version === 1) {
+      prefs.preferenceHistory ??= undefined;
+      prefs.decisionLog ??= undefined;
+      prefs.feedbackStore ??= undefined;
+
+      prefs.version = CURRENT_VERSION;
+    }
+
+    await this.save(prefs);
 
     return prefs;
   }

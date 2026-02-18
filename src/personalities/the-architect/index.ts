@@ -91,6 +91,11 @@ import { CustomWeights, WEIGHT_PRESETS } from './custom-weights.js';
 import type { WeightPreset } from './custom-weights.js';
 import { ConversationExporter } from './conversation-export.js';
 import type { ChatMessage, ExportedConversation } from './conversation-export.js';
+import { PreferenceHistory } from './preference-history.js';
+import { DecisionLog } from './decision-log.js';
+import type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
+import { FeedbackStore } from './feedback-store.js';
+import type { FeedbackRating, FeedbackInsight } from './feedback-store.js';
 
 // Re-export all types for consumer convenience
 export type {
@@ -129,6 +134,14 @@ export type { ArchitectPreferences } from './persistence.js';
 export type { EncryptedStorage } from './persistence-adapter.js';
 export { InMemoryEncryptedStorage, VaultStorageAdapter } from './persistence-adapter.js';
 export type { VaultLike } from './persistence-adapter.js';
+
+// Phase 5: self-awareness modules
+export { PreferenceHistory } from './preference-history.js';
+export type { PreferenceEntry, PreferenceConflict } from './preference-history.js';
+export { DecisionLog } from './decision-log.js';
+export type { Decision, DecisionQuery, DecisionStatus } from './decision-log.js';
+export { FeedbackStore } from './feedback-store.js';
+export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './feedback-store.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Message type
@@ -182,6 +195,9 @@ export class TheArchitect {
   private conversationContext: ConversationContext;
   private emotionalTracker: EmotionalTracker;
   private customWeights: CustomWeights;
+  private preferenceHistory: PreferenceHistory;
+  private decisionLog: DecisionLog;
+  private feedbackStore: FeedbackStore;
   private persistence?: ArchitectPersistence;
   private preferences?: ArchitectPreferences;
   private initialized = false;
@@ -192,6 +208,9 @@ export class TheArchitect {
     this.conversationContext = new ConversationContext();
     this.emotionalTracker = new EmotionalTracker();
     this.customWeights = new CustomWeights();
+    this.preferenceHistory = new PreferenceHistory();
+    this.decisionLog = new DecisionLog();
+    this.feedbackStore = new FeedbackStore();
     if (storage) {
       this.persistence = new ArchitectPersistence(storage);
     }
@@ -212,6 +231,15 @@ export class TheArchitect {
     }
     if (prefs.customWeights) {
       this.customWeights = CustomWeights.deserialize(prefs.customWeights);
+    }
+    if (prefs.preferenceHistory) {
+      this.preferenceHistory = PreferenceHistory.deserialize(prefs.preferenceHistory);
+    }
+    if (prefs.decisionLog) {
+      this.decisionLog = DecisionLog.deserialize(prefs.decisionLog);
+    }
+    if (prefs.feedbackStore) {
+      this.feedbackStore = FeedbackStore.deserialize(prefs.feedbackStore);
     }
     this.initialized = true;
   }
@@ -262,8 +290,11 @@ export class TheArchitect {
     const effective = this.emotionalTracker.getEffectiveEmotion();
     adjustedMix = this.applyTrajectoryMultipliers(adjustedMix, effective.trajectory);
 
-    // Apply user's custom trait weight adjustments (additive offsets)
-    adjustedMix = this.customWeights.apply(adjustedMix);
+    // Apply user's custom trait weight adjustments (history-aware when available)
+    if (this.preferenceHistory.getTraitHistory('warmth').length > 0 ||
+        Object.keys(this.customWeights.getOverrides()).length > 0) {
+      adjustedMix = this.customWeights.applyWithHistory(adjustedMix, context.domain, this.preferenceHistory);
+    }
 
     const modifier = assemblePromptModifier(adjustedMix, context);
     const sources = getActiveSources(adjustedMix);
@@ -285,6 +316,16 @@ export class TheArchitect {
       ) ?? undefined;
     }
 
+    // Gather relevant decisions and feedback insights
+    const dueFollowUps = this.decisionLog.getDueFollowUps();
+    const recentDomainDecisions = this.decisionLog.getRecentForDomain(context.domain, 5);
+    const relevantDecisions = [...dueFollowUps, ...recentDomainDecisions.filter(
+      d => !dueFollowUps.some(f => f.id === d.id),
+    )];
+
+    const feedbackInsight = this.feedbackStore.getInsights();
+    const hasFeedbackInsight = feedbackInsight.totalFeedback > 0;
+
     return {
       basePrompt: ARCHITECT_BASE_PROMPT,
       contextModifier: modifier,
@@ -294,6 +335,8 @@ export class TheArchitect {
       emotionalTrajectory: effective.trajectory,
       escalationAlert: effective.escalationAlert || undefined,
       recommendation,
+      relevantDecisions: relevantDecisions.length > 0 ? relevantDecisions : undefined,
+      feedbackInsight: hasFeedbackInsight ? feedbackInsight : undefined,
     };
   }
 
@@ -364,9 +407,16 @@ export class TheArchitect {
 
   // ── Custom weights ───────────────────────────────────────────────────
 
-  /** Set a custom trait weight offset. Persists if storage is available. */
-  async setTraitOverride(trait: keyof TraitMix, offset: number): Promise<void> {
+  /** Set a custom trait weight offset. Records in preference history and persists. */
+  async setTraitOverride(trait: keyof TraitMix, offset: number, source: 'user' | 'preset' | 'feedback' = 'user', reason?: string): Promise<void> {
     this.customWeights.setOverride(trait, offset);
+    this.preferenceHistory.record({
+      trait,
+      offset,
+      context: this.contextOverride,
+      source,
+      reason,
+    });
     await this.persistCustomWeights();
   }
 
@@ -376,9 +426,19 @@ export class TheArchitect {
     await this.persistCustomWeights();
   }
 
-  /** Load a preset weight configuration. */
+  /** Load a preset weight configuration. Records each override in preference history. */
   async loadPreset(presetName: string): Promise<void> {
     this.customWeights.loadPreset(presetName);
+    const overrides = this.customWeights.getOverrides();
+    for (const [trait, offset] of Object.entries(overrides) as Array<[keyof TraitMix, number]>) {
+      this.preferenceHistory.record({
+        trait,
+        offset,
+        context: this.contextOverride,
+        source: 'preset',
+        reason: presetName,
+      });
+    }
     await this.persistCustomWeights();
   }
 
@@ -392,11 +452,90 @@ export class TheArchitect {
     return this.customWeights.getOverrides();
   }
 
-  /** Persist custom weights to encrypted storage. */
+  /** Persist custom weights and preference history to encrypted storage. */
   private async persistCustomWeights(): Promise<void> {
     if (!this.persistence) return;
     const prefs = await this.persistence.load();
     prefs.customWeights = this.customWeights.serialize();
+    prefs.preferenceHistory = this.preferenceHistory.serialize();
+    await this.persistence.save(prefs);
+    this.preferences = prefs;
+  }
+
+  // ── Preference history ─────────────────────────────────────────────
+
+  /** Get conflicts in preference history. */
+  getPreferenceConflicts() {
+    return this.preferenceHistory.detectConflicts();
+  }
+
+  /** Get preference change history for a trait. */
+  getPreferenceHistory(trait: keyof TraitMix) {
+    return this.preferenceHistory.getTraitHistory(trait);
+  }
+
+  // ── Decision log ──────────────────────────────────────────────────
+
+  /** Record a decision for cross-session tracking. */
+  async recordDecision(decision: Omit<Decision, 'id' | 'timestamp' | 'tags'>): Promise<Decision> {
+    const result = this.decisionLog.addDecision(decision);
+    await this.persistDecisionLog();
+    return result;
+  }
+
+  /** Update a decision's status or outcome. */
+  async updateDecision(id: string, updates: Partial<Pick<Decision, 'status' | 'outcome' | 'followUpDate'>>): Promise<void> {
+    this.decisionLog.updateDecision(id, updates);
+    await this.persistDecisionLog();
+  }
+
+  /** Query decisions with filters. */
+  queryDecisions(q: DecisionQuery): Decision[] {
+    return this.decisionLog.query(q);
+  }
+
+  /** Get decisions due for follow-up. */
+  getDueFollowUps(): Decision[] {
+    return this.decisionLog.getDueFollowUps();
+  }
+
+  /** Persist decision log to encrypted storage. */
+  private async persistDecisionLog(): Promise<void> {
+    if (!this.persistence) return;
+    const prefs = await this.persistence.load();
+    prefs.decisionLog = this.decisionLog.serialize();
+    await this.persistence.save(prefs);
+    this.preferences = prefs;
+  }
+
+  // ── Feedback ──────────────────────────────────────────────────────
+
+  /** Record feedback on a response. */
+  async recordFeedback(feedback: { domain: ContextDomain; rating: FeedbackRating; traitSnapshot?: Partial<Record<keyof TraitMix, number>>; note?: string }): Promise<void> {
+    this.feedbackStore.addFeedback({
+      domain: feedback.domain,
+      rating: feedback.rating,
+      traitSnapshot: feedback.traitSnapshot ?? {},
+      note: feedback.note,
+    });
+    await this.persistFeedbackStore();
+  }
+
+  /** Get actionable feedback insights. */
+  getFeedbackInsights(): FeedbackInsight {
+    return this.feedbackStore.getInsights();
+  }
+
+  /** Get satisfaction trend over recent feedback. */
+  getFeedbackTrend(windowSize?: number): 'improving' | 'declining' | 'stable' {
+    return this.feedbackStore.getRecentTrend(windowSize);
+  }
+
+  /** Persist feedback store to encrypted storage. */
+  private async persistFeedbackStore(): Promise<void> {
+    if (!this.persistence) return;
+    const prefs = await this.persistence.load();
+    prefs.feedbackStore = this.feedbackStore.serialize();
     await this.persistence.save(prefs);
     this.preferences = prefs;
   }
@@ -502,7 +641,7 @@ export class TheArchitect {
       totalInteractions: 0,
       firstUsed: 0,
       lastUsed: 0,
-      version: 1,
+      version: 2,
     };
   }
 
@@ -523,7 +662,7 @@ export class TheArchitect {
     }
   }
 
-  /** Clear all persisted data: corrections, preferences, usage history. */
+  /** Clear all persisted data: corrections, preferences, usage history, and self-awareness stores. */
   async clearAllData(): Promise<void> {
     this.correctionStore = new CorrectionStore();
     this.contextOverride = null;
@@ -531,6 +670,9 @@ export class TheArchitect {
     this.conversationContext.reset();
     this.emotionalTracker.reset();
     this.customWeights.clear();
+    this.preferenceHistory.clear();
+    this.decisionLog.clear();
+    this.feedbackStore.clear();
     if (this.persistence) {
       await this.persistence.clearAll();
     }

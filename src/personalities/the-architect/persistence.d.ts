@@ -6,6 +6,12 @@ export interface ArchitectPreferences {
     corrections: string;
     /** Serialized CustomWeights (user trait adjustments). */
     customWeights?: string;
+    /** Serialized PreferenceHistory (timestamped preference changes). */
+    preferenceHistory?: string;
+    /** Serialized DecisionLog (cross-session decision tracking). */
+    decisionLog?: string;
+    /** Serialized FeedbackStore (response feedback collection). */
+    feedbackStore?: string;
     /** Whether to show the context indicator pill in the chat UI. */
     showContextIndicator: boolean;
     /** Whether to show the sources/provenance button in the chat UI. */
