@@ -111,6 +111,22 @@ describe('useWindowState', () => {
     expect(result.current.windows.get('chat')?.x).toBe(50);
   });
 
+  it('openWindow uses custom dimensions when provided', () => {
+    const { result } = renderHook(() => useWindowState());
+    act(() => { result.current.openWindow('chat', 'Chat', 860, 600); });
+    const w = result.current.windows.get('chat')!;
+    expect(w.width).toBe(860);
+    expect(w.height).toBe(600);
+  });
+
+  it('openWindow clamps custom dimensions to minimum', () => {
+    const { result } = renderHook(() => useWindowState());
+    act(() => { result.current.openWindow('tiny', 'Tiny', 200, 100); });
+    const w = result.current.windows.get('tiny')!;
+    expect(w.width).toBeGreaterThanOrEqual(360);
+    expect(w.height).toBeGreaterThanOrEqual(240);
+  });
+
   it('activeWindowId returns the window with highest z-index', () => {
     const { result } = renderHook(() => useWindowState());
     act(() => { result.current.openWindow('chat', 'Chat'); });

@@ -27,23 +27,25 @@ interface AppEntry {
   label: string;
   icon: string;
   component: () => ReactElement;
+  defaultWidth?: number;
+  defaultHeight?: number;
 }
 
 const APPS: AppEntry[] = [
-  { id: 'chat', label: 'Chat', icon: '\u{1F4AC}', component: () => <Chat /> },
-  { id: 'overview', label: 'Mission Control', icon: '\u{1F3AF}', component: () => <Overview /> },
-  { id: 'architect', label: 'The Architect', icon: '\u{1F9E0}', component: () => <SettingsArchitect /> },
-  { id: 'behaviors', label: 'Behaviors', icon: '\u{1F9E9}', component: () => <Behaviors /> },
-  { id: 'webhooks', label: 'Webhooks', icon: '\u{1F517}', component: () => <Webhooks /> },
-  { id: 'personality', label: 'Personality', icon: '\u{1F3AD}', component: () => <PersonalityEditor /> },
-  { id: 'provider', label: 'Provider', icon: '\u{1F50C}', component: () => <SettingsProvider /> },
-  { id: 'channels', label: 'Channels', icon: '\u{1F4E1}', component: () => <SettingsChannels /> },
-  { id: 'connections', label: 'Connections', icon: '\u{1F310}', component: () => <SettingsConnections /> },
-  { id: 'ambient', label: 'Ambient', icon: '\u{1F30A}', component: () => <SettingsAmbient /> },
-  { id: 'appearance', label: 'Appearance', icon: '\u{1F3A8}', component: () => <SettingsAppearance /> },
-  { id: 'notifications', label: 'Notifications', icon: '\u{1F514}', component: () => <SettingsNotifications /> },
-  { id: 'security', label: 'Security', icon: '\u{1F6E1}\uFE0F', component: () => <SettingsSecurity /> },
-  { id: 'audit', label: 'Audit Log', icon: '\u{1F4CB}', component: () => <AuditLog /> },
+  { id: 'chat', label: 'Chat', icon: '\u{1F4AC}', component: () => <Chat />, defaultWidth: 860, defaultHeight: 600 },
+  { id: 'overview', label: 'Mission Control', icon: '\u{1F3AF}', component: () => <Overview />, defaultWidth: 820, defaultHeight: 600 },
+  { id: 'architect', label: 'The Architect', icon: '\u{1F9E0}', component: () => <SettingsArchitect />, defaultWidth: 780, defaultHeight: 600 },
+  { id: 'behaviors', label: 'Behaviors', icon: '\u{1F9E9}', component: () => <Behaviors />, defaultWidth: 780, defaultHeight: 560 },
+  { id: 'webhooks', label: 'Webhooks', icon: '\u{1F517}', component: () => <Webhooks />, defaultWidth: 780, defaultHeight: 560 },
+  { id: 'personality', label: 'Personality', icon: '\u{1F3AD}', component: () => <PersonalityEditor />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'provider', label: 'Provider', icon: '\u{1F50C}', component: () => <SettingsProvider />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'channels', label: 'Channels', icon: '\u{1F4E1}', component: () => <SettingsChannels />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'connections', label: 'Connections', icon: '\u{1F310}', component: () => <SettingsConnections />, defaultWidth: 780, defaultHeight: 560 },
+  { id: 'ambient', label: 'Ambient', icon: '\u{1F30A}', component: () => <SettingsAmbient />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'appearance', label: 'Appearance', icon: '\u{1F3A8}', component: () => <SettingsAppearance />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'notifications', label: 'Notifications', icon: '\u{1F514}', component: () => <SettingsNotifications />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'security', label: 'Security', icon: '\u{1F6E1}\uFE0F', component: () => <SettingsSecurity />, defaultWidth: 680, defaultHeight: 520 },
+  { id: 'audit', label: 'Audit Log', icon: '\u{1F4CB}', component: () => <AuditLog />, defaultWidth: 820, defaultHeight: 600 },
 ];
 
 const APP_MAP = new Map(APPS.map(a => [a.id, a]));
@@ -108,7 +110,7 @@ export function DesktopShell() {
 
   const handleDockOpen = useCallback((id: string) => {
     const app = APP_MAP.get(id);
-    if (app) openWindow(id, app.label);
+    if (app) openWindow(id, app.label, app.defaultWidth, app.defaultHeight);
   }, [openWindow]);
 
   if (checking) return null;

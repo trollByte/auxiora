@@ -54,7 +54,7 @@ export function useWindowState() {
     });
   }, []);
 
-  const openWindow = useCallback((id: string, title: string) => {
+  const openWindow = useCallback((id: string, title: string, preferredWidth?: number, preferredHeight?: number) => {
     update(prev => {
       if (prev.has(id)) {
         const next = new Map(prev);
@@ -69,8 +69,8 @@ export function useWindowState() {
         title,
         x: 80 + (cascadeCount % 8) * CASCADE_OFFSET,
         y: 60 + (cascadeCount % 8) * CASCADE_OFFSET,
-        width: DEFAULT_WIDTH,
-        height: DEFAULT_HEIGHT,
+        width: Math.max(MIN_WIDTH, preferredWidth ?? DEFAULT_WIDTH),
+        height: Math.max(MIN_HEIGHT, preferredHeight ?? DEFAULT_HEIGHT),
         zIndex: nextZIndex(next),
         minimized: false,
         maximized: false,

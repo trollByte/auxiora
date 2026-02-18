@@ -283,7 +283,8 @@
 .window-body > .page {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Chat manages its own scrolling — lock the outer page */
