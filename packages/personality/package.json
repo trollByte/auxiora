@@ -26,6 +26,7 @@
   "dependencies": {
     "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
+    "@auxiora/self-awareness": "workspace:*",
     "zod": "^3.23.0"
   }
 }

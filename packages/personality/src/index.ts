@@ -53,3 +53,6 @@ export {
   FORBIDDEN_FIELD_PATTERNS,
 } from './marketplace/schema.js';
 export type { ValidationResult } from './marketplace/schema.js';
+// Architect awareness bridge
+export { ArchitectAwarenessCollector } from './architect-awareness-collector.js';
+export type { ArchitectSnapshot } from './architect-awareness-collector.js';
