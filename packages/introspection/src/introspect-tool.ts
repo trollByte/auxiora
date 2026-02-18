@@ -189,32 +189,32 @@ export function createIntrospectTool(
     async execute(
       params: { query: string; timeRange?: string },
       _context?: unknown,
-    ): Promise<string> {
+    ): Promise<{ success: boolean; output?: string; error?: string; metadata?: Record<string, unknown>; duration?: number }> {
       const query = params.query.toLowerCase() as QueryType;
       const catalog = getCatalog();
       const health = getHealth();
 
       switch (query) {
         case 'capabilities':
-          return formatCapabilities(catalog);
+          return { success: true, output: formatCapabilities(catalog) };
         case 'health':
-          return formatHealth(health);
+          return { success: true, output: formatHealth(health) };
         case 'config':
-          return formatConfig(sources.getFeatures());
+          return { success: true, output: formatConfig(sources.getFeatures()) };
         case 'errors':
-          return formatErrors(sources, params.timeRange ?? '1h');
+          return { success: true, output: await formatErrors(sources, params.timeRange ?? '1h') };
         case 'tools':
-          return formatTools(catalog);
+          return { success: true, output: formatTools(catalog) };
         case 'channels':
-          return formatChannels(catalog);
+          return { success: true, output: formatChannels(catalog) };
         case 'providers':
-          return formatProviders(catalog);
+          return { success: true, output: formatProviders(catalog) };
         case 'behaviors':
-          return formatBehaviors(catalog);
+          return { success: true, output: formatBehaviors(catalog) };
         case 'plugins':
-          return formatPlugins(catalog);
+          return { success: true, output: formatPlugins(catalog) };
         default:
-          return `Unknown query type: ${params.query}. Valid queries: capabilities, health, config, errors, tools, channels, providers, behaviors, plugins`;
+          return { success: false, error: `Unknown query type: ${params.query}. Valid queries: capabilities, health, config, errors, tools, channels, providers, behaviors, plugins` };
       }
     },
   };

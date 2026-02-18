@@ -39,35 +39,47 @@ describe('createIntrospectTool', () => {
   it('returns capabilities', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'capabilities' });
-    expect(result).toContain('bash');
-    expect(result).toContain('discord');
-    expect(result).toContain('Anthropic');
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('bash');
+    expect(result.output).toContain('discord');
+    expect(result.output).toContain('Anthropic');
   });
 
   it('returns health', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'health' });
-    expect(result).toContain('healthy');
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('healthy');
   });
 
   it('returns errors with aggregation', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'errors', timeRange: '24h' });
-    expect(result).toContain('channel.error');
-    expect(result).toContain('2');
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('channel.error');
+    expect(result.output).toContain('2');
   });
 
   it('returns config/features', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'config' });
-    expect(result).toContain('behaviors');
-    expect(result).toContain('true');
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('behaviors');
+    expect(result.output).toContain('true');
   });
 
   it('returns specific subsystem', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'channels' });
-    expect(result).toContain('discord');
-    expect(result).toContain('connected');
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('discord');
+    expect(result.output).toContain('connected');
+  });
+
+  it('returns error for unknown query type', async () => {
+    const tool = makeTool();
+    const result = await tool.execute({ query: 'nonexistent' });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Unknown query type');
   });
 });
