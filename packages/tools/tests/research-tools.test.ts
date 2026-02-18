@@ -30,7 +30,7 @@ describe('ResearchTool', () => {
     setResearchEngine(null);
     const result = await ResearchTool.execute({ topic: 'AI safety' }, {} as any);
     expect(result.success).toBe(false);
-    expect(result.error).toContain('not configured');
+    expect(result.error).toContain('Brave Search API key');
   });
 
   it('should execute research and return results', async () => {

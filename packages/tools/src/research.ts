@@ -44,7 +44,7 @@ export const ResearchTool: Tool = {
   async execute(params: any): Promise<ToolResult> {
     try {
       if (!researchEngine) {
-        return { success: false, error: 'Research engine not configured.' };
+        return { success: false, error: 'Research requires a Brave Search API key. Set AUXIORA_RESEARCH_BRAVE_API_KEY in your environment or add braveApiKey to research config.' };
       }
 
       const focusAreas = params.focusAreas

@@ -462,14 +462,20 @@ toolRegistry.register(ContactSearchTool);
 export { WhoIsTool, ContactSearchTool } from './contacts.js';
 export { setContactGraph, setContextRecall } from './contacts.js';
 
-// Import and register research tools
-import { ResearchTool } from './research.js';
+// Import research tools (registered lazily when engine is set)
+import { ResearchTool, setResearchEngine as _setResearchEngine } from './research.js';
 
-toolRegistry.register(ResearchTool);
+export function setResearchEngine(engine: any): void {
+  _setResearchEngine(engine);
+  if (engine) {
+    toolRegistry.register(ResearchTool);
+  } else {
+    toolRegistry.unregister(ResearchTool.name);
+  }
+}
 
 // Export research tools
 export { ResearchTool } from './research.js';
-export { setResearchEngine } from './research.js';
 
 // Import and register compose tools
 import { ComposeTool, GrammarCheckTool, DetectLanguageTool } from './compose.js';
