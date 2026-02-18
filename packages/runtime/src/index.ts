@@ -104,6 +104,9 @@ import {
   DEFAULT_SESSION_MODE_STATE,
   SecurityFloor,
   EscalationStateMachine,
+  ArchitectBridge,
+  ArchitectAwarenessCollector,
+  parseSoulBiases,
   type SessionModeState,
   type ModeId,
   type UserPreferences,
@@ -222,6 +225,8 @@ export class Auxiora {
   private capabilityPromptFragment: string = '';
   private selfAwarenessAssembler?: SelfAwarenessAssembler;
   private architect?: TheArchitect;
+  private architectBridge: ArchitectBridge | null = null;
+  private architectAwarenessCollector: ArchitectAwarenessCollector | null = null;
 
   // Security floor
   private securityFloor?: SecurityFloor;
@@ -1767,6 +1772,25 @@ export class Auxiora {
       this.logger.warn('Architect personality not available (vault may be locked)');
     }
 
+    // Initialize Architect bridge for state persistence and awareness bridging
+    if (this.architect) {
+      this.architectAwarenessCollector = new ArchitectAwarenessCollector();
+      this.architectBridge = new ArchitectBridge(
+        this.architect,
+        this.architectAwarenessCollector,
+        this.vault,
+        {
+          onEscalation: (alert, context) => {
+            this.logger.warn('Escalation detected', {
+              alert,
+              domain: context.domain,
+              emotion: context.emotionalRegister,
+            });
+          },
+        },
+      );
+    }
+
     // Build standard prompt
     const parts: string[] = [];
 
@@ -1783,11 +1807,20 @@ export class Auxiora {
     }
 
     // Load SOUL.md
+    let soulContent: string | undefined;
     try {
-      const soul = await fs.readFile(getSoulPath(), 'utf-8');
-      parts.push(soul);
+      soulContent = await fs.readFile(getSoulPath(), 'utf-8');
+      parts.push(soulContent);
     } catch {
       // No SOUL.md
+    }
+
+    // Apply SOUL.md domain biases to Architect trait mixing
+    if (this.architect && soulContent) {
+      const biases = parseSoulBiases(soulContent);
+      for (const [trait, offset] of Object.entries(biases)) {
+        this.architect.setTraitOverride(trait as any, offset).catch(() => {});
+      }
     }
 
     // Load AGENTS.md
@@ -1851,6 +1884,9 @@ export class Auxiora {
         ...(collectorConfig.environmentSensor !== false ? [new EnvironmentSensor()] : []),
         ...(collectorConfig.metaCognitor !== false ? [new MetaCognitor(storage)] : []),
       ];
+      if (this.architectAwarenessCollector) {
+        collectors.push(this.architectAwarenessCollector);
+      }
       this.selfAwarenessAssembler = new SelfAwarenessAssembler(collectors, {
         tokenBudget: this.config.selfAwareness.tokenBudget ?? 500,
       });
@@ -1886,17 +1922,20 @@ export class Auxiora {
   }
 
   /** Append Architect context modifier when active, returning context metadata. */
-  private applyArchitectEnrichment(prompt: string, userMessage: string): {
+  private applyArchitectEnrichment(prompt: string, userMessage: string, chatId?: string): {
     prompt: string;
     architectMeta?: {
       detectedContext: import('@auxiora/personality/architect').TaskContext;
       activeTraits: import('@auxiora/personality/architect').TraitSource[];
       traitWeights: Record<string, number>;
       recommendation?: ContextRecommendation;
+      escalationAlert?: string;
     };
   } {
     if (!this.architect) return { prompt };
-    const output = this.architect.generatePrompt(userMessage);
+    const output = this.architectBridge && chatId
+      ? this.architectBridge.processMessage(userMessage, chatId)
+      : this.architect.generatePrompt(userMessage);
     const mix = this.architect.getTraitMix(output.detectedContext);
     const traitWeights: Record<string, number> = {};
     for (const [key, val] of Object.entries(mix)) {
@@ -1909,6 +1948,7 @@ export class Auxiora {
         activeTraits: output.activeTraits,
         traitWeights,
         recommendation: output.recommendation,
+        escalationAlert: output.escalationAlert,
       },
     };
   }
@@ -2100,7 +2140,7 @@ export class Auxiora {
 
       // Only apply Architect enrichment if this chat uses the Architect
       const architectResult = useArchitect
-        ? this.applyArchitectEnrichment(enrichedPrompt, content)
+        ? this.applyArchitectEnrichment(enrichedPrompt, content, chatId)
         : { prompt: enrichedPrompt };
       enrichedPrompt = architectResult.prompt;
 
