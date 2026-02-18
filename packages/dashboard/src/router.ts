@@ -222,6 +222,25 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       },
     });
 
+    // Sync name/pronouns into SOUL.md frontmatter so the personality files
+    // don't contradict the config (the AI reads both).
+    if (setup.getSoulContent && setup.saveSoulContent) {
+      try {
+        const soul = await setup.getSoulContent();
+        if (soul) {
+          let updated = soul.replace(/^(name:\s*).+$/m, `$1${name}`);
+          if (pronouns) {
+            updated = updated.replace(/^(pronouns:\s*).+$/m, `$1${pronouns}`);
+          }
+          if (updated !== soul) {
+            await setup.saveSoulContent(updated);
+          }
+        }
+      } catch {
+        // SOUL.md not available yet — will be created during personality step
+      }
+    }
+
     void audit('setup.identity', { name, pronouns, vibe });
     res.json({ success: true, name });
   });
