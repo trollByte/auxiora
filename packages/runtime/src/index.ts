@@ -357,7 +357,13 @@ export class Auxiora {
           vault: this.vault,
           healthMonitor: this.healthMonitor,
           feedbackStore: {
-            getInsights: () => this.architect!.getFeedbackInsights(),
+            getInsights: () => {
+              const raw = this.architect!.getFeedbackInsights();
+              return {
+                ...raw,
+                suggestedAdjustments: raw.suggestedAdjustments as Record<string, number>,
+              };
+            },
           },
           correctionStore: {
             getStats: () => this.architect!.getCorrectionStats(),
@@ -2072,7 +2078,7 @@ export class Auxiora {
 
     // Bridge handles side effects: persistence, awareness feeding, escalation logging
     if (this.architectBridge && chatId) {
-      this.architectBridge.afterPrompt(output.detectedContext, output.emotionalTrajectory, output.escalationAlert, chatId);
+      this.architectBridge.afterPrompt({ ...output.detectedContext }, output.emotionalTrajectory, output.escalationAlert, chatId);
     }
     const mix = this.architect.getTraitMix(output.detectedContext);
     const traitWeights: Record<string, number> = {};
