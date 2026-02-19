@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/research",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Deep multi-source research agent with citation tracking and knowledge graph",
   "type": "module",
   "main": "dist/index.js",
