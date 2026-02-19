@@ -138,6 +138,28 @@ export class Gateway {
       });
     });
 
+    // Update status endpoint
+    this.app.get('/api/v1/update/status', async (_req: Request, res: Response) => {
+      try {
+        const { InstallationDetector, VersionChecker } = await import('@auxiora/updater');
+        const detector = new InstallationDetector();
+        const info = detector.detect();
+        const checker = new VersionChecker('trollByte', 'auxiora');
+        const checkResult = await checker.check(info.currentVersion, 'stable');
+
+        res.json({
+          currentVersion: info.currentVersion,
+          installMethod: info.method,
+          canSelfUpdate: info.canSelfUpdate,
+          updateAvailable: checkResult.available,
+          latestVersion: checkResult.latestVersion,
+          channel: 'stable',
+        });
+      } catch {
+        res.status(500).json({ error: 'Failed to check update status' });
+      }
+    });
+
     // Pairing endpoints
     this.app.get('/api/v1/pairing/pending', (req: Request, res: Response) => {
       const pending = this.pairingManager.getPendingCodes();

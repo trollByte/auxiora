@@ -481,6 +481,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/updater':
+        specifier: workspace:*
+        version: link:../updater
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
@@ -982,6 +985,12 @@ importers:
         version: link:../webhooks
 
   packages/tts:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/updater:
     dependencies:
       '@auxiora/logger':
         specifier: workspace:*
