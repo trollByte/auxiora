@@ -17,6 +17,9 @@ export {
   DEFAULT_AMBIENT_SCHEDULER_CONFIG,
   type AmbientSchedulerConfig,
   type AmbientSchedulerDeps,
+  type BriefingMonitorLike,
+  type BriefingDecisionLogLike,
+  type BriefingFeedbackStoreLike,
 } from './scheduler.js';
 export {
   NotificationOrchestrator,

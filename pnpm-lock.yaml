@@ -347,6 +347,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/consciousness:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/contacts:
     dependencies:
       '@auxiora/audit':

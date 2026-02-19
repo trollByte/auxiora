@@ -252,6 +252,179 @@ describe('AmbientScheduler', () => {
       expect(deps.triggerManager.pollAll).not.toHaveBeenCalled();
     });
   });
+
+  describe('consciousness data wiring', () => {
+    it('should include active decisions as tasks in briefing', async () => {
+      const decisionDeps = createMockDeps({
+        decisionLog: {
+          query: vi.fn(() => [
+            { summary: 'Use PostgreSQL for persistence', domain: 'architecture', status: 'active' },
+            { summary: 'Add rate limiting', domain: 'security', status: 'active' },
+          ]),
+          getDueFollowUps: vi.fn(() => []),
+        },
+      });
+      const s = new AmbientScheduler(decisionDeps);
+      await s.generateAndDeliverBriefing('evening');
+      const delivered = (decisionDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).toContain('Use PostgreSQL for persistence');
+      expect(delivered).toContain('Add rate limiting');
+      expect(delivered).toContain('Active Tasks');
+    });
+
+    it('should include due follow-ups as tasks', async () => {
+      const decisionDeps = createMockDeps({
+        decisionLog: {
+          query: vi.fn(() => []),
+          getDueFollowUps: vi.fn(() => [
+            { summary: 'Review caching strategy', followUpDate: Date.now() - 86_400_000 },
+          ]),
+        },
+      });
+      const s = new AmbientScheduler(decisionDeps);
+      await s.generateAndDeliverBriefing('morning');
+      const delivered = (decisionDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).toContain('Follow up: Review caching strategy');
+    });
+
+    it('should include health anomalies as notifications', async () => {
+      const healthDeps = createMockDeps({
+        consciousnessMonitor: {
+          getPulse: vi.fn(() => ({
+            overall: 'degraded',
+            anomalies: [
+              { subsystem: 'memory', description: 'High memory usage', severity: 'medium' },
+            ],
+          })),
+        },
+      });
+      const s = new AmbientScheduler(healthDeps);
+      await s.generateAndDeliverBriefing('evening');
+      const delivered = (healthDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).toContain('System health is degraded');
+      expect(delivered).toContain('memory: High memory usage');
+    });
+
+    it('should not include health notification when system is healthy', async () => {
+      const healthDeps = createMockDeps({
+        consciousnessMonitor: {
+          getPulse: vi.fn(() => ({
+            overall: 'healthy',
+            anomalies: [],
+          })),
+        },
+      });
+      const s = new AmbientScheduler(healthDeps);
+      await s.generateAndDeliverBriefing('morning');
+      const delivered = (healthDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).not.toContain('System health');
+    });
+
+    it('should include satisfaction trend as observed pattern', async () => {
+      const feedbackDeps = createMockDeps({
+        feedbackStore: {
+          getInsights: vi.fn(() => ({
+            trend: 'improving',
+            weakDomains: ['sales_pitch'],
+            totalFeedback: 42,
+          })),
+        },
+      });
+      const s = new AmbientScheduler(feedbackDeps);
+      await s.generateAndDeliverBriefing('evening');
+      const delivered = (feedbackDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).toContain('User satisfaction is improving');
+      expect(delivered).toContain('Observed Patterns');
+    });
+
+    it('should not include satisfaction pattern when no feedback exists', async () => {
+      const feedbackDeps = createMockDeps({
+        feedbackStore: {
+          getInsights: vi.fn(() => ({
+            trend: 'stable',
+            weakDomains: [],
+            totalFeedback: 0,
+          })),
+        },
+      });
+      const s = new AmbientScheduler(feedbackDeps);
+      await s.generateAndDeliverBriefing('morning');
+      const delivered = (feedbackDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).not.toContain('satisfaction');
+    });
+
+    it('should handle decisionLog errors gracefully', async () => {
+      const errorDeps = createMockDeps({
+        decisionLog: {
+          query: vi.fn(() => { throw new Error('DB error'); }),
+          getDueFollowUps: vi.fn(() => []),
+        },
+      });
+      const s = new AmbientScheduler(errorDeps);
+      await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
+      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+    });
+
+    it('should handle consciousnessMonitor errors gracefully', async () => {
+      const errorDeps = createMockDeps({
+        consciousnessMonitor: {
+          getPulse: vi.fn(() => { throw new Error('Monitor error'); }),
+        },
+      });
+      const s = new AmbientScheduler(errorDeps);
+      await expect(s.generateAndDeliverBriefing('evening')).resolves.toBeUndefined();
+      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+    });
+
+    it('should handle feedbackStore errors gracefully', async () => {
+      const errorDeps = createMockDeps({
+        feedbackStore: {
+          getInsights: vi.fn(() => { throw new Error('Store error'); }),
+        },
+      });
+      const s = new AmbientScheduler(errorDeps);
+      await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
+      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+    });
+
+    it('should combine all data sources in a single briefing', async () => {
+      const allDeps = createMockDeps({
+        calendarIntelligence: {
+          analyzeDay: vi.fn(async () => ({
+            events: [{ title: 'Team standup', time: '10:00' }],
+          })),
+        },
+        decisionLog: {
+          query: vi.fn(() => [
+            { summary: 'Migrate to Redis', domain: 'infra', status: 'active' },
+          ]),
+          getDueFollowUps: vi.fn(() => []),
+        },
+        consciousnessMonitor: {
+          getPulse: vi.fn(() => ({
+            overall: 'degraded',
+            anomalies: [
+              { subsystem: 'providers', description: 'Slow response times', severity: 'medium' },
+            ],
+          })),
+        },
+        feedbackStore: {
+          getInsights: vi.fn(() => ({
+            trend: 'improving',
+            weakDomains: [],
+            totalFeedback: 15,
+          })),
+        },
+      });
+      const s = new AmbientScheduler(allDeps);
+      await s.generateAndDeliverBriefing('morning');
+      const delivered = (allDeps.deliveryChannel as any).mock.calls[0][0] as string;
+      expect(delivered).toContain('Team standup');
+      expect(delivered).toContain('Migrate to Redis');
+      expect(delivered).toContain('System health is degraded');
+      expect(delivered).toContain('User satisfaction is improving');
+    });
+  });
 });
 
 describe('formatBriefingAsText', () => {

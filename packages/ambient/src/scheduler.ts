@@ -36,6 +36,25 @@ export const DEFAULT_AMBIENT_SCHEDULER_CONFIG: AmbientSchedulerConfig = {
   categories: ['calendar', 'email', 'tasks'],
 };
 
+/** Adapter interface for a consciousness monitor (e.g. SelfMonitor). */
+export interface BriefingMonitorLike {
+  getPulse(): {
+    overall: string;
+    anomalies: Array<{ subsystem: string; description: string; severity: string }>;
+  };
+}
+
+/** Adapter interface for a decision log (e.g. DecisionLog from The Architect). */
+export interface BriefingDecisionLogLike {
+  query(filter: { status: string }): Array<{ summary: string; domain: string; status: string }>;
+  getDueFollowUps(): Array<{ summary: string; followUpDate: number }>;
+}
+
+/** Adapter interface for a feedback store (e.g. FeedbackStore from The Architect). */
+export interface BriefingFeedbackStoreLike {
+  getInsights(): { trend: string; weakDomains: string[]; totalFeedback: number };
+}
+
 /** Dependencies for the ambient scheduler. */
 export interface AmbientSchedulerDeps {
   scheduler: Scheduler;
@@ -48,6 +67,11 @@ export interface AmbientSchedulerDeps {
   deliveryChannel: (message: string) => Promise<void>;
   userId: string;
   config?: Partial<AmbientSchedulerConfig>;
+
+  // Consciousness / Architect data sources for enriched briefings
+  consciousnessMonitor?: BriefingMonitorLike;
+  decisionLog?: BriefingDecisionLogLike;
+  feedbackStore?: BriefingFeedbackStoreLike;
 }
 
 const JOB_IDS = {
@@ -72,6 +96,9 @@ export class AmbientScheduler {
   private readonly deliveryChannel: (message: string) => Promise<void>;
   private readonly userId: string;
   private readonly config: AmbientSchedulerConfig;
+  private readonly consciousnessMonitor: BriefingMonitorLike | undefined;
+  private readonly decisionLog: BriefingDecisionLogLike | undefined;
+  private readonly feedbackStore: BriefingFeedbackStoreLike | undefined;
   private running = false;
 
   constructor(deps: AmbientSchedulerDeps) {
@@ -85,6 +112,9 @@ export class AmbientScheduler {
     this.deliveryChannel = deps.deliveryChannel;
     this.userId = deps.userId;
     this.config = { ...DEFAULT_AMBIENT_SCHEDULER_CONFIG, ...deps.config };
+    this.consciousnessMonitor = deps.consciousnessMonitor;
+    this.decisionLog = deps.decisionLog;
+    this.feedbackStore = deps.feedbackStore;
   }
 
   /** Start all scheduled cron jobs. */
@@ -139,17 +169,101 @@ export class AmbientScheduler {
     const calendarEvents = await this.fetchCalendarEvents(time);
     const emailNotifications = await this.fetchEmailSummary();
 
+    const tasks = this.fetchDecisionTasks();
+    const { notifications: healthNotifications, patterns } = this.fetchConsciousnessData();
+
     const briefing = this.briefingGenerator.generateBriefing(
       this.userId,
       time,
       {
         calendarEvents,
-        notifications: emailNotifications,
+        notifications: [...emailNotifications, ...healthNotifications],
+        tasks,
+        patterns,
       },
     );
 
     const formatted = formatBriefingAsText(briefing);
     await this.deliveryChannel(formatted);
+  }
+
+  private fetchDecisionTasks(): Array<{ title: string; status: string }> {
+    if (!this.decisionLog) return [];
+    try {
+      const active = this.decisionLog.query({ status: 'active' });
+      const dueFollowUps = this.decisionLog.getDueFollowUps();
+      const tasks: Array<{ title: string; status: string }> = active.map(d => ({
+        title: d.summary,
+        status: 'active',
+      }));
+      for (const fu of dueFollowUps) {
+        tasks.push({ title: `Follow up: ${fu.summary}`, status: 'due' });
+      }
+      return tasks;
+    } catch {
+      return [];
+    }
+  }
+
+  private fetchConsciousnessData(): {
+    notifications: QuietNotification[];
+    patterns: Array<{ id: string; type: 'preference'; description: string; confidence: number; evidence: string[]; detectedAt: number; lastConfirmedAt: number; occurrences: number }>;
+  } {
+    const notifications: QuietNotification[] = [];
+    const patterns: Array<{ id: string; type: 'preference'; description: string; confidence: number; evidence: string[]; detectedAt: number; lastConfirmedAt: number; occurrences: number }> = [];
+
+    if (this.consciousnessMonitor) {
+      try {
+        const pulse = this.consciousnessMonitor.getPulse();
+        if (pulse.overall !== 'healthy') {
+          notifications.push({
+            id: 'health-status',
+            priority: pulse.overall === 'critical' ? 'alert' : 'nudge',
+            message: `System health is ${pulse.overall}`,
+            createdAt: Date.now(),
+            dismissed: false,
+            source: 'consciousness',
+          });
+        }
+        for (const anomaly of pulse.anomalies) {
+          notifications.push({
+            id: `anomaly-${anomaly.subsystem}`,
+            priority: anomaly.severity === 'high' ? 'alert' : 'nudge',
+            message: `${anomaly.subsystem}: ${anomaly.description}`,
+            createdAt: Date.now(),
+            dismissed: false,
+            source: 'consciousness',
+          });
+        }
+      } catch {
+        // Consciousness monitor errors are silently ignored
+      }
+    }
+
+    if (this.feedbackStore) {
+      try {
+        const insights = this.feedbackStore.getInsights();
+        if (insights.totalFeedback > 0) {
+          const now = Date.now();
+          patterns.push({
+            id: 'satisfaction-trend',
+            type: 'preference',
+            description: `User satisfaction is ${insights.trend} (${insights.totalFeedback} responses)`,
+            confidence: 0.8,
+            evidence: insights.weakDomains.length > 0
+              ? [`Weak areas: ${insights.weakDomains.join(', ')}`]
+              : [],
+            detectedAt: now,
+            lastConfirmedAt: now,
+            occurrences: insights.totalFeedback,
+          });
+        }
+      } catch {
+        // Feedback store errors are silently ignored
+      }
+    }
+
+    return { notifications, patterns };
   }
 
   private async pollAndNotify(): Promise<void> {
