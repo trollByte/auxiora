@@ -331,6 +331,24 @@ const SelfAwarenessConfigSchema = z.object({
   proactiveInsights: z.boolean().default(true),
 }).default({});
 
+const McpServerConfigSchema = z.object({
+  transport: z.enum(['stdio', 'sse', 'streamable-http']),
+  enabled: z.boolean().default(true),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  cwd: z.string().optional(),
+  url: z.string().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  timeoutMs: z.number().int().positive().default(30_000),
+  retryAttempts: z.number().int().min(0).default(3),
+  retryDelayMs: z.number().int().positive().default(1_000),
+});
+
+const McpConfigSchema = z.object({
+  servers: z.record(z.string(), McpServerConfigSchema).default({}),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -358,6 +376,7 @@ export const ConfigSchema = z.object({
   desktop: DesktopConfigSchema.default({}),
   // [P7] Cloud
   cloud: CloudConfigSchema.default({}),
+  mcp: McpConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
