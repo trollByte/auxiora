@@ -2,7 +2,7 @@ import { CorrectionStore } from './correction-store.js';
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────────────────────────────────────
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 const ALL_DOMAINS = [
     'security_review', 'code_engineering', 'architecture_design', 'debugging',
     'team_leadership', 'one_on_one', 'sales_pitch', 'negotiation',
@@ -107,9 +107,16 @@ export class ArchitectPersistence {
             for (const domain of ALL_DOMAINS) {
                 prefs.contextUsageHistory[domain] ??= 0;
             }
-            prefs.version = CURRENT_VERSION;
-            await this.save(prefs);
+            prefs.version = 1;
         }
+        // Version 1 → 2: add self-awareness modules (preference history, decision log, feedback store)
+        if (prefs.version === 1) {
+            prefs.preferenceHistory ??= undefined;
+            prefs.decisionLog ??= undefined;
+            prefs.feedbackStore ??= undefined;
+            prefs.version = CURRENT_VERSION;
+        }
+        await this.save(prefs);
         return prefs;
     }
 }

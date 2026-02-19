@@ -1,4 +1,5 @@
-import type { TraitMix } from '../schema.js';
+import type { TraitMix, ContextDomain } from '../schema.js';
+import type { PreferenceHistory } from './preference-history.js';
 export interface WeightPreset {
     name: string;
     description: string;
@@ -29,6 +30,11 @@ export declare class CustomWeights {
      * and clamps the result to [0.0, 1.0].
      */
     apply(baseMix: TraitMix): TraitMix;
+    /**
+     * Apply overrides using history-resolved offsets instead of raw last-write values.
+     * Falls back to standard apply() when no history entries exist for a trait.
+     */
+    applyWithHistory(baseMix: TraitMix, currentDomain: ContextDomain | undefined, history: PreferenceHistory): TraitMix;
     /** All available presets. */
     static get presets(): Record<string, WeightPreset>;
     /** Load a preset, replacing all current overrides. Throws if preset not found. */
