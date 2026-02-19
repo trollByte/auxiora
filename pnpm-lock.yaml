@@ -231,6 +231,9 @@ importers:
       '@auxiora/social':
         specifier: workspace:*
         version: link:../social
+      '@auxiora/updater':
+        specifier: workspace:*
+        version: link:../updater
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault

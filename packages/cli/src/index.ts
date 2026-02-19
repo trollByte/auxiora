@@ -27,6 +27,7 @@ import { createTeamCommand } from './commands/team.js';
 import { createWorkflowCommand } from './commands/workflow.js';
 // [P15] Ambient
 import { createAmbientCommand } from './commands/ambient.js';
+import { createUpdateCommand } from './commands/update.js';
 
 const program = new Command();
 
@@ -62,5 +63,7 @@ program.addCommand(createTeamCommand());
 program.addCommand(createWorkflowCommand());
 // [P15] Ambient
 program.addCommand(createAmbientCommand());
+// Self-update
+program.addCommand(createUpdateCommand());
 
 program.parse();

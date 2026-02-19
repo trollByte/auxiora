@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@auxiora/agent-protocol": "workspace:*",
+    "@auxiora/updater": "workspace:*",
     "@auxiora/ambient": "workspace:*",
     "@auxiora/audit": "workspace:*",
     "@auxiora/autonomy": "workspace:*",
