@@ -12,3 +12,6 @@ export {
   type McpServerCapabilities,
   type McpInitializeResult,
 } from './config-types.js';
+
+export type { McpTransport } from './transports/transport.js';
+export { StdioTransport, type StdioTransportOptions } from './transports/stdio-transport.js';
