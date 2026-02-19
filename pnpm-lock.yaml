@@ -564,6 +564,18 @@ importers:
         specifier: workspace:*
         version: link:../plugins
 
+  packages/mcp:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@auxiora/tools':
+        specifier: workspace:*
+        version: link:../tools
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+
   packages/media:
     dependencies:
       '@auxiora/logger':
@@ -814,6 +826,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@auxiora/media':
         specifier: workspace:*
         version: link:../media

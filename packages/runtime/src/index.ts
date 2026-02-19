@@ -88,6 +88,7 @@ import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compos
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
 import { Consciousness } from '@auxiora/consciousness';
+import { McpClientManager } from '@auxiora/mcp';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
@@ -232,6 +233,7 @@ export class Auxiora {
   private architectBridge: ArchitectBridge | null = null;
   private architectAwarenessCollector: ArchitectAwarenessCollector | null = null;
   private consciousness?: Consciousness;
+  private mcpClientManager?: McpClientManager;
   private selfModelCache?: { snapshot: SelfModelSnapshot; cachedAt: number };
   private userModelCache?: { model: UserModel; cachedAt: number };
   private static readonly MODEL_CACHE_TTL = 60_000;
@@ -274,6 +276,23 @@ export class Auxiora {
       this.logger.debug('Auto-approving tool', { toolName, params });
       return true;
     });
+
+    // Initialize MCP client connections
+    if (this.config.mcp && Object.keys(this.config.mcp.servers).length > 0) {
+      try {
+        this.mcpClientManager = new McpClientManager(toolRegistry, this.config.mcp);
+        await this.mcpClientManager.connectAll();
+        const status = this.mcpClientManager.getStatus();
+        this.logger.info('MCP client initialized', {
+          servers: status.size,
+          tools: [...status.values()].reduce((sum, s) => sum + s.toolCount, 0),
+        });
+      } catch (err) {
+        this.logger.warn('Failed to initialize MCP client', {
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
+      }
+    }
 
     // Initialize sessions
     this.sessions = new SessionManager({
@@ -1073,6 +1092,46 @@ export class Auxiora {
       this.gateway.mountRouter('/dashboard', spaRouter as any);
 
       this.logger.info('Dashboard enabled at /dashboard');
+    }
+
+    // MCP management API routes
+    if (this.mcpClientManager) {
+      const mcpRouter = express.Router();
+      const mcpMgr = this.mcpClientManager;
+
+      mcpRouter.get('/servers', (_req: any, res: any) => {
+        const status = mcpMgr.getStatus();
+        const result: Record<string, { state: string; toolCount: number }> = {};
+        for (const [name, info] of status) {
+          result[name] = info;
+        }
+        res.json({ servers: result });
+      });
+
+      mcpRouter.post('/servers/:name/connect', async (req: any, res: any) => {
+        try {
+          await mcpMgr.connect(req.params.name);
+          res.json({ ok: true });
+        } catch (err: any) {
+          res.status(500).json({ error: err.message || String(err) });
+        }
+      });
+
+      mcpRouter.post('/servers/:name/disconnect', async (req: any, res: any) => {
+        try {
+          await mcpMgr.disconnect(req.params.name);
+          res.json({ ok: true });
+        } catch (err: any) {
+          res.status(500).json({ error: err.message || String(err) });
+        }
+      });
+
+      mcpRouter.get('/servers/:name/tools', (req: any, res: any) => {
+        const tools = mcpMgr.getToolsForServer(req.params.name);
+        res.json({ tools });
+      });
+
+      this.gateway.mountRouter('/api/v1/mcp', mcpRouter);
     }
 
     // Initialize plugin system (if enabled)
@@ -3597,6 +3656,9 @@ export class Auxiora {
     if (this.memoryCleanupInterval) {
       clearInterval(this.memoryCleanupInterval);
       this.memoryCleanupInterval = undefined;
+    }
+    if (this.mcpClientManager) {
+      await this.mcpClientManager.disconnectAll();
     }
     this.consciousness?.shutdown();
     this.sessions.destroy();
