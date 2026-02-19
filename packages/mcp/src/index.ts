@@ -16,3 +16,10 @@ export {
 export type { McpTransport } from './transports/transport.js';
 export { StdioTransport, type StdioTransportOptions } from './transports/stdio-transport.js';
 export { SseTransport, type SseTransportOptions } from './transports/sse-transport.js';
+export { StreamableHttpTransport, type StreamableHttpTransportOptions } from './transports/streamable-http-transport.js';
+
+export { jsonSchemaToToolParameters, adaptMcpTool, type CallToolFn } from './tool-adapter.js';
+
+export { McpConnection } from './mcp-connection.js';
+
+export { McpClientManager } from './mcp-client-manager.js';
