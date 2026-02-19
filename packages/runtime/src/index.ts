@@ -18,7 +18,7 @@ import {
   getScreenshotsDir,
 } from '@auxiora/core';
 import { createArchitect, ARCHITECT_BASE_PROMPT, VaultStorageAdapter } from '@auxiora/personality/architect';
-import type { TheArchitect, ContextRecommendation } from '@auxiora/personality/architect';
+import type { TheArchitect, ContextRecommendation, UserModel } from '@auxiora/personality/architect';
 import {
   toolRegistry,
   toolExecutor,
@@ -87,6 +87,8 @@ import { ContactGraph, ContextRecall } from '@auxiora/contacts';
 import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compose';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
+import { Consciousness } from '@auxiora/consciousness';
+import type { SelfModelSnapshot } from '@auxiora/consciousness';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
@@ -229,6 +231,10 @@ export class Auxiora {
   private architect?: TheArchitect;
   private architectBridge: ArchitectBridge | null = null;
   private architectAwarenessCollector: ArchitectAwarenessCollector | null = null;
+  private consciousness?: Consciousness;
+  private selfModelCache?: { snapshot: SelfModelSnapshot; cachedAt: number };
+  private userModelCache?: { model: UserModel; cachedAt: number };
+  private static readonly MODEL_CACHE_TTL = 60_000;
 
   // Security floor
   private securityFloor?: SecurityFloor;
@@ -343,6 +349,63 @@ export class Auxiora {
 
     // Initialize modes system
     await this.initializeModes();
+
+    // Initialize consciousness orchestrator (self-model, journal, monitor, repair)
+    if (this.architect && this.healthMonitor) {
+      try {
+        this.consciousness = new Consciousness({
+          vault: this.vault,
+          healthMonitor: this.healthMonitor,
+          feedbackStore: {
+            getInsights: () => this.architect!.getFeedbackInsights(),
+          },
+          correctionStore: {
+            getStats: () => this.architect!.getCorrectionStats(),
+          },
+          preferenceHistory: {
+            detectConflicts: () => this.architect!.getPreferenceConflicts(),
+          },
+          getResourceMetrics: () => {
+            const mem = process.memoryUsage();
+            return {
+              memoryUsageMb: Math.round(mem.heapUsed / 1024 / 1024),
+              cpuPercent: 0, // CPU % requires sampling; omit for now
+              activeConnections: this.gateway?.getConnections().length ?? 0,
+              uptimeSeconds: Math.round(process.uptime()),
+            };
+          },
+          getCapabilityMetrics: () => {
+            const tools = toolRegistry.list();
+            return {
+              totalCapabilities: tools.length,
+              healthyCapabilities: tools.length,
+              degradedCapabilities: [],
+            };
+          },
+          actionExecutor: async (command: string) => {
+            this.logger.info('Consciousness repair action (log-only)', { command });
+            return `[log-only] ${command}`;
+          },
+          onNotify: (diagnosis: any, action: any) => {
+            this.logger.info('Consciousness repair notification', {
+              diagnosis: diagnosis?.description,
+              action: action.description,
+            });
+          },
+          onApprovalRequest: async () => false, // deny auto-repair initially
+          decisionLog: {
+            query: (q: any) => this.architect!.queryDecisions(q),
+            getDueFollowUps: () => this.architect!.getDueFollowUps(),
+          },
+          version: '1.4.0',
+          monitorIntervalMs: 60_000,
+        });
+        await this.consciousness.initialize();
+        this.logger.info('Consciousness orchestrator initialized');
+      } catch (err) {
+        this.logger.warn('Failed to initialize consciousness', { error: err instanceof Error ? err : new Error(String(err)) });
+      }
+    }
 
     // Initialize gateway
     this.gateway = new Gateway({
@@ -1963,8 +2026,38 @@ export class Auxiora {
     };
   }
 
+  private async getCachedSelfModel(): Promise<SelfModelSnapshot | null> {
+    if (!this.consciousness) return null;
+    const now = Date.now();
+    if (this.selfModelCache && (now - this.selfModelCache.cachedAt) < Auxiora.MODEL_CACHE_TTL) {
+      return this.selfModelCache.snapshot;
+    }
+    try {
+      const snapshot = await this.consciousness.model.synthesize();
+      this.selfModelCache = { snapshot, cachedAt: now };
+      return snapshot;
+    } catch {
+      return this.selfModelCache?.snapshot ?? null;
+    }
+  }
+
+  private getCachedUserModel(): UserModel | null {
+    if (!this.architect) return null;
+    const now = Date.now();
+    if (this.userModelCache && (now - this.userModelCache.cachedAt) < Auxiora.MODEL_CACHE_TTL) {
+      return this.userModelCache.model;
+    }
+    try {
+      const model = this.architect.getUserModel();
+      this.userModelCache = { model, cachedAt: now };
+      return model;
+    } catch {
+      return this.userModelCache?.model ?? null;
+    }
+  }
+
   /** Append Architect context modifier when active, returning context metadata. */
-  private applyArchitectEnrichment(prompt: string, userMessage: string, chatId?: string): {
+  private async applyArchitectEnrichment(prompt: string, userMessage: string, chatId?: string): Promise<{
     prompt: string;
     architectMeta?: {
       detectedContext: import('@auxiora/personality/architect').TaskContext;
@@ -1973,7 +2066,7 @@ export class Auxiora {
       recommendation?: ContextRecommendation;
       escalationAlert?: boolean;
     };
-  } {
+  }> {
     if (!this.architect) return { prompt };
     const output = this.architect.generatePrompt(userMessage);
 
@@ -1986,8 +2079,50 @@ export class Auxiora {
     for (const [key, val] of Object.entries(mix)) {
       traitWeights[key] = val as number;
     }
+    // Build consciousness section from Architect metadata + self/user models
+    let consciousnessSection = '';
+    const parts: string[] = [];
+
+    // Active decisions (top 5)
+    if (output.relevantDecisions && output.relevantDecisions.length > 0) {
+      const items = output.relevantDecisions.slice(0, 5)
+        .map(d => `- ${d.summary} [${d.status}]`).join('\n');
+      parts.push(`**Active Decisions:**\n${items}`);
+    }
+
+    // Self-improvement notes from feedback
+    if (output.feedbackInsight) {
+      const fi = output.feedbackInsight;
+      const notes: string[] = [];
+      if (fi.weakDomains.length > 0) notes.push(`Weak domains: ${fi.weakDomains.join(', ')}`);
+      if (fi.trend !== 'stable') notes.push(`Satisfaction trend: ${fi.trend}`);
+      const adjustments = Object.entries(fi.suggestedAdjustments);
+      if (adjustments.length > 0) {
+        notes.push(`Suggested adjustments: ${adjustments.map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join(', ')}`);
+      }
+      if (notes.length > 0) {
+        parts.push(`**Self-Improvement Notes:**\n${notes.map(n => `- ${n}`).join('\n')}`);
+      }
+    }
+
+    // Self-model narrative
+    const selfModel = await this.getCachedSelfModel();
+    if (selfModel?.selfNarrative) {
+      parts.push(`**Self-Model:**\n${selfModel.selfNarrative}`);
+    }
+
+    // User model narrative
+    const userModel = this.getCachedUserModel();
+    if (userModel?.narrative) {
+      parts.push(`**User Model:**\n${userModel.narrative}`);
+    }
+
+    if (parts.length > 0) {
+      consciousnessSection = '\n\n[Consciousness]\n' + parts.join('\n\n');
+    }
+
     return {
-      prompt: prompt + '\n\n' + output.contextModifier,
+      prompt: prompt + '\n\n' + output.contextModifier + consciousnessSection,
       architectMeta: {
         detectedContext: output.detectedContext,
         activeTraits: output.activeTraits,
@@ -2185,7 +2320,7 @@ export class Auxiora {
 
       // Only apply Architect enrichment if this chat uses the Architect
       const architectResult = useArchitect
-        ? this.applyArchitectEnrichment(enrichedPrompt, content, chatId)
+        ? await this.applyArchitectEnrichment(enrichedPrompt, content, chatId)
         : { prompt: enrichedPrompt };
       enrichedPrompt = architectResult.prompt;
 
@@ -2309,6 +2444,26 @@ export class Auxiora {
           responseTime: Date.now() - (session.metadata.lastActiveAt ?? Date.now()),
           tokensUsed: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
         }).catch(() => {});
+      }
+
+      // Record conversation in consciousness journal
+      if (this.consciousness) {
+        const journalBase = {
+          sessionId: session.id,
+          type: 'message' as const,
+          context: {
+            domains: architectResult.architectMeta
+              ? [architectResult.architectMeta.detectedContext.domain]
+              : ['general' as const],
+          },
+          selfState: {
+            health: (this.healthMonitor?.getHealthState().overall === 'unhealthy' ? 'degraded' : this.healthMonitor?.getHealthState().overall ?? 'healthy') as 'healthy' | 'degraded' | 'critical',
+            activeProviders: [this.config.provider.primary],
+            uptime: Math.round(process.uptime()),
+          },
+        };
+        this.consciousness.journal.record({ ...journalBase, message: { role: 'user', content } }).catch(() => {});
+        this.consciousness.journal.record({ ...journalBase, message: { role: 'assistant', content: fullResponse } }).catch(() => {});
       }
 
       audit('message.sent', {
@@ -3048,7 +3203,7 @@ export class Auxiora {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
 
-      const channelArchitectResult = this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
+      const channelArchitectResult = await this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
       enrichedPrompt = channelArchitectResult.prompt;
 
       // Use executeWithTools for channels — collect final text for channel reply
@@ -3437,6 +3592,7 @@ export class Auxiora {
       clearInterval(this.memoryCleanupInterval);
       this.memoryCleanupInterval = undefined;
     }
+    this.consciousness?.shutdown();
     this.sessions.destroy();
     this.vault.lock();
     this.running = false;

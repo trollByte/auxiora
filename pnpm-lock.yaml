@@ -784,6 +784,9 @@ importers:
       '@auxiora/connectors':
         specifier: workspace:*
         version: link:../connectors
+      '@auxiora/consciousness':
+        specifier: workspace:*
+        version: link:../consciousness
       '@auxiora/contacts':
         specifier: workspace:*
         version: link:../contacts

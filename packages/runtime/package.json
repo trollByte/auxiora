@@ -52,6 +52,7 @@
     "@auxiora/workflows": "workspace:*",
     "@auxiora/agent-protocol": "workspace:*",
     "@auxiora/ambient": "workspace:*",
+    "@auxiora/consciousness": "workspace:*",
     "@auxiora/connectors": "workspace:*",
     "@auxiora/introspection": "workspace:*",
     "@auxiora/connector-github": "workspace:*",
