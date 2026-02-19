@@ -15,3 +15,4 @@ export {
 
 export type { McpTransport } from './transports/transport.js';
 export { StdioTransport, type StdioTransportOptions } from './transports/stdio-transport.js';
+export { SseTransport, type SseTransportOptions } from './transports/sse-transport.js';
