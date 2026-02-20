@@ -1135,6 +1135,21 @@ export class Auxiora {
     const researchRouter = this.createResearchRouter();
     this.gateway.mountRouter('/api/v1/research', researchRouter);
 
+    // Webhooks management API routes
+    if (this.webhookManager) {
+      this.gateway.mountRouter('/api/v1/webhooks', this.createWebhooksRouter());
+    }
+
+    // Consciousness API routes
+    if (this.consciousness) {
+      this.gateway.mountRouter('/api/v1/consciousness', this.createConsciousnessRouter());
+    }
+
+    // Voice API routes
+    if (this.voiceManager) {
+      this.gateway.mountRouter('/api/v1/voice', this.createVoiceRouter());
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -4516,6 +4531,152 @@ export class Auxiora {
     router.put('/scheduler/config', (_req: any, res: any) => {
       if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
       res.json({ config: self.ambientScheduler.getConfig() });
+    });
+
+    return router;
+  }
+
+  private createVoiceRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/status', (_req: any, res: any) => {
+      try {
+        if (!this.voiceManager) {
+          return res.json({ enabled: false });
+        }
+        res.json({ enabled: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/sessions/:clientId', (req: any, res: any) => {
+      try {
+        if (!this.voiceManager) {
+          return res.status(503).json({ error: 'Voice not initialized' });
+        }
+        const active = this.voiceManager.hasActiveSession(req.params.clientId);
+        res.json({ active });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    return router;
+  }
+
+  private createWebhooksRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/', async (_req: any, res: any) => {
+      if (!this.webhookManager) return res.status(503).json({ error: 'Webhooks not configured' });
+      try {
+        const webhooks = await this.webhookManager.list();
+        res.json({ webhooks });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.post('/', async (req: any, res: any) => {
+      if (!this.webhookManager) return res.status(503).json({ error: 'Webhooks not configured' });
+      try {
+        const webhook = await this.webhookManager.create(req.body);
+        res.json(webhook);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.put('/:id', async (req: any, res: any) => {
+      if (!this.webhookManager) return res.status(503).json({ error: 'Webhooks not configured' });
+      try {
+        const updated = await this.webhookManager.update(req.params.id, req.body);
+        if (!updated) return res.status(404).json({ error: 'Webhook not found' });
+        res.json(updated);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.delete('/:id', async (req: any, res: any) => {
+      if (!this.webhookManager) return res.status(503).json({ error: 'Webhooks not configured' });
+      try {
+        const deleted = await this.webhookManager.delete(req.params.id);
+        if (!deleted) return res.status(404).json({ error: 'Webhook not found' });
+        res.json({ deleted: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    return router;
+  }
+
+  private createConsciousnessRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    router.get('/pulse', (_req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const pulse = self.consciousness.monitor.getPulse();
+        res.json(pulse);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/self-model', async (_req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const snapshot = await self.consciousness.model.synthesize();
+        res.json(snapshot);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/journal/sessions', async (req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const limit = Number(req.query.limit) || 10;
+        const sessions = await self.consciousness.journal.getRecentSessions(limit);
+        res.json(sessions);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/journal/sessions/:sessionId', async (req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const session = await self.consciousness.journal.getSession(req.params.sessionId);
+        res.json(session);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/repairs', async (req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const limit = Number(req.query.limit) || 20;
+        const history = await self.consciousness.repair.getRepairHistory(limit);
+        res.json(history);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/repairs/pending', async (_req: any, res: any) => {
+      if (!self.consciousness) return res.status(503).json({ error: 'Consciousness not initialized' });
+      try {
+        const pending = await self.consciousness.repair.getPendingApprovals();
+        res.json(pending);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
     });
 
     return router;
