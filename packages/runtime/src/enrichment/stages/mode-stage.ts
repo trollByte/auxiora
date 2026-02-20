@@ -1,7 +1,7 @@
 import type { EnrichmentContext, EnrichmentStage, StageResult } from '../types.js';
 
 interface ModeDetectorLike {
-  detect(content: string, opts: { currentState: unknown }): { mode: string } | null;
+  detect(content: string, opts?: { taskType?: string; currentState?: unknown }): { mode: string } | null;
 }
 
 interface PromptAssemblerLike {

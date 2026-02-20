@@ -1,17 +1,19 @@
 import type { EnrichmentContext, EnrichmentStage, StageResult } from '../types.js';
 
-/** Structural type for TheArchitect — avoids import coupling. */
+/** Structural type for TheArchitect — avoids import coupling.
+ *  Uses `object` where the real API has branded interfaces (e.g. TaskContext)
+ *  so that structural assignability works without an index signature. */
 interface ArchitectLike {
   generatePrompt(
     userMessage: string,
     history?: ReadonlyArray<{ role: string; content: string }>,
   ): {
     contextModifier: string;
-    detectedContext: Record<string, unknown>;
-    activeTraits: ReadonlyArray<Record<string, unknown>>;
+    detectedContext: object;
+    activeTraits: ReadonlyArray<object>;
     emotionalTrajectory?: string;
     escalationAlert?: boolean;
-    recommendation?: Record<string, unknown>;
+    recommendation?: object;
     relevantDecisions?: ReadonlyArray<{ summary: string; status: string }>;
     feedbackInsight?: {
       weakDomains: string[];
@@ -19,7 +21,7 @@ interface ArchitectLike {
       suggestedAdjustments: Record<string, number>;
     };
   };
-  getTraitMix(context: Record<string, unknown>): Record<string, number>;
+  getTraitMix(context: object): object;
 }
 
 /** Structural type for ArchitectBridge. */
@@ -79,10 +81,10 @@ export class ArchitectStage implements EnrichmentStage {
     }
 
     // Build trait weights map
-    const mix = this.architect.getTraitMix(output.detectedContext as Record<string, unknown>);
+    const mix = this.architect.getTraitMix(output.detectedContext);
     const traitWeights: Record<string, number> = {};
     for (const [key, val] of Object.entries(mix)) {
-      traitWeights[key] = val;
+      traitWeights[key] = val as number;
     }
 
     // Build consciousness section
