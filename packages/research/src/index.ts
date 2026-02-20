@@ -10,6 +10,14 @@ export type {
   ResearchProvider,
   BraveWebResult,
   BraveSearchResponse,
+  DeepResearchConfig,
+  ReportSection,
+  CitedSource,
+  ResearchReport,
+  ResearchProgressEvent,
+  ResearchIntent,
+  ResearchJobStatus,
+  ResearchJob,
 } from './types.js';
 export { ResearchEngine, type ResearchEngineConfig } from './engine.js';
 export { BraveSearchClient, type BraveSearchOptions } from './brave-search.js';
