@@ -42,7 +42,8 @@ import {
   setLanguageDetector,
   type ExecutionContext,
 } from '@auxiora/tools';
-import { ResearchEngine } from '@auxiora/research';
+import { ResearchEngine, ResearchIntentDetector, DeepResearchOrchestrator, ReportGenerator } from '@auxiora/research';
+import type { ResearchJob, ResearchProgressEvent } from '@auxiora/research';
 import { OrchestrationEngine } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
@@ -229,6 +230,9 @@ export class Auxiora {
   private notificationOrchestrator?: NotificationOrchestrator;
 
   private researchEngine?: ResearchEngine;
+  private intentDetector = new ResearchIntentDetector();
+  private researchJobs = new Map<string, ResearchJob>();
+  private researchJobExpiry?: ReturnType<typeof setInterval>;
   private capabilityCatalog?: CapabilityCatalogImpl;
   private healthMonitor?: HealthMonitorImpl;
   private capabilityPromptFragment: string = '';
@@ -1163,6 +1167,10 @@ export class Auxiora {
       const ambientRouter = this.createAmbientRouter();
       this.gateway.mountRouter('/api/v1/ambient', ambientRouter);
     }
+
+    // Deep research API routes
+    const researchRouter = this.createResearchRouter();
+    this.gateway.mountRouter('/api/v1/research', researchRouter);
 
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
@@ -2402,6 +2410,29 @@ export class Auxiora {
       return;
     }
 
+    // Handle deep research job requests
+    if (message.type === 'start_research') {
+      const researchPayload = payload as { question?: string; depth?: 'quick' | 'standard' | 'deep' } | undefined;
+      if (researchPayload?.question) {
+        const job: ResearchJob = {
+          id: crypto.randomUUID(),
+          question: researchPayload.question,
+          depth: researchPayload.depth ?? 'deep',
+          status: 'planning',
+          createdAt: Date.now(),
+          progress: [],
+        };
+        this.researchJobs.set(job.id, job);
+        audit('research.started', { jobId: job.id, question: job.question, depth: job.depth });
+        this.sendToClient(client, { type: 'research_started', id: requestId, payload: { jobId: job.id } });
+        this.runResearchJob(job, client).catch((err) => {
+          job.status = 'failed';
+          this.logger.error('Research job failed', { error: err instanceof Error ? err : new Error(String(err)), jobId: job.id });
+        });
+      }
+      return;
+    }
+
     const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel; chatId?: string } | undefined;
     const content = msgPayload?.content;
     const modelOverride = msgPayload?.model;
@@ -2416,6 +2447,12 @@ export class Auxiora {
         payload: { message: 'Missing message content' },
       });
       return;
+    }
+
+    // ── Research intent detection ──────────────────────────────────
+    const researchIntent = this.intentDetector.detect(content);
+    if (researchIntent.score >= 0.6) {
+      this.sendToClient(client, { type: 'research_suggestion', id: requestId, payload: researchIntent });
     }
 
     // ── Guardrail input scan ──────────────────────────────────────
@@ -3923,6 +3960,15 @@ export class Auxiora {
     // Load persisted channel targets for proactive delivery (behaviors, ambient)
     await this.loadChannelTargets();
 
+    // Research job expiry (every 60s, prune jobs older than 1 hour)
+    this.researchJobExpiry = setInterval(() => {
+      const ONE_HOUR = 3_600_000;
+      const now = Date.now();
+      for (const [id, job] of this.researchJobs) {
+        if (now - job.createdAt > ONE_HOUR) this.researchJobs.delete(id);
+      }
+    }, 60_000);
+
     this.running = true;
 
     console.log(`\n${this.getAgentName()} is ready!`);
@@ -3997,6 +4043,10 @@ export class Auxiora {
     if (this.memoryCleanupInterval) {
       clearInterval(this.memoryCleanupInterval);
       this.memoryCleanupInterval = undefined;
+    }
+    if (this.researchJobExpiry) {
+      clearInterval(this.researchJobExpiry);
+      this.researchJobExpiry = undefined;
     }
     if (this.mcpClientManager) {
       await this.mcpClientManager.disconnectAll();
@@ -4326,6 +4376,88 @@ export class Auxiora {
       } catch (err: any) {
         res.status(500).json({ error: err.message ?? 'Failed to record feedback' });
       }
+    });
+
+    return router;
+  }
+
+  private async runResearchJob(job: ResearchJob, client: ClientConnection): Promise<void> {
+    const onProgress = (event: ResearchProgressEvent) => {
+      job.progress.push(event);
+      this.sendToClient(client, { type: 'research_progress', payload: { jobId: job.id, ...event } });
+    };
+    const provider = this.providers.getPrimaryProvider();
+    const orchestrator = new DeepResearchOrchestrator(provider as any, undefined, this.researchEngine);
+    const result = await orchestrator.research(job.question, job.depth, onProgress);
+
+    if (job.depth === 'deep') {
+      const reportGen = new ReportGenerator(provider as any);
+      job.report = await reportGen.generateReport({
+        ...result,
+        question: job.question,
+        depth: job.depth,
+      });
+    }
+    job.status = 'completed';
+    job.completedAt = Date.now();
+    await audit('research.completed', {
+      jobId: job.id,
+      sourceCount: result.sources.length,
+      duration: job.completedAt - job.createdAt,
+    });
+    this.sendToClient(client, { type: 'research_completed', payload: { jobId: job.id } });
+  }
+
+  private createResearchRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    router.post('/', (req: any, res: any) => {
+      const { question, depth = 'deep' } = req.body;
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ error: 'question required' });
+      }
+      const job: ResearchJob = {
+        id: crypto.randomUUID(),
+        question,
+        depth,
+        status: 'planning',
+        createdAt: Date.now(),
+        progress: [],
+      };
+      self.researchJobs.set(job.id, job);
+      audit('research.started', { jobId: job.id, question: job.question, depth: job.depth });
+      res.status(202).json({ jobId: job.id, status: job.status });
+    });
+
+    router.get('/', (_req: any, res: any) => {
+      const limit = Number(_req.query.limit) || 20;
+      const offset = Number(_req.query.offset) || 0;
+      const all = [...self.researchJobs.values()].sort((a, b) => b.createdAt - a.createdAt);
+      res.json({ jobs: all.slice(offset, offset + limit), total: all.length });
+    });
+
+    router.get('/:jobId', (req: any, res: any) => {
+      const job = self.researchJobs.get(req.params.jobId);
+      if (!job) return res.status(404).json({ error: 'not found' });
+      res.json(job);
+    });
+
+    router.delete('/:jobId', (req: any, res: any) => {
+      const job = self.researchJobs.get(req.params.jobId);
+      if (!job) return res.status(404).json({ error: 'not found' });
+      if (job.status === 'completed' || job.status === 'failed') {
+        return res.status(409).json({ error: 'job already finished' });
+      }
+      job.status = 'cancelled';
+      audit('research.cancelled', { jobId: job.id });
+      res.json({ jobId: job.id, status: 'cancelled' });
+    });
+
+    router.get('/:jobId/sources', (req: any, res: any) => {
+      const job = self.researchJobs.get(req.params.jobId);
+      if (!job) return res.status(404).json({ error: 'not found' });
+      res.json({ sources: job.report?.sources ?? [] });
     });
 
     return router;
