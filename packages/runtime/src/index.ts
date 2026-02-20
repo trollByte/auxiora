@@ -2275,7 +2275,7 @@ export class Auxiora {
   }
 
   private checkOutputGuardrails(response: string): { response: string; wasModified: boolean; action: string } {
-    if (!this.guardrailPipeline || this.config.guardrails?.scanOutput === false) {
+    if (!this.guardrailPipeline || this.config.guardrails?.scanOutput === false || !response) {
       return { response, wasModified: false, action: 'allow' };
     }
     const result = this.guardrailPipeline.scanOutput(response);
@@ -3483,7 +3483,7 @@ export class Auxiora {
         });
         // If draft streaming already sent partial text, do a final edit with clean version
         if (draftMessageId && adapter?.editMessage) {
-          await adapter.editMessage(inbound.channelId, draftMessageId, finalChannelResponse);
+          await adapter.editMessage(inbound.channelId, draftMessageId, { content: finalChannelResponse });
         }
       }
 
