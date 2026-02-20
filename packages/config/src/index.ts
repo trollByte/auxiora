@@ -349,6 +349,16 @@ const McpConfigSchema = z.object({
   servers: z.record(z.string(), McpServerConfigSchema).default({}),
 });
 
+const GuardrailsConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  piiDetection: z.boolean().default(true),
+  promptInjection: z.boolean().default(true),
+  toxicityFilter: z.boolean().default(true),
+  blockThreshold: z.enum(['low', 'medium', 'high', 'critical']).default('high'),
+  redactPii: z.boolean().default(true),
+  scanOutput: z.boolean().default(true),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -377,6 +387,7 @@ export const ConfigSchema = z.object({
   // [P7] Cloud
   cloud: CloudConfigSchema.default({}),
   mcp: McpConfigSchema.default({}),
+  guardrails: GuardrailsConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -386,6 +397,7 @@ export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;
 export type TrustConfig = z.infer<typeof TrustConfigSchema>;
 export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 export type ModesConfig = z.infer<typeof ModesConfigSchema>;
+export type GuardrailsConfig = z.infer<typeof GuardrailsConfigSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 
