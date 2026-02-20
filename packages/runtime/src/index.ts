@@ -2524,9 +2524,27 @@ export class Auxiora {
         { tools, fallbackCandidates },
       );
 
+      // ── Guardrail output scan ─────────────────────────────────────
+      const outputScan = this.checkOutputGuardrails(fullResponse);
+      const finalResponse = outputScan.response;
+      if (outputScan.wasModified) {
+        audit('guardrail.triggered', {
+          action: fullResponse !== finalResponse ? 'redact' : 'block',
+          direction: 'output',
+          channelType: 'webchat',
+          sessionId: session.id,
+        });
+        // Send correction since chunks were already streamed
+        this.sendToClient(client, {
+          type: 'guardrail_correction',
+          id: requestId,
+          payload: { content: finalResponse },
+        });
+      }
+
       // Save assistant message (skip if empty — happens when response is tool-only)
-      if (fullResponse) {
-        await this.sessions.addMessage(session.id, 'assistant', fullResponse, {
+      if (finalResponse) {
+        await this.sessions.addMessage(session.id, 'assistant', finalResponse, {
           input: usage.inputTokens,
           output: usage.outputTokens,
         });
@@ -2543,17 +2561,17 @@ export class Auxiora {
       }
 
       // Extract memories and learn from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && fullResponse && processedContent.length > 20) {
-        void this.extractAndLearn(processedContent, fullResponse, session.id);
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && finalResponse && processedContent.length > 20) {
+        void this.extractAndLearn(processedContent, finalResponse, session.id);
       }
 
       // Auto-title webchat chats after first exchange
       if (
-        fullResponse &&
+        finalResponse &&
         session.metadata.channelType === 'webchat' &&
         session.messages.length <= 3
       ) {
-        void this.generateChatTitle(session.id, processedContent, fullResponse, client);
+        void this.generateChatTitle(session.id, processedContent, finalResponse, client);
       }
 
       // Send done signal
@@ -2584,7 +2602,7 @@ export class Auxiora {
           chatId: chatId ?? session.id,
           currentMessage: processedContent,
           recentMessages: contextMessages,
-          response: fullResponse,
+          response: finalResponse,
           responseTime: Date.now() - (session.metadata.lastActiveAt ?? Date.now()),
           tokensUsed: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
         }).catch(() => {});
@@ -2607,7 +2625,7 @@ export class Auxiora {
           },
         };
         this.consciousness.journal.record({ ...journalBase, message: { role: 'user', content: processedContent } }).catch(() => {});
-        this.consciousness.journal.record({ ...journalBase, message: { role: 'assistant', content: fullResponse } }).catch(() => {});
+        this.consciousness.journal.record({ ...journalBase, message: { role: 'assistant', content: finalResponse } }).catch(() => {});
       }
 
       audit('message.sent', {
@@ -3452,21 +3470,37 @@ export class Auxiora {
 
       stopTyping();
 
+      // ── Guardrail output scan ─────────────────────────────────────
+      const channelOutputScan = this.checkOutputGuardrails(channelResponse);
+      const finalChannelResponse = channelOutputScan.response;
+      if (channelOutputScan.wasModified) {
+        audit('guardrail.triggered', {
+          action: 'redact',
+          direction: 'output',
+          channelType: inbound.channelType,
+          sessionId: session.id,
+        });
+        // If draft streaming already sent partial text, do a final edit with clean version
+        if (draftMessageId && adapter?.editMessage) {
+          await adapter.editMessage(inbound.channelId, draftMessageId, finalChannelResponse);
+        }
+      }
+
       // Save assistant message
-      await this.sessions.addMessage(session.id, 'assistant', channelResponse, {
+      await this.sessions.addMessage(session.id, 'assistant', finalChannelResponse, {
         input: channelUsage.inputTokens,
         output: channelUsage.outputTokens,
       });
 
       // Extract memories and learn from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && channelResponse && messageContent.length > 20) {
-        void this.extractAndLearn(messageContent, channelResponse, session.id);
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && finalChannelResponse && messageContent.length > 20) {
+        void this.extractAndLearn(messageContent, finalChannelResponse, session.id);
       }
 
       // Send response (skip if draft streaming already delivered it)
       if (!draftMessageId && this.channels) {
         await this.channels.send(inbound.channelType, inbound.channelId, {
-          content: channelResponse,
+          content: finalChannelResponse,
           replyToId: inbound.id,
         });
       }

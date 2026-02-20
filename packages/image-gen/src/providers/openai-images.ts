@@ -61,7 +61,7 @@ export class OpenAIImageProvider implements ImageProviderAdapter {
 
       if (!response.ok) {
         const errorBody = await response.text();
-        logger.error(new Error(`OpenAI API error: ${response.status} ${errorBody}`));
+        logger.error(`OpenAI API error: ${response.status} ${errorBody}`);
         return {
           success: false,
           images: [],
@@ -98,7 +98,7 @@ export class OpenAIImageProvider implements ImageProviderAdapter {
       };
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error(wrapped);
+      logger.error(wrapped.message);
       return {
         success: false,
         images: [],

@@ -57,11 +57,11 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
           results[i + item.index] = item.embedding;
         }
 
-        logger.debug({ batch: i / MAX_BATCH_SIZE, tokens: data.usage.total_tokens }, 'Batch embedded');
+        logger.debug(`Batch ${i / MAX_BATCH_SIZE} embedded (${data.usage.total_tokens} tokens)`);
       } catch (err: unknown) {
         const wrapped: Error =
           err instanceof Error ? err : new Error(String(err));
-        logger.error(wrapped, 'Failed to generate embeddings');
+        logger.error(`Failed to generate embeddings: ${wrapped.message}`);
         throw wrapped;
       }
     }

@@ -23,7 +23,7 @@ export class EvalRunner {
       actualOutput = await handler(evalCase.input);
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      log.error('Handler failed for case %s', evalCase.id, wrapped);
+      log.error(`Handler failed for case ${evalCase.id}: ${wrapped.message}`);
       return {
         caseId: evalCase.id,
         scores: {},
@@ -42,7 +42,7 @@ export class EvalRunner {
         scores[name] = metric(evalCase.input, actualOutput, expected);
       } catch (err: unknown) {
         const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-        log.error('Metric %s failed for case %s', name, evalCase.id, wrapped);
+        log.error(`Metric ${name} failed for case ${evalCase.id}: ${wrapped.message}`);
         scores[name] = 0;
       }
     }

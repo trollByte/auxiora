@@ -71,7 +71,7 @@ export class ImageGenManager {
       return await provider.generate(request);
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error(wrapped);
+      logger.error(wrapped.message);
       return {
         success: false,
         images: [],

@@ -66,7 +66,7 @@ export class BackupManager {
       return result;
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error(wrapped);
+      logger.error(wrapped.message);
       return {
         status: 'failed',
         manifest: {
@@ -139,7 +139,7 @@ export class BackupManager {
       };
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error(wrapped);
+      logger.error(wrapped.message);
       return {
         status: 'failed',
         restoredCategories,

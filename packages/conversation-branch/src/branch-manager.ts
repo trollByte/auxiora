@@ -28,7 +28,7 @@ export class BranchManager {
       createdAt: now,
     };
 
-    logger.debug('Created conversation tree %s with root branch %s', id, rootBranchId);
+    logger.debug(`Created conversation tree ${id} with root branch ${rootBranchId}`);
   }
 
   addMessage(message: Omit<Message, 'id' | 'timestamp'>): Message {
@@ -40,7 +40,7 @@ export class BranchManager {
     };
     branch.messages.push(msg);
     branch.updatedAt = Date.now();
-    logger.debug('Added message %s to branch %s', msg.id, branch.id);
+    logger.debug(`Added message ${msg.id} to branch ${branch.id}`);
     return msg;
   }
 
@@ -87,7 +87,7 @@ export class BranchManager {
     this.tree.branches.set(newBranchId, newBranch);
     this.tree.activeBranchId = newBranchId;
 
-    logger.debug('Forked branch %s from message %s in branch %s', newBranchId, messageId, sourceBranch.id);
+    logger.debug(`Forked branch ${newBranchId} from message ${messageId} in branch ${sourceBranch.id}`);
     return newBranch;
   }
 
@@ -104,7 +104,7 @@ export class BranchManager {
 
     branch.isActive = true;
     this.tree.activeBranchId = branchId;
-    logger.debug('Switched to branch %s', branchId);
+    logger.debug(`Switched to branch ${branchId}`);
     return branch;
   }
 
@@ -160,7 +160,7 @@ export class BranchManager {
       }
     }
 
-    logger.debug('Deleted branch %s', branchId);
+    logger.debug(`Deleted branch ${branchId}`);
   }
 
   mergeBranch(sourceId: string, targetId: string): void {
@@ -193,7 +193,7 @@ export class BranchManager {
 
     target.messages.push(...messagesToAppend);
     target.updatedAt = Date.now();
-    logger.debug('Merged %d messages from branch %s to %s', messagesToAppend.length, sourceId, targetId);
+    logger.debug(`Merged ${messagesToAppend.length} messages from branch ${sourceId} to ${targetId}`);
   }
 
   getTree(): ConversationTree {

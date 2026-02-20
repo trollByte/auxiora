@@ -75,8 +75,8 @@ export class ReActLoop {
           break;
         }
 
-        // Wait if paused
-        while (this.status === 'paused') {
+        // Wait if paused (pause() is called externally; cast defeats narrowing)
+        while ((this.status as LoopStatus) === 'paused') {
           await sleep(50);
         }
         if (this.status !== 'running') {

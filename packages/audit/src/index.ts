@@ -141,7 +141,9 @@ export type AuditEventType =
   | 'workflow.step_auto_executed'
   // Agent Protocol (Phase 14)
   | 'agent_protocol.message_sent'
-  | 'agent_protocol.message_received';
+  | 'agent_protocol.message_received'
+  // Guardrails
+  | 'guardrail.triggered';
 
 export interface AuditEntry {
   timestamp: string;

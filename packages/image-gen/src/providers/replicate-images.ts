@@ -62,7 +62,7 @@ export class ReplicateImageProvider implements ImageProviderAdapter {
 
       if (!createResponse.ok) {
         const errorBody = await createResponse.text();
-        logger.error(new Error(`Replicate API error: ${createResponse.status} ${errorBody}`));
+        logger.error(`Replicate API error: ${createResponse.status} ${errorBody}`);
         return {
           success: false,
           images: [],
@@ -129,7 +129,7 @@ export class ReplicateImageProvider implements ImageProviderAdapter {
       };
     } catch (err: unknown) {
       const wrapped: Error = err instanceof Error ? err : new Error(String(err));
-      logger.error(wrapped);
+      logger.error(wrapped.message);
       return {
         success: false,
         images: [],
