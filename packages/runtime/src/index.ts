@@ -2274,18 +2274,18 @@ export class Auxiora {
     return result;
   }
 
-  private checkOutputGuardrails(response: string): { response: string; wasModified: boolean } {
+  private checkOutputGuardrails(response: string): { response: string; wasModified: boolean; action: string } {
     if (!this.guardrailPipeline || this.config.guardrails?.scanOutput === false) {
-      return { response, wasModified: false };
+      return { response, wasModified: false, action: 'allow' };
     }
     const result = this.guardrailPipeline.scanOutput(response);
     if (result.action === 'block') {
-      return { response: this.GUARDRAIL_BLOCK_MESSAGE, wasModified: true };
+      return { response: this.GUARDRAIL_BLOCK_MESSAGE, wasModified: true, action: 'block' };
     }
     if (result.action === 'redact' && result.redactedContent) {
-      return { response: result.redactedContent, wasModified: true };
+      return { response: result.redactedContent, wasModified: true, action: 'redact' };
     }
-    return { response, wasModified: false };
+    return { response, wasModified: false, action: result.action };
   }
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {
@@ -2529,7 +2529,7 @@ export class Auxiora {
       const finalResponse = outputScan.response;
       if (outputScan.wasModified) {
         audit('guardrail.triggered', {
-          action: fullResponse !== finalResponse ? 'redact' : 'block',
+          action: outputScan.action,
           direction: 'output',
           channelType: 'webchat',
           sessionId: session.id,
@@ -3307,6 +3307,7 @@ export class Auxiora {
         direction: 'input',
         threatCount: inputScan.threats.length,
         channelType: inbound.channelType,
+        sessionId: session.id,
       });
       if (this.channels) {
         await this.channels.send(inbound.channelType, inbound.channelId, {
@@ -3475,7 +3476,7 @@ export class Auxiora {
       const finalChannelResponse = channelOutputScan.response;
       if (channelOutputScan.wasModified) {
         audit('guardrail.triggered', {
-          action: 'redact',
+          action: channelOutputScan.action,
           direction: 'output',
           channelType: inbound.channelType,
           sessionId: session.id,
