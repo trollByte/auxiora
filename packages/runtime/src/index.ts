@@ -109,7 +109,7 @@ import { EvalRunner, EvalStore, exactMatch, containsExpected, lengthRatio, keywo
 import { CodeExecutor, SessionManager as CodeSessionManager } from '@auxiora/code-interpreter';
 import type { Language } from '@auxiora/code-interpreter';
 import { ImageGenManager, OpenAIImageProvider, ReplicateImageProvider } from '@auxiora/image-gen';
-import type { ImageGenRequest } from '@auxiora/image-gen';
+import type { ImageGenRequest, ImageProvider } from '@auxiora/image-gen';
 import type { EvalCase } from '@auxiora/evaluation';
 import type { ScanResult } from '@auxiora/guardrails';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
@@ -157,6 +157,8 @@ import {
   MetaCognitor,
 } from '@auxiora/self-awareness';
 import type { SignalCollector } from '@auxiora/self-awareness';
+import { EnrichmentPipeline, MemoryStage, ModeStage, ArchitectStage, SelfAwarenessStage } from './enrichment/index.js';
+import type { EnrichmentContext } from './enrichment/index.js';
 
 export interface AuxioraOptions {
   config?: Config;
@@ -265,6 +267,8 @@ export class Auxiora {
   private architectBridge: ArchitectBridge | null = null;
   private architectResetChats = new Set<string>();
   private architectAwarenessCollector: ArchitectAwarenessCollector | null = null;
+  private enrichmentPipeline?: EnrichmentPipeline;
+  private lastToolsUsed = new Map<string, Array<{ name: string; success: boolean }>>();
   private consciousness?: Consciousness;
   private mcpClientManager?: McpClientManager;
   private selfModelCache?: { snapshot: SelfModelSnapshot; cachedAt: number };
@@ -527,6 +531,10 @@ export class Auxiora {
         this.logger.warn('Failed to initialize consciousness', { error: err instanceof Error ? err : new Error(String(err)) });
       }
     }
+
+    // Build enrichment pipeline from available subsystems
+    this.buildEnrichmentPipeline();
+    this.logger.info('Enrichment pipeline initialized');
 
     // Initialize gateway
     this.gateway = new Gateway({
@@ -2444,83 +2452,6 @@ export class Auxiora {
     }
   }
 
-  /** Append Architect context modifier when active, returning context metadata. */
-  private async applyArchitectEnrichment(prompt: string, userMessage: string, chatId?: string): Promise<{
-    prompt: string;
-    architectMeta?: {
-      detectedContext: import('@auxiora/personality/architect').TaskContext;
-      activeTraits: import('@auxiora/personality/architect').TraitSource[];
-      traitWeights: Record<string, number>;
-      recommendation?: ContextRecommendation;
-      escalationAlert?: boolean;
-    };
-  }> {
-    if (!this.architect) return { prompt };
-    const output = this.architect.generatePrompt(userMessage);
-
-    // Bridge handles side effects: persistence, awareness feeding, escalation logging
-    if (this.architectBridge && chatId) {
-      this.architectBridge.afterPrompt({ ...output.detectedContext }, output.emotionalTrajectory, output.escalationAlert, chatId);
-    }
-    const mix = this.architect.getTraitMix(output.detectedContext);
-    const traitWeights: Record<string, number> = {};
-    for (const [key, val] of Object.entries(mix)) {
-      traitWeights[key] = val as number;
-    }
-    // Build consciousness section from Architect metadata + self/user models
-    let consciousnessSection = '';
-    const parts: string[] = [];
-
-    // Active decisions (top 5)
-    if (output.relevantDecisions && output.relevantDecisions.length > 0) {
-      const items = output.relevantDecisions.slice(0, 5)
-        .map(d => `- ${d.summary} [${d.status}]`).join('\n');
-      parts.push(`**Active Decisions:**\n${items}`);
-    }
-
-    // Self-improvement notes from feedback
-    if (output.feedbackInsight) {
-      const fi = output.feedbackInsight;
-      const notes: string[] = [];
-      if (fi.weakDomains.length > 0) notes.push(`Weak domains: ${fi.weakDomains.join(', ')}`);
-      if (fi.trend !== 'stable') notes.push(`Satisfaction trend: ${fi.trend}`);
-      const adjustments = Object.entries(fi.suggestedAdjustments);
-      if (adjustments.length > 0) {
-        notes.push(`Suggested adjustments: ${adjustments.map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join(', ')}`);
-      }
-      if (notes.length > 0) {
-        parts.push(`**Self-Improvement Notes:**\n${notes.map(n => `- ${n}`).join('\n')}`);
-      }
-    }
-
-    // Self-model narrative
-    const selfModel = await this.getCachedSelfModel();
-    if (selfModel?.selfNarrative) {
-      parts.push(`**Self-Model:**\n${selfModel.selfNarrative}`);
-    }
-
-    // User model narrative
-    const userModel = this.getCachedUserModel();
-    if (userModel?.narrative) {
-      parts.push(`**User Model:**\n${userModel.narrative}`);
-    }
-
-    if (parts.length > 0) {
-      consciousnessSection = '\n\n[Consciousness]\n' + parts.join('\n\n');
-    }
-
-    return {
-      prompt: prompt + '\n\n' + output.contextModifier + consciousnessSection,
-      architectMeta: {
-        detectedContext: output.detectedContext,
-        activeTraits: output.activeTraits,
-        traitWeights,
-        recommendation: output.recommendation,
-        escalationAlert: output.escalationAlert,
-      },
-    };
-  }
-
   private async initializeModes(): Promise<void> {
     if (this.config.modes?.enabled === false) return;
 
@@ -2556,19 +2487,40 @@ export class Auxiora {
     return state;
   }
 
-  /** Build enriched prompt with auto-detection (shared by handleMessage and handleChannelMessage). */
-  private buildModeEnrichedPrompt(content: string, modeState: SessionModeState, memorySection: string | null, channelType?: string): string {
-    if (modeState.activeMode === 'auto' && this.modeDetector && this.config.modes?.autoDetection !== false) {
-      const detection = this.modeDetector.detect(content, { currentState: modeState });
-      if (detection) {
-        modeState.lastAutoMode = detection.mode;
-        modeState.autoDetected = true;
-        modeState.lastSwitchAt = Date.now();
-        const tempState: SessionModeState = { ...modeState, activeMode: detection.mode };
-        return this.promptAssembler!.enrichForMessage(tempState, memorySection, this.userPreferences, undefined, channelType);
-      }
+  private buildEnrichmentPipeline(): void {
+    this.enrichmentPipeline = new EnrichmentPipeline();
+
+    // Stage 1: Memory (order 100)
+    if (this.memoryStore && this.memoryRetriever) {
+      this.enrichmentPipeline.addStage(new MemoryStage(this.memoryStore, this.memoryRetriever));
     }
-    return this.promptAssembler!.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, channelType);
+
+    // Stage 2: Mode detection + security (order 200)
+    if (this.modeDetector && this.promptAssembler) {
+      this.enrichmentPipeline.addStage(new ModeStage({
+        detector: this.modeDetector,
+        assembler: this.promptAssembler,
+        securityFloor: this.securityFloor,
+        userPreferences: this.userPreferences,
+        getModeState: (sessionId: string) => this.getSessionModeState(sessionId),
+      }));
+    }
+
+    // Stage 3: Architect (order 300)
+    if (this.architect) {
+      this.enrichmentPipeline.addStage(new ArchitectStage(
+        this.architect,
+        this.architectBridge ?? undefined,
+        this.architectAwarenessCollector ?? undefined,
+        () => this.getCachedSelfModel(),
+        () => this.getCachedUserModel(),
+      ));
+    }
+
+    // Stage 4: Self-awareness (order 400)
+    if (this.selfAwarenessAssembler) {
+      this.enrichmentPipeline.addStage(new SelfAwarenessStage(this.selfAwarenessAssembler));
+    }
   }
 
   private readonly GUARDRAIL_BLOCK_MESSAGE = 'I\'m not able to process that request. If you believe this is an error, please rephrase your message.';
@@ -2802,40 +2754,9 @@ export class Auxiora {
         : this.config.agent.personality === 'the-architect';
       const basePrompt = useArchitect ? this.architectPrompt : this.standardPrompt;
 
-      // Build enriched prompt with modes and memories
+      // Build enriched prompt through pipeline
       let enrichedPrompt = basePrompt;
-      let memorySection: string | null = null;
-      if (this.memoryRetriever && this.memoryStore) {
-        const memories = await this.memoryStore.getAll();
-        memorySection = this.memoryRetriever.retrieve(memories, processedContent);
-      }
-
-      if (this.promptAssembler && this.config.modes?.enabled !== false) {
-        const modeState = this.getSessionModeState(session.id);
-
-        // Security context check — BEFORE mode detection
-        if (this.securityFloor) {
-          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: processedContent });
-          if (securityContext.active) {
-            // Suspend current mode and use security floor prompt
-            modeState.suspendedMode = modeState.activeMode;
-            enrichedPrompt = this.promptAssembler.enrichForSecurityContext(securityContext, this.securityFloor, memorySection);
-          } else if (modeState.suspendedMode) {
-            // Restore suspended mode
-            modeState.activeMode = modeState.suspendedMode;
-            delete modeState.suspendedMode;
-            enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, 'webchat');
-          } else {
-            // Normal mode detection
-            enrichedPrompt = this.buildModeEnrichedPrompt(processedContent, modeState, memorySection, 'webchat');
-          }
-        } else {
-          // No security floor — normal mode detection
-          enrichedPrompt = this.buildModeEnrichedPrompt(processedContent, modeState, memorySection, 'webchat');
-        }
-      } else if (memorySection) {
-        enrichedPrompt = basePrompt + memorySection;
-      }
+      let architectResult: { prompt: string; architectMeta?: any } = { prompt: basePrompt };
 
       // Reset Architect conversation state for new chats
       if (useArchitect && this.architect && chatId && !this.architectResetChats.has(chatId)) {
@@ -2844,25 +2765,21 @@ export class Auxiora {
         audit('personality.reset', { sessionId: session.id, chatId });
       }
 
-      // Only apply Architect enrichment if this chat uses the Architect
-      const architectResult = useArchitect
-        ? await this.applyArchitectEnrichment(enrichedPrompt, processedContent, chatId)
-        : { prompt: enrichedPrompt };
-      enrichedPrompt = architectResult.prompt;
-
-      // Inject dynamic self-awareness context
-      if (this.selfAwarenessAssembler) {
-        const awarenessContext = {
-          userId: client.senderId ?? 'anonymous',
-          sessionId: session.id,
+      if (this.enrichmentPipeline) {
+        const enrichCtx: EnrichmentContext = {
+          basePrompt,
+          userMessage: processedContent,
+          history: contextMessages,
+          channelType: 'webchat',
           chatId: chatId ?? session.id,
-          currentMessage: processedContent,
-          recentMessages: contextMessages,
+          sessionId: session.id,
+          userId: client.senderId ?? 'anonymous',
+          toolsUsed: this.lastToolsUsed.get(session.id) ?? [],
+          config: this.config,
         };
-        const awarenessFragment = await this.selfAwarenessAssembler.assemble(awarenessContext);
-        if (awarenessFragment) {
-          enrichedPrompt += '\n\n[Dynamic Self-Awareness]\n' + awarenessFragment;
-        }
+        const result = await this.enrichmentPipeline.run(enrichCtx);
+        enrichedPrompt = result.prompt;
+        architectResult = { prompt: enrichedPrompt, architectMeta: result.metadata.architect };
       }
 
       // Route to best model for this message
@@ -2924,6 +2841,8 @@ export class Auxiora {
       if (this.architectAwarenessCollector && toolsUsed.length > 0) {
         this.architectAwarenessCollector.updateToolContext(toolsUsed);
       }
+      // Store tools for next turn's enrichment context
+      this.lastToolsUsed.set(session.id, toolsUsed);
 
       // ── Guardrail output scan ─────────────────────────────────────
       const outputScan = this.checkOutputGuardrails(fullResponse);
@@ -3773,38 +3692,12 @@ export class Auxiora {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
 
-      // Build enriched prompt with modes and memories
+      // Build enriched prompt through pipeline
       let enrichedPrompt = this.systemPrompt;
-      let channelMemorySection: string | null = null;
-      if (this.memoryRetriever && this.memoryStore) {
-        const memories = await this.memoryStore.getAll();
-        channelMemorySection = this.memoryRetriever.retrieve(memories, messageContent);
-      }
-
-      if (this.promptAssembler && this.config.modes?.enabled !== false) {
-        const modeState = this.getSessionModeState(session.id);
-
-        // Security context check — BEFORE mode detection
-        if (this.securityFloor) {
-          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: messageContent });
-          if (securityContext.active) {
-            modeState.suspendedMode = modeState.activeMode;
-            enrichedPrompt = this.promptAssembler.enrichForSecurityContext(securityContext, this.securityFloor, channelMemorySection);
-          } else if (modeState.suspendedMode) {
-            modeState.activeMode = modeState.suspendedMode;
-            delete modeState.suspendedMode;
-            enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
-          } else {
-            enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
-          }
-        } else {
-          enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
-        }
-      } else if (channelMemorySection) {
-        enrichedPrompt = this.systemPrompt + channelMemorySection;
-      }
-
       const channelChatId = `${inbound.channelType}:${inbound.channelId}`;
+      let channelArchitectResult: { prompt: string; architectMeta?: any } = { prompt: this.systemPrompt };
+
+      // Reset Architect conversation state for new channel chats
       const useChannelArchitect = this.config.agent.personality === 'the-architect';
       if (useChannelArchitect && this.architect && !this.architectResetChats.has(channelChatId)) {
         this.architectResetChats.add(channelChatId);
@@ -3812,10 +3705,22 @@ export class Auxiora {
         audit('personality.reset', { sessionId: session.id, chatId: channelChatId });
       }
 
-      const channelArchitectResult = useChannelArchitect
-        ? await this.applyArchitectEnrichment(enrichedPrompt, messageContent, channelChatId)
-        : { prompt: enrichedPrompt };
-      enrichedPrompt = channelArchitectResult.prompt;
+      if (this.enrichmentPipeline) {
+        const enrichCtx: EnrichmentContext = {
+          basePrompt: this.systemPrompt,
+          userMessage: messageContent,
+          history: contextMessages,
+          channelType: inbound.channelType,
+          chatId: channelChatId,
+          sessionId: session.id,
+          userId: inbound.senderId ?? 'anonymous',
+          toolsUsed: this.lastToolsUsed.get(session.id) ?? [],
+          config: this.config,
+        };
+        const result = await this.enrichmentPipeline.run(enrichCtx);
+        enrichedPrompt = result.prompt;
+        channelArchitectResult = { prompt: enrichedPrompt, architectMeta: result.metadata.architect };
+      }
 
       // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();
@@ -3887,6 +3792,7 @@ export class Auxiora {
       if (this.architectAwarenessCollector && channelToolsUsed.length > 0) {
         this.architectAwarenessCollector.updateToolContext(channelToolsUsed);
       }
+      this.lastToolsUsed.set(session.id, channelToolsUsed);
 
       // Flush final draft text
       if (draftLoop) {
@@ -5368,7 +5274,7 @@ export class Auxiora {
 
     router.get('/providers', (_req: any, res: any) => {
       const providers = this.imageGenManager!.listProviders();
-      const details = providers.map((name) => {
+      const details = providers.map((name: ImageProvider) => {
         const p = this.imageGenManager!.getProvider(name);
         return {
           name,
