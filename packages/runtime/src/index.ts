@@ -47,7 +47,7 @@ import { OrchestrationEngine } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { BehaviorManager } from '@auxiora/behaviors';
+import { BehaviorManager, evaluateConditions } from '@auxiora/behaviors';
 import { BrowserManager } from '@auxiora/browser';
 import { ClipboardMonitor, AppController, SystemStateMonitor } from '@auxiora/os-bridge';
 import type { Platform } from '@auxiora/os-bridge';
@@ -72,7 +72,7 @@ import { WorkflowEngine, ApprovalManager, AutonomousExecutor } from '@auxiora/wo
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
 import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator, AmbientAwarenessCollector } from '@auxiora/ambient';
 import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
-import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
+import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager, type TriggerEvent } from '@auxiora/connectors';
 import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
 import { microsoftConnector } from '@auxiora/connector-microsoft';
 import { githubConnector } from '@auxiora/connector-github';
@@ -1382,7 +1382,16 @@ export class Auxiora {
 
     // Run pattern detection and persist to vault every 5 minutes
     const PATTERN_DETECT_INTERVAL = 5 * 60 * 1000;
-    this.ambientDetectTimer = setInterval(() => {
+    this.ambientDetectTimer = setInterval(async () => {
+      // Poll triggers and route events
+      if (this.triggerManager) {
+        try {
+          const events = await this.triggerManager.pollAll();
+          await this.processEventTriggers(events);
+        } catch { /* poll failure */ }
+      }
+
+      // Detect patterns and persist
       if (this.ambientEngine) {
         this.ambientEngine.detectPatterns();
         try {
@@ -3912,6 +3921,43 @@ export class Auxiora {
 
     console.log(`\n${this.getAgentName()} is ready!`);
     console.log(`Open http://${this.config.gateway.host}:${this.config.gateway.port} in your browser\n`);
+  }
+
+  private async processEventTriggers(events: TriggerEvent[]): Promise<void> {
+    if (!this.behaviors || events.length === 0) return;
+
+    const allBehaviors = await this.behaviors.list();
+    const eventBehaviors = allBehaviors.filter(
+      (b: any) => b.type === 'event' && b.status === 'active' && b.eventTrigger
+    );
+
+    for (const event of events) {
+      // Feed to ambient pattern engine
+      this.ambientEngine?.observe({
+        type: `${event.connectorId}:${event.triggerId}`,
+        timestamp: event.timestamp,
+        data: event.data,
+      });
+
+      // Match against event behaviors
+      for (const behavior of eventBehaviors) {
+        const trigger = behavior.eventTrigger!;
+        if (trigger.source !== event.connectorId || trigger.event !== event.triggerId) continue;
+
+        if (evaluateConditions(event.data, trigger.conditions, trigger.combinator)) {
+          try {
+            await this.behaviors!.executeNow(behavior.id);
+            await audit('behavior.event_triggered', {
+              behaviorId: behavior.id,
+              source: event.connectorId,
+              event: event.triggerId,
+            });
+          } catch {
+            // Execution failures tracked by BehaviorManager
+          }
+        }
+      }
+    }
   }
 
   async stop(): Promise<void> {
