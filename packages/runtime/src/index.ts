@@ -95,6 +95,13 @@ import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
 import { IntentParser as NLIntentParser, AutomationBuilder } from '@auxiora/nl-automation';
 import { BranchManager } from '@auxiora/conversation-branch';
+import { ReActLoop } from '@auxiora/react-loop';
+import type { ReActCallbacks, ReActConfig, ReActStep } from '@auxiora/react-loop';
+import { AgentCardBuilder, TaskManager as A2ATaskManager, A2AClient } from '@auxiora/a2a';
+import type { AgentCard, A2ATask } from '@auxiora/a2a';
+import { CanvasSession } from '@auxiora/canvas';
+import { SandboxManager } from '@auxiora/sandbox';
+import type { DockerApi, ExecResult } from '@auxiora/sandbox';
 import { DocumentStore, ContextBuilder } from '@auxiora/rag';
 import { GraphStore, EntityLinker } from '@auxiora/knowledge-graph';
 import type { GraphQuery } from '@auxiora/knowledge-graph';
@@ -286,6 +293,12 @@ export class Auxiora {
   private branchManagers: Map<string, BranchManager> = new Map();
   private approvalQueue?: ApprovalQueue;
   private vectorStore?: VectorStore;
+  private reactLoops: Map<string, ReActLoop> = new Map();
+  private reactResults: Map<string, unknown> = new Map();
+  private a2aTaskManager: A2ATaskManager = new A2ATaskManager();
+  private a2aAgentCard?: AgentCard;
+  private canvasSessions: Map<string, CanvasSession> = new Map();
+  private sandboxManager?: SandboxManager;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
@@ -1281,6 +1294,24 @@ export class Auxiora {
 
     // Conversation branch API routes
     this.gateway.mountRouter('/api/v1/branches', this.createBranchRouter());
+
+    // ReAct loop API routes
+    this.gateway.mountRouter('/api/v1/react', this.createReactRouter());
+
+    // A2A (Agent-to-Agent) API routes
+    this.a2aAgentCard = new AgentCardBuilder()
+      .setName('Auxiora')
+      .setDescription('Auxiora AI assistant')
+      .setUrl(`http://${this.config.gateway.host}:${this.config.gateway.port}`)
+      .setVersion('1.0.0')
+      .build();
+    this.gateway.mountRouter('/api/v1/a2a', this.createA2ARouter());
+
+    // Canvas API routes
+    this.gateway.mountRouter('/api/v1/canvas', this.createCanvasRouter());
+
+    // Sandbox API routes
+    this.gateway.mountRouter('/api/v1/sandbox', this.createSandboxRouter());
 
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
@@ -6088,6 +6119,311 @@ export class Auxiora {
         return res.status(404).json({ error: 'Vector entry not found' });
       }
       res.json({ deleted: true });
+    });
+
+    return router;
+  }
+
+  private createReactRouter(): import('express').Router {
+    const router = Router();
+
+    // POST /run — start a new ReAct loop
+    router.post('/run', (req: any, res: any) => {
+      const { goal, maxSteps } = req.body as { goal?: string; maxSteps?: number };
+      if (!goal || typeof goal !== 'string') {
+        return res.status(400).json({ error: 'goal is required' });
+      }
+
+      const id = crypto.randomUUID();
+      const config: ReActConfig = {};
+      if (maxSteps) {
+        config.maxSteps = maxSteps;
+      }
+
+      const callbacks: ReActCallbacks = {
+        think: async (g: string, history: ReActStep[]) => {
+          // Simple stub: produce an answer after gathering context
+          if (history.length > 0) {
+            return { thought: `Analyzed goal: ${g}`, answer: `Completed goal: ${g}` };
+          }
+          return { thought: `Planning approach for: ${g}` };
+        },
+        executeTool: async (toolName: string, params: Record<string, unknown>) => {
+          try {
+            const result = await toolExecutor.execute(toolName, params, {
+              sessionId: id,
+              userId: 'react-loop',
+            });
+            return typeof result === 'string' ? result : JSON.stringify(result);
+          } catch (err) {
+            return `Error: ${err instanceof Error ? err.message : String(err)}`;
+          }
+        },
+      };
+
+      const loop = new ReActLoop(callbacks, config);
+      this.reactLoops.set(id, loop);
+
+      // Run async — do not await
+      loop.run(goal).then((result) => {
+        this.reactResults.set(id, result);
+      }).catch(() => {
+        // Errors captured in result
+      });
+
+      res.status(201).json({ id, status: loop.getStatus() });
+    });
+
+    // GET /:id/status — get loop status
+    router.get('/:id/status', (req: any, res: any) => {
+      const loop = this.reactLoops.get(req.params.id);
+      if (!loop) {
+        return res.status(404).json({ error: 'Loop not found' });
+      }
+      const result = this.reactResults.get(req.params.id);
+      res.json({ status: loop.getStatus(), result: result ?? null });
+    });
+
+    // GET /:id/steps — get loop steps
+    router.get('/:id/steps', (req: any, res: any) => {
+      const loop = this.reactLoops.get(req.params.id);
+      if (!loop) {
+        return res.status(404).json({ error: 'Loop not found' });
+      }
+      res.json(loop.getSteps());
+    });
+
+    // POST /:id/pause — pause loop
+    router.post('/:id/pause', (req: any, res: any) => {
+      const loop = this.reactLoops.get(req.params.id);
+      if (!loop) {
+        return res.status(404).json({ error: 'Loop not found' });
+      }
+      loop.pause();
+      res.json({ status: loop.getStatus() });
+    });
+
+    // POST /:id/resume — resume loop
+    router.post('/:id/resume', (req: any, res: any) => {
+      const loop = this.reactLoops.get(req.params.id);
+      if (!loop) {
+        return res.status(404).json({ error: 'Loop not found' });
+      }
+      loop.resume();
+      res.json({ status: loop.getStatus() });
+    });
+
+    // POST /:id/abort — abort loop
+    router.post('/:id/abort', (req: any, res: any) => {
+      const loop = this.reactLoops.get(req.params.id);
+      if (!loop) {
+        return res.status(404).json({ error: 'Loop not found' });
+      }
+      loop.abort(req.body?.reason);
+      res.json({ status: loop.getStatus() });
+    });
+
+    return router;
+  }
+
+  private createA2ARouter(): import('express').Router {
+    const router = Router();
+
+    // GET /card — return this agent's capability card
+    router.get('/card', (_req: any, res: any) => {
+      if (!this.a2aAgentCard) {
+        return res.status(503).json({ error: 'A2A not initialized' });
+      }
+      res.json(this.a2aAgentCard);
+    });
+
+    // POST /tasks — send a task (create via task manager)
+    router.post('/tasks', (req: any, res: any) => {
+      const { targetUrl, task } = req.body as { targetUrl?: string; task?: { message: string } };
+      if (!task?.message) {
+        return res.status(400).json({ error: 'task.message is required' });
+      }
+
+      const a2aTask = this.a2aTaskManager.createTask({
+        role: 'user',
+        parts: [{ type: 'text', text: task.message }],
+        timestamp: Date.now(),
+      });
+
+      if (targetUrl) {
+        // Store target URL as metadata for potential forwarding
+        a2aTask.metadata = { targetUrl };
+      }
+
+      res.status(201).json(a2aTask);
+    });
+
+    // GET /tasks/:id — get task status
+    router.get('/tasks/:id', (req: any, res: any) => {
+      const task = this.a2aTaskManager.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      res.json(task);
+    });
+
+    // POST /tasks/:id/cancel — cancel task
+    router.post('/tasks/:id/cancel', (req: any, res: any) => {
+      const task = this.a2aTaskManager.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      try {
+        this.a2aTaskManager.cancelTask(req.params.id);
+        res.json(this.a2aTaskManager.getTask(req.params.id));
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    return router;
+  }
+
+  private createCanvasRouter(): import('express').Router {
+    const router = Router();
+
+    // POST /sessions — create a new canvas session
+    router.post('/sessions', (req: any, res: any) => {
+      const { width, height } = req.body as { width?: number; height?: number };
+      const session = new CanvasSession({ width, height });
+      this.canvasSessions.set(session.id, session);
+      res.status(201).json({ id: session.id, ...session.getSize() });
+    });
+
+    // GET /sessions/:id — get session state
+    router.get('/sessions/:id', (req: any, res: any) => {
+      const session = this.canvasSessions.get(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      res.json({ id: session.id, objects: session.getObjects(), size: session.getSize() });
+    });
+
+    // POST /sessions/:id/objects — add object
+    router.post('/sessions/:id/objects', (req: any, res: any) => {
+      const session = this.canvasSessions.get(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      try {
+        const obj = session.addObject(req.body);
+        res.status(201).json(obj);
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // PUT /sessions/:id/objects/:objectId — update object
+    router.put('/sessions/:id/objects/:objectId', (req: any, res: any) => {
+      const session = this.canvasSessions.get(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      const updated = session.updateObject(req.params.objectId, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: 'Object not found' });
+      }
+      res.json(updated);
+    });
+
+    // DELETE /sessions/:id/objects/:objectId — remove object
+    router.delete('/sessions/:id/objects/:objectId', (req: any, res: any) => {
+      const session = this.canvasSessions.get(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      const removed = session.removeObject(req.params.objectId);
+      if (!removed) {
+        return res.status(404).json({ error: 'Object not found' });
+      }
+      res.json({ deleted: true });
+    });
+
+    // DELETE /sessions/:id — delete session
+    router.delete('/sessions/:id', (req: any, res: any) => {
+      const existed = this.canvasSessions.delete(req.params.id);
+      if (!existed) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      res.json({ deleted: true });
+    });
+
+    return router;
+  }
+
+  private createSandboxRouter(): import('express').Router {
+    const router = Router();
+
+    // POST /sessions — create a sandbox session
+    router.post('/sessions', async (req: any, res: any) => {
+      if (!this.sandboxManager) {
+        return res.status(503).json({ error: 'Sandbox not initialized' });
+      }
+      const { workspaceDir } = req.body as { workspaceDir?: string };
+      if (!workspaceDir || typeof workspaceDir !== 'string') {
+        return res.status(400).json({ error: 'workspaceDir is required' });
+      }
+      try {
+        const sessionId = crypto.randomUUID();
+        const session = await this.sandboxManager.createSession(sessionId, workspaceDir);
+        res.status(201).json(session.getInfo());
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /sessions/:id/run — run command in sandbox
+    router.post('/sessions/:id/run', async (req: any, res: any) => {
+      if (!this.sandboxManager) {
+        return res.status(503).json({ error: 'Sandbox not initialized' });
+      }
+      const { command } = req.body as { command?: string[] };
+      if (!command || !Array.isArray(command)) {
+        return res.status(400).json({ error: 'command array is required' });
+      }
+      try {
+        const result = await this.sandboxManager.runInSandbox(req.params.id, command);
+        res.json(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('No sandbox session found')) {
+          return res.status(404).json({ error: message });
+        }
+        res.status(500).json({ error: message });
+      }
+    });
+
+    // GET /sessions/:id — get session info
+    router.get('/sessions/:id', (req: any, res: any) => {
+      if (!this.sandboxManager) {
+        return res.status(503).json({ error: 'Sandbox not initialized' });
+      }
+      const session = this.sandboxManager.getSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      res.json(session.getInfo());
+    });
+
+    // DELETE /sessions/:id — stop and remove
+    router.delete('/sessions/:id', async (req: any, res: any) => {
+      if (!this.sandboxManager) {
+        return res.status(503).json({ error: 'Sandbox not initialized' });
+      }
+      try {
+        const removed = await this.sandboxManager.destroySession(req.params.id);
+        if (!removed) {
+          return res.status(404).json({ error: 'Session not found' });
+        }
+        res.json({ deleted: true });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
     });
 
     return router;

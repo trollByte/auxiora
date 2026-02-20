@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auxiora/a2a": "workspace:^",
     "@auxiora/agent-protocol": "workspace:*",
     "@auxiora/ambient": "workspace:*",
     "@auxiora/approval-queue": "workspace:^",
@@ -26,6 +27,7 @@
     "@auxiora/behaviors": "workspace:*",
     "@auxiora/browser": "workspace:*",
     "@auxiora/calendar-intelligence": "workspace:*",
+    "@auxiora/canvas": "workspace:^",
     "@auxiora/channels": "workspace:*",
     "@auxiora/code-interpreter": "workspace:^",
     "@auxiora/compose": "workspace:*",
@@ -62,8 +64,10 @@
     "@auxiora/plugins": "workspace:*",
     "@auxiora/providers": "workspace:*",
     "@auxiora/rag": "workspace:^",
+    "@auxiora/react-loop": "workspace:^",
     "@auxiora/research": "workspace:*",
     "@auxiora/router": "workspace:*",
+    "@auxiora/sandbox": "workspace:^",
     "@auxiora/screen": "workspace:*",
     "@auxiora/self-awareness": "workspace:*",
     "@auxiora/sessions": "workspace:*",

@@ -844,6 +844,9 @@ importers:
 
   packages/runtime:
     dependencies:
+      '@auxiora/a2a':
+        specifier: workspace:^
+        version: link:../a2a
       '@auxiora/agent-protocol':
         specifier: workspace:*
         version: link:../agent-protocol
@@ -871,6 +874,9 @@ importers:
       '@auxiora/calendar-intelligence':
         specifier: workspace:*
         version: link:../calendar-intelligence
+      '@auxiora/canvas':
+        specifier: workspace:^
+        version: link:../canvas
       '@auxiora/channels':
         specifier: workspace:*
         version: link:../channels
@@ -979,12 +985,18 @@ importers:
       '@auxiora/rag':
         specifier: workspace:^
         version: link:../rag
+      '@auxiora/react-loop':
+        specifier: workspace:^
+        version: link:../react-loop
       '@auxiora/research':
         specifier: workspace:*
         version: link:../research
       '@auxiora/router':
         specifier: workspace:*
         version: link:../router
+      '@auxiora/sandbox':
+        specifier: workspace:^
+        version: link:../sandbox
       '@auxiora/screen':
         specifier: workspace:*
         version: link:../screen
