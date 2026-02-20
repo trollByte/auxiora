@@ -943,12 +943,18 @@ importers:
       '@auxiora/guardrails':
         specifier: workspace:*
         version: link:../guardrails
+      '@auxiora/image-gen':
+        specifier: workspace:^
+        version: link:../image-gen
       '@auxiora/intent':
         specifier: workspace:*
         version: link:../intent
       '@auxiora/introspection':
         specifier: workspace:*
         version: link:../introspection
+      '@auxiora/knowledge-graph':
+        specifier: workspace:^
+        version: link:../knowledge-graph
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
