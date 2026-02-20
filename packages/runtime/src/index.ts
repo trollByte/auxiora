@@ -1117,44 +1117,7 @@ export class Auxiora {
     }
 
     // MCP management API routes
-    if (this.mcpClientManager) {
-      const mcpRouter = express.Router();
-      const mcpMgr = this.mcpClientManager;
-
-      mcpRouter.get('/servers', (_req: any, res: any) => {
-        const status = mcpMgr.getStatus();
-        const result: Record<string, { state: string; toolCount: number }> = {};
-        for (const [name, info] of status) {
-          result[name] = info;
-        }
-        res.json({ servers: result });
-      });
-
-      mcpRouter.post('/servers/:name/connect', async (req: any, res: any) => {
-        try {
-          await mcpMgr.connect(req.params.name);
-          res.json({ ok: true });
-        } catch (err: any) {
-          res.status(500).json({ error: err.message || String(err) });
-        }
-      });
-
-      mcpRouter.post('/servers/:name/disconnect', async (req: any, res: any) => {
-        try {
-          await mcpMgr.disconnect(req.params.name);
-          res.json({ ok: true });
-        } catch (err: any) {
-          res.status(500).json({ error: err.message || String(err) });
-        }
-      });
-
-      mcpRouter.get('/servers/:name/tools', (req: any, res: any) => {
-        const tools = mcpMgr.getToolsForServer(req.params.name);
-        res.json({ tools });
-      });
-
-      this.gateway.mountRouter('/api/v1/mcp', mcpRouter);
-    }
+    this.gateway.mountRouter('/api/v1/mcp', this.createMcpRouter());
 
     // Personality management API routes
     if (this.architect) {
@@ -4553,6 +4516,58 @@ export class Auxiora {
     router.put('/scheduler/config', (_req: any, res: any) => {
       if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
       res.json({ config: self.ambientScheduler.getConfig() });
+    });
+
+    return router;
+  }
+
+  private createMcpRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/servers', (_req: any, res: any) => {
+      if (!this.mcpClientManager) {
+        return res.json({ servers: {} });
+      }
+      const status = this.mcpClientManager.getStatus();
+      const servers: Record<string, { state: string; toolCount: number }> = {};
+      for (const [name, s] of status) {
+        servers[name] = s;
+      }
+      res.json({ servers });
+    });
+
+    router.post('/servers/:name/connect', async (req: any, res: any) => {
+      if (!this.mcpClientManager) {
+        return res.status(503).json({ error: 'MCP not configured' });
+      }
+      try {
+        await this.mcpClientManager.connect(req.params.name);
+        await audit('connector.connected', { connector: req.params.name, type: 'mcp' });
+        res.json({ status: 'connected' });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.post('/servers/:name/disconnect', async (req: any, res: any) => {
+      if (!this.mcpClientManager) {
+        return res.status(503).json({ error: 'MCP not configured' });
+      }
+      try {
+        await this.mcpClientManager.disconnect(req.params.name);
+        await audit('connector.disconnected', { connector: req.params.name, type: 'mcp' });
+        res.json({ status: 'disconnected' });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/servers/:name/tools', (req: any, res: any) => {
+      if (!this.mcpClientManager) {
+        return res.status(503).json({ error: 'MCP not configured' });
+      }
+      const tools = this.mcpClientManager.getToolsForServer(req.params.name);
+      res.json({ tools });
     });
 
     return router;
