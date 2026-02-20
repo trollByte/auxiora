@@ -35,6 +35,7 @@
     "@auxiora/contacts": "workspace:*",
     "@auxiora/core": "workspace:*",
     "@auxiora/gateway": "workspace:*",
+    "@auxiora/guardrails": "workspace:*",
     "@auxiora/providers": "workspace:*",
     "@auxiora/research": "workspace:*",
     "@auxiora/sessions": "workspace:*",

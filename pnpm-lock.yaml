@@ -916,6 +916,9 @@ importers:
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
+      '@auxiora/guardrails':
+        specifier: workspace:*
+        version: link:../guardrails
       '@auxiora/intent':
         specifier: workspace:*
         version: link:../intent
