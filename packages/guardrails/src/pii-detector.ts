@@ -1,49 +1,124 @@
 import { getLogger } from '@auxiora/logger';
-import type { Finding } from './types.js';
+import type { Threat } from './types.js';
 
 const logger = getLogger('guardrails:pii');
 
 interface PiiPattern {
   name: string;
   regex: RegExp;
-  redaction: string;
-  description: string;
-  severity: 'medium' | 'high';
+  type: string;
+  placeholder: string;
+  level: 'low' | 'medium' | 'high';
+  validate?: (match: string) => boolean;
+}
+
+function luhnCheck(digits: string): boolean {
+  const nums = digits.replace(/\D/g, '');
+  let sum = 0;
+  let alternate = false;
+  for (let i = nums.length - 1; i >= 0; i--) {
+    let n = parseInt(nums[i], 10);
+    if (alternate) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alternate = !alternate;
+  }
+  return sum % 10 === 0;
 }
 
 const PII_PATTERNS: PiiPattern[] = [
-  { name: 'email', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, redaction: '[EMAIL]', description: 'Email address detected', severity: 'medium' },
-  { name: 'ssn', regex: /\b\d{3}-\d{2}-\d{4}\b/g, redaction: '[SSN]', description: 'Social Security Number detected', severity: 'high' },
-  { name: 'credit_card', regex: /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b/g, redaction: '[CARD]', description: 'Credit card number detected', severity: 'high' },
-  { name: 'phone', regex: /(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}\b/g, redaction: '[PHONE]', description: 'Phone number detected', severity: 'medium' },
-  { name: 'ip_address', regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g, redaction: '[IP]', description: 'IP address detected', severity: 'medium' },
-  { name: 'dob', regex: /(?:born on|dob[:\s]|date of birth[:\s])\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/gi, redaction: '[DOB]', description: 'Date of birth detected', severity: 'medium' },
+  {
+    name: 'email',
+    regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    type: 'email',
+    placeholder: '[EMAIL]',
+    level: 'medium',
+  },
+  {
+    name: 'ssn',
+    regex: /\b(\d{3}-\d{2}-\d{4})\b/g,
+    type: 'ssn',
+    placeholder: '[SSN]',
+    level: 'high',
+  },
+  {
+    name: 'credit_card',
+    regex: /\b(\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7})\b/g,
+    type: 'credit_card',
+    placeholder: '[CREDIT_CARD]',
+    level: 'high',
+    validate: (match: string) => {
+      const digits = match.replace(/[\s-]/g, '');
+      return digits.length >= 13 && digits.length <= 19 && luhnCheck(digits);
+    },
+  },
+  {
+    name: 'phone',
+    regex: /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+    type: 'phone',
+    placeholder: '[PHONE]',
+    level: 'medium',
+  },
+  {
+    name: 'ip_address',
+    regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
+    type: 'ip_address',
+    placeholder: '[IP_ADDRESS]',
+    level: 'low',
+  },
+  {
+    name: 'dob',
+    regex: /(?:born on|DOB[:\s]|birthday[:\s]?)\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}|\w+ \d{1,2},?\s*\d{4})/gi,
+    type: 'dob',
+    placeholder: '[DOB]',
+    level: 'high',
+  },
 ];
 
 export class PiiDetector {
-  scan(text: string): Finding[] {
-    const findings: Finding[] = [];
+  detect(text: string): Threat[] {
+    const threats: Threat[] = [];
+
     for (const pattern of PII_PATTERNS) {
-      for (const match of text.matchAll(pattern.regex)) {
-        findings.push({ type: 'pii', description: pattern.description, severity: pattern.severity, offset: match.index, length: match[0].length, redacted: pattern.redaction });
-        logger.debug('PII detected: %s at offset %d', pattern.name, match.index);
+      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+      let match: RegExpExecArray | null;
+
+      while ((match = regex.exec(text)) !== null) {
+        const matchedText = match[0];
+
+        if (pattern.validate && !pattern.validate(matchedText)) {
+          continue;
+        }
+
+        threats.push({
+          type: 'pii',
+          level: pattern.level,
+          description: 'Detected ' + pattern.name + ': ' + matchedText,
+          location: { start: match.index, end: match.index + matchedText.length },
+          match: matchedText,
+        });
       }
     }
-    return findings.sort((a, b) => (a.offset ?? 0) - (b.offset ?? 0));
+
+    logger.debug({ threatCount: threats.length }, 'PII scan complete');
+    return threats;
   }
 
   redact(text: string): string {
-    return this.redactFindings(text, this.scan(text));
-  }
-
-  redactFindings(text: string, findings: Finding[]): string {
-    const sorted = [...findings].sort((a, b) => (b.offset ?? 0) - (a.offset ?? 0));
     let result = text;
-    for (const f of sorted) {
-      if (f.offset !== undefined && f.length !== undefined && f.redacted) {
-        result = result.slice(0, f.offset) + f.redacted + result.slice(f.offset + f.length);
-      }
+
+    for (const pattern of PII_PATTERNS) {
+      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+      result = result.replace(regex, (matched) => {
+        if (pattern.validate && !pattern.validate(matched)) {
+          return matched;
+        }
+        return pattern.placeholder;
+      });
     }
+
     return result;
   }
 }

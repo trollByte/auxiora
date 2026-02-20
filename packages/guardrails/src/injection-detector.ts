@@ -1,40 +1,146 @@
 import { getLogger } from '@auxiora/logger';
-import type { Finding } from './types.js';
+import type { Threat, ThreatLevel } from './types.js';
 
 const logger = getLogger('guardrails:injection');
 
 interface InjectionPattern {
   name: string;
   regex: RegExp;
+  weight: number;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  findingType: 'injection' | 'jailbreak';
 }
 
 const INJECTION_PATTERNS: InjectionPattern[] = [
-  { name: 'ignore_instructions', regex: /ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+instructions/gi, description: 'Attempt to override previous instructions', severity: 'high', findingType: 'injection' },
-  { name: 'new_system_prompt', regex: /(?:new|override|replace)\s+system\s+prompt/gi, description: 'Attempt to replace system prompt', severity: 'critical', findingType: 'injection' },
-  { name: 'forget_instructions', regex: /forget\s+(?:your|all|the)\s+instructions/gi, description: 'Attempt to clear instructions', severity: 'high', findingType: 'injection' },
-  { name: 'you_are_now', regex: /you\s+are\s+now\s+(?:a\s+)?(?!going|able|ready)/gi, description: 'Role reassignment attempt', severity: 'medium', findingType: 'jailbreak' },
-  { name: 'pretend_you_are', regex: /pretend\s+(?:you\s+are|to\s+be)/gi, description: 'Role manipulation via pretend', severity: 'medium', findingType: 'jailbreak' },
-  { name: 'act_as_if', regex: /act\s+as\s+if\s+you/gi, description: 'Role manipulation via act-as', severity: 'medium', findingType: 'jailbreak' },
-  { name: 'roleplay_as', regex: /roleplay\s+as/gi, description: 'Role manipulation via roleplay', severity: 'medium', findingType: 'jailbreak' },
-  { name: 'repeat_system_prompt', regex: /(?:repeat|show|display|print|output|reveal)\s+(?:your\s+)?(?:system\s+prompt|instructions|rules|guidelines)/gi, description: 'Attempt to leak system prompt', severity: 'high', findingType: 'injection' },
-  { name: 'what_are_your_rules', regex: /what\s+are\s+your\s+(?:rules|instructions|guidelines|system\s+prompt)/gi, description: 'Attempt to extract system instructions', severity: 'medium', findingType: 'injection' },
+  {
+    name: 'ignore_instructions',
+    regex: /ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+instructions/i,
+    weight: 3,
+    description: 'Attempt to override prior instructions',
+  },
+  {
+    name: 'you_are_now',
+    regex: /you\s+are\s+now\s+(?:a|an|the|acting\s+as)/i,
+    weight: 2,
+    description: 'Attempt to reassign AI role',
+  },
+  {
+    name: 'system_role',
+    regex: /^(?:system|assistant)\s*:/im,
+    weight: 3,
+    description: 'Injected system/assistant role marker',
+  },
+  {
+    name: 'pretend_to_be',
+    regex: /pretend\s+(?:to\s+be|you(?:'re|\s+are))/i,
+    weight: 2,
+    description: 'Attempt to override AI identity',
+  },
+  {
+    name: 'triple_quotes',
+    regex: /"""/g,
+    weight: 1,
+    description: 'Triple-quote delimiter injection',
+  },
+  {
+    name: 'triple_backticks_inject',
+    regex: /```\s*(?:system|instruction|prompt)/i,
+    weight: 2,
+    description: 'Backtick delimiter with role keyword',
+  },
+  {
+    name: 'angle_brackets',
+    regex: /<<<|>>>/g,
+    weight: 1,
+    description: 'Angle bracket delimiter injection',
+  },
+  {
+    name: 'encoded_instruction',
+    regex: /(?:atob|base64)\s*\(\s*['"][A-Za-z0-9+/=]{20,}['"]\s*\)/i,
+    weight: 2,
+    description: 'Possible encoded instruction payload',
+  },
+  {
+    name: 'forget_everything',
+    regex: /forget\s+(?:all|everything|what\s+you\s+know)/i,
+    weight: 3,
+    description: 'Attempt to reset AI memory/instructions',
+  },
+  {
+    name: 'new_instructions',
+    regex: /(?:new|updated|revised|real)\s+instructions?\s*:/i,
+    weight: 3,
+    description: 'Attempt to inject new instructions',
+  },
+  {
+    name: 'override_keyword',
+    regex: /\boverride\b.*\b(?:instructions?|rules?|guidelines?|constraints?)\b/i,
+    weight: 2,
+    description: 'Attempt to override rules',
+  },
+  {
+    name: 'do_anything_now',
+    regex: /\bDAN\b|do\s+anything\s+now/i,
+    weight: 3,
+    description: 'DAN (Do Anything Now) jailbreak pattern',
+  },
+  {
+    name: 'disregard',
+    regex: /disregard\s+(?:all\s+)?(?:previous|prior|above|earlier|your)\s+(?:instructions|programming|rules)/i,
+    weight: 3,
+    description: 'Attempt to disregard instructions',
+  },
 ];
 
+function weightToLevel(totalWeight: number): ThreatLevel {
+  if (totalWeight >= 6) return 'critical';
+  if (totalWeight >= 4) return 'high';
+  if (totalWeight >= 2) return 'medium';
+  if (totalWeight >= 1) return 'low';
+  return 'none';
+}
+
+function levelValue(level: ThreatLevel): number {
+  const values: Record<ThreatLevel, number> = {
+    none: 0,
+    low: 1,
+    medium: 2,
+    high: 3,
+    critical: 4,
+  };
+  return values[level];
+}
+
 export class InjectionDetector {
-  scan(text: string): Finding[] {
-    const findings: Finding[] = [];
+  detect(text: string): Threat[] {
+    const threats: Threat[] = [];
+    let totalWeight = 0;
+
     for (const pattern of INJECTION_PATTERNS) {
-      for (const match of text.matchAll(pattern.regex)) {
-        findings.push({ type: pattern.findingType, description: pattern.description, severity: pattern.severity, offset: match.index, length: match[0].length });
-        logger.debug('Injection pattern detected: %s at offset %d', pattern.name, match.index);
+      const regex = new RegExp(pattern.regex.source, pattern.regex.flags.includes('g') ? pattern.regex.flags : pattern.regex.flags + 'g');
+      let match: RegExpExecArray | null;
+
+      while ((match = regex.exec(text)) !== null) {
+        totalWeight += pattern.weight;
+        threats.push({
+          type: 'prompt_injection',
+          level: weightToLevel(pattern.weight),
+          description: pattern.description,
+          location: { start: match.index, end: match.index + match[0].length },
+          match: match[0],
+        });
       }
     }
-    if (findings.length >= 3) {
-      for (const f of findings) { if (f.severity === 'medium') f.severity = 'high'; }
+
+    if (totalWeight >= 4 && threats.length > 0) {
+      const aggregateLevel = weightToLevel(totalWeight);
+      for (const threat of threats) {
+        if (levelValue(aggregateLevel) > levelValue(threat.level)) {
+          threat.level = aggregateLevel;
+        }
+      }
     }
-    return findings.sort((a, b) => (a.offset ?? 0) - (b.offset ?? 0));
+
+    logger.debug({ threatCount: threats.length, totalWeight }, 'Injection scan complete');
+    return threats;
   }
 }

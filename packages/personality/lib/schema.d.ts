@@ -173,5 +173,7 @@ export interface PromptOutput {
     relevantDecisions?: import('./the-architect/decision-log.js').Decision[];
     /** Actionable feedback insights (trait adjustments, weak domains, trends). */
     feedbackInsight?: import('./the-architect/feedback-store.js').FeedbackInsight;
+    /** Synthesized user model — opt-in, not populated by generatePrompt(). */
+    userModel?: import('./the-architect/user-model-synthesizer.js').UserModel;
 }
 //# sourceMappingURL=schema.d.ts.map

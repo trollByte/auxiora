@@ -21,6 +21,15 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.1.0)(jsdom@28.1.0(@noble/hashes@1.8.0))
 
+  packages/a2a:
+    dependencies:
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/agent-protocol:
     dependencies:
       '@auxiora/audit':
@@ -51,6 +60,15 @@ importers:
         specifier: workspace:*
         version: link:../personality
 
+  packages/approval-queue:
+    dependencies:
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/audit:
     dependencies:
       '@auxiora/core':
@@ -65,6 +83,12 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/backup:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/behaviors:
     dependencies:
@@ -272,6 +296,15 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/code-interpreter:
+    dependencies:
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/compose:
     dependencies:
       '@auxiora/audit':
@@ -377,6 +410,12 @@ importers:
         specifier: workspace:*
         version: link:../tts
 
+  packages/conversation-branch:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/core: {}
 
   packages/daemon:
@@ -476,6 +515,12 @@ importers:
 
   packages/errors: {}
 
+  packages/evaluation:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/gateway:
     dependencies:
       '@auxiora/audit':
@@ -519,6 +564,18 @@ importers:
         specifier: ^8.18.0
         version: 8.18.1
 
+  packages/guardrails:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/image-gen:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/intent: {}
 
   packages/introspection:
@@ -533,6 +590,12 @@ importers:
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@25.1.0)(jsdom@28.1.0(@noble/hashes@1.8.0))
+
+  packages/knowledge-graph:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/landing: {}
 
@@ -608,6 +671,15 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/nl-automation:
+    dependencies:
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
   packages/notification-hub:
     dependencies:
       '@auxiora/audit':
@@ -619,6 +691,12 @@ importers:
       nanoid:
         specifier: ^5.1.2
         version: 5.1.6
+
+  packages/observability:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/onboarding:
     dependencies:
@@ -712,6 +790,27 @@ importers:
       openai:
         specifier: ^4.103.0
         version: 4.104.0(ws@8.19.0)(zod@3.25.76)
+
+  packages/rag:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/rbac:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
+
+  packages/react-loop:
+    dependencies:
+      '@auxiora/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/research:
     dependencies:
@@ -1031,6 +1130,12 @@ importers:
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
+
+  packages/vector-store:
+    dependencies:
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
 
   packages/voice:
     dependencies:
