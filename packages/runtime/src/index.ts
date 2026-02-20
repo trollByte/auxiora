@@ -94,10 +94,18 @@ import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
 import { DocumentStore, ContextBuilder } from '@auxiora/rag';
+import { GraphStore, EntityLinker } from '@auxiora/knowledge-graph';
+import type { GraphQuery } from '@auxiora/knowledge-graph';
 import { EvalRunner, EvalStore, exactMatch, containsExpected, lengthRatio, keywordCoverage, sentenceCompleteness, responseRelevance, toxicityScore } from '@auxiora/evaluation';
+import { CodeExecutor, SessionManager as CodeSessionManager } from '@auxiora/code-interpreter';
+import type { Language } from '@auxiora/code-interpreter';
+import { ImageGenManager, OpenAIImageProvider, ReplicateImageProvider } from '@auxiora/image-gen';
+import type { ImageGenRequest } from '@auxiora/image-gen';
 import type { EvalCase } from '@auxiora/evaluation';
 import type { ScanResult } from '@auxiora/guardrails';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
+import { BackupManager } from '@auxiora/backup';
+import type { BackupResult, DataCategory } from '@auxiora/backup';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
@@ -259,9 +267,16 @@ export class Auxiora {
   private evalStore?: EvalStore;
   private documentStore?: DocumentStore;
   private contextBuilder?: ContextBuilder;
+  private knowledgeGraph?: GraphStore;
+  private entityLinker?: EntityLinker;
+  private imageGenManager?: ImageGenManager;
   private updater?: Updater;
   private installationDetector?: InstallationDetector;
   private versionChecker?: VersionChecker;
+  private codeExecutor?: CodeExecutor;
+  private codeSessionManager?: CodeSessionManager;
+  private backupManager?: BackupManager;
+  private backupStore: Map<string, BackupResult> = new Map();
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
@@ -415,6 +430,10 @@ export class Auxiora {
       toxicityScore,
     });
     this.logger.info('Evaluation system initialized');
+
+    // Initialize backup manager
+    this.backupManager = new BackupManager();
+    this.logger.info('Backup manager initialized');
 
     // Initialize consciousness orchestrator (self-model, journal, monitor, repair)
     if (this.architect && this.healthMonitor) {
@@ -1210,6 +1229,26 @@ export class Auxiora {
       this.gateway.mountRouter('/api/v1/eval', this.createEvalRouter());
     }
 
+    // Image generation API routes
+    if (this.imageGenManager) {
+      this.gateway.mountRouter('/api/v1/images', this.createImageRouter());
+    }
+
+    // Knowledge graph API routes
+    if (this.knowledgeGraph) {
+      this.gateway.mountRouter('/api/v1/knowledge', this.createKnowledgeRouter());
+    }
+
+    // Code interpreter API routes
+    if (this.codeSessionManager) {
+      this.gateway.mountRouter('/api/v1/code', this.createCodeRouter());
+    }
+
+    // Backup API routes
+    if (this.backupManager) {
+      this.gateway.mountRouter('/api/v1/backup', this.createBackupRouter());
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -1354,6 +1393,36 @@ export class Auxiora {
     this.documentStore = new DocumentStore();
     this.contextBuilder = new ContextBuilder();
     this.logger.info('RAG document store initialized');
+
+    // Initialize image generation (conditional on provider keys)
+    {
+      let openaiKey: string | undefined;
+      let replicateToken: string | undefined;
+      try { openaiKey = this.vault.get('OPENAI_API_KEY'); } catch { /* vault locked */ }
+      try { replicateToken = this.vault.get('REPLICATE_API_TOKEN'); } catch { /* vault locked */ }
+      if (openaiKey || replicateToken) {
+        this.imageGenManager = new ImageGenManager();
+        if (openaiKey) {
+          this.imageGenManager.registerProvider(new OpenAIImageProvider(openaiKey));
+        }
+        if (replicateToken) {
+          this.imageGenManager.registerProvider(new ReplicateImageProvider(replicateToken));
+        }
+        this.logger.info(`Image generation initialized with providers: ${this.imageGenManager.listProviders().join(', ')}`);
+      } else {
+        this.logger.info('Image generation skipped: no OPENAI_API_KEY or REPLICATE_API_TOKEN in vault');
+      }
+    }
+
+    // Initialize knowledge graph
+    this.knowledgeGraph = new GraphStore();
+    this.entityLinker = new EntityLinker();
+    this.logger.info('Knowledge graph initialized');
+
+    // Initialize code interpreter
+    this.codeExecutor = new CodeExecutor();
+    this.codeSessionManager = new CodeSessionManager(this.codeExecutor);
+    this.logger.info('Code interpreter initialized');
 
     // Initialize notification orchestrator
     this.notificationHub = new NotificationHub();
@@ -5193,6 +5262,49 @@ export class Auxiora {
     return router;
   }
 
+  private createImageRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/providers', (_req: any, res: any) => {
+      const providers = this.imageGenManager!.listProviders();
+      const details = providers.map((name) => {
+        const p = this.imageGenManager!.getProvider(name);
+        return {
+          name,
+          supportedSizes: p?.supportedSizes ?? [],
+          supportedFormats: p?.supportedFormats ?? [],
+          defaultModel: p?.defaultModel ?? '',
+        };
+      });
+      res.json({ providers: details });
+    });
+
+    router.post('/generate', async (req: any, res: any) => {
+      const { prompt, size, format, provider, negativePrompt, count, model, seed, style } = req.body;
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'prompt required' });
+      }
+      const request: ImageGenRequest = {
+        prompt,
+        ...(size && { size }),
+        ...(format && { format }),
+        ...(provider && { provider }),
+        ...(negativePrompt && { negativePrompt }),
+        ...(count && { count }),
+        ...(model && { model }),
+        ...(seed !== undefined && { seed }),
+        ...(style && { style }),
+      };
+      const result = await this.imageGenManager!.generate(request);
+      if (!result.success) {
+        return res.status(502).json({ error: result.error, durationMs: result.durationMs });
+      }
+      res.json(result);
+    });
+
+    return router;
+  }
+
   private createRagRouter(): import('express').Router {
     const router = Router();
 
@@ -5404,6 +5516,264 @@ export class Auxiora {
       }
     });
 
+    return router;
+  }
+
+  private createCodeRouter(): import('express').Router {
+    const router = Router();
+
+    // POST /execute — one-shot code execution (no session required)
+    router.post('/execute', async (req: any, res: any) => {
+      try {
+        const { language, code, timeout } = req.body as {
+          language?: string;
+          code?: string;
+          timeout?: number;
+        };
+        if (!language || typeof language !== 'string') {
+          return res.status(400).json({ error: 'language required' });
+        }
+        if (!code || typeof code !== 'string') {
+          return res.status(400).json({ error: 'code required' });
+        }
+        const validLanguages: Language[] = ['javascript', 'typescript', 'python', 'shell'];
+        if (!validLanguages.includes(language as Language)) {
+          return res.status(400).json({ error: `Invalid language. Allowed: ${validLanguages.join(', ')}` });
+        }
+        const result = await this.codeExecutor!.execute({
+          language: language as Language,
+          code,
+          timeoutMs: timeout,
+        });
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // GET /sessions — list active sessions
+    router.get('/sessions', (_req: any, res: any) => {
+      const sessions = this.codeSessionManager!.listSessions().map((s) => ({
+        id: s.id,
+        language: s.language,
+        createdAt: s.createdAt,
+        lastActivity: s.lastActivity,
+        historyLength: s.history.length,
+      }));
+      res.json({ sessions });
+    });
+
+    // POST /sessions — create a new REPL session
+    router.post('/sessions', (req: any, res: any) => {
+      try {
+        const { language } = req.body as { language?: string };
+        if (!language || typeof language !== 'string') {
+          return res.status(400).json({ error: 'language required' });
+        }
+        const validLanguages: Language[] = ['javascript', 'typescript', 'python', 'shell'];
+        if (!validLanguages.includes(language as Language)) {
+          return res.status(400).json({ error: `Invalid language. Allowed: ${validLanguages.join(', ')}` });
+        }
+        const session = this.codeSessionManager!.createSession(language as Language);
+        res.status(201).json({
+          id: session.id,
+          language: session.language,
+          createdAt: session.createdAt,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const status = message.includes('Maximum number of sessions') ? 409 : 500;
+        res.status(status).json({ error: message });
+      }
+    });
+
+    // GET /sessions/:id — get session details
+    router.get('/sessions/:id', (req: any, res: any) => {
+      const session = this.codeSessionManager!.getSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'session not found' });
+      }
+      res.json({
+        id: session.id,
+        language: session.language,
+        createdAt: session.createdAt,
+        lastActivity: session.lastActivity,
+        historyLength: session.history.length,
+        history: session.history,
+      });
+    });
+
+    // POST /sessions/:id/execute — execute code in a session
+    router.post('/sessions/:id/execute', async (req: any, res: any) => {
+      try {
+        const { code } = req.body as { code?: string };
+        if (!code || typeof code !== 'string') {
+          return res.status(400).json({ error: 'code required' });
+        }
+        const result = await this.codeSessionManager!.execute(req.params.id, code);
+        res.json(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) {
+          return res.status(404).json({ error: message });
+        }
+        res.status(500).json({ error: message });
+      }
+    });
+
+    // DELETE /sessions/:id — destroy a session
+    router.delete('/sessions/:id', (req: any, res: any) => {
+      const session = this.codeSessionManager!.getSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: 'session not found' });
+      }
+      this.codeSessionManager!.destroySession(req.params.id);
+      res.json({ deleted: true });
+    });
+
+    return router;
+  }
+
+  private createBackupRouter(): import('express').Router {
+    const router = Router();
+    let nextId = 1;
+
+    // POST /create — create a new backup
+    router.post('/create', async (req: any, res: any) => {
+      if (!this.backupManager) {
+        return res.status(503).json({ error: 'Backup system not initialized' });
+      }
+      try {
+        const { categories } = req.body as { categories?: DataCategory[] };
+        const result = await this.backupManager.createBackup(categories);
+        if (result.status === 'failed') {
+          return res.status(500).json({ error: result.error ?? 'Backup failed' });
+        }
+        const id = `backup-${nextId++}`;
+        this.backupStore.set(id, result);
+        res.status(201).json({ id, ...result });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // GET /list — list all stored backups
+    router.get('/list', (_req: any, res: any) => {
+      const backups = [...this.backupStore.entries()].map(([id, b]) => ({
+        id,
+        status: b.status,
+        manifest: b.manifest,
+      }));
+      res.json({ backups });
+    });
+
+    // POST /restore — restore from a backup
+    router.post('/restore', async (req: any, res: any) => {
+      if (!this.backupManager) {
+        return res.status(503).json({ error: 'Backup system not initialized' });
+      }
+      try {
+        const { backupId, categories } = req.body as { backupId?: string; categories?: DataCategory[] };
+        if (!backupId || typeof backupId !== 'string') {
+          return res.status(400).json({ error: 'backupId required' });
+        }
+        const backup = this.backupStore.get(backupId);
+        if (!backup) {
+          return res.status(404).json({ error: 'Backup not found' });
+        }
+        const result = await this.backupManager.restore(backup, categories);
+        if (result.status === 'failed') {
+          return res.status(500).json({ error: result.error ?? 'Restore failed' });
+        }
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // DELETE /:id — delete a stored backup
+    router.delete('/:id', (req: any, res: any) => {
+      const { id } = req.params;
+      if (!this.backupStore.has(id)) {
+        return res.status(404).json({ error: 'Backup not found' });
+      }
+      this.backupStore.delete(id);
+      res.json({ deleted: true });
+    });
+
+    return router;
+  }
+
+  private createKnowledgeRouter(): import('express').Router {
+    const router = Router();
+    router.post('/entities', (req: any, res: any) => {
+      const { name, type, properties, aliases } = req.body;
+      if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' });
+      if (!type || typeof type !== 'string') return res.status(400).json({ error: 'type required' });
+      try {
+        const node = this.knowledgeGraph!.addNode({ name, type: type as any, aliases: aliases ?? [], properties: properties ?? {}, confidence: 1.0 });
+        res.status(201).json(node);
+      } catch (err) { res.status(500).json({ error: err instanceof Error ? err.message : String(err) }); }
+    });
+    router.get('/entities', (req: any, res: any) => {
+      const query = req.query.query as string | undefined;
+      if (query) {
+        const extracted = this.entityLinker!.extractEntities(query);
+        const nodes = extracted.map((e: { name: string }) => this.knowledgeGraph!.getNode(e.name)).filter(Boolean);
+        return res.json({ entities: nodes });
+      }
+      return res.json({ entities: [], stats: this.knowledgeGraph!.stats() });
+    });
+    router.get('/entities/:id', (req: any, res: any) => {
+      const node = this.knowledgeGraph!.getNode(req.params.id);
+      if (!node) return res.status(404).json({ error: 'entity not found' });
+      res.json(node);
+    });
+    router.delete('/entities/:id', (req: any, res: any) => {
+      const node = this.knowledgeGraph!.getNode(req.params.id);
+      if (!node) return res.status(404).json({ error: 'entity not found' });
+      this.knowledgeGraph!.removeNode(node.id);
+      res.json({ deleted: true });
+    });
+    router.post('/relations', (req: any, res: any) => {
+      const { from, to, type, properties, weight, label, evidence } = req.body;
+      if (!from || typeof from !== 'string') return res.status(400).json({ error: 'from required' });
+      if (!to || typeof to !== 'string') return res.status(400).json({ error: 'to required' });
+      if (!type || typeof type !== 'string') return res.status(400).json({ error: 'type required' });
+      try {
+        const edge = this.knowledgeGraph!.addEdge(from, to, type as any, { weight, label, evidence, properties });
+        res.status(201).json(edge);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) return res.status(404).json({ error: message });
+        res.status(500).json({ error: message });
+      }
+    });
+    router.get('/relations', (req: any, res: any) => {
+      const nodeId = req.query.nodeId as string | undefined;
+      const direction = (req.query.direction as 'outgoing' | 'incoming' | 'both') ?? 'both';
+      if (!nodeId) return res.status(400).json({ error: 'nodeId query parameter required' });
+      const node = this.knowledgeGraph!.getNode(nodeId);
+      if (!node) return res.status(404).json({ error: 'node not found' });
+      res.json({ relations: this.knowledgeGraph!.getEdges(node.id, direction) });
+    });
+    router.post('/query', (req: any, res: any) => {
+      const { startNode, relation, targetType, maxDepth, minConfidence } = req.body as Partial<GraphQuery>;
+      try {
+        res.json(this.knowledgeGraph!.query({ startNode, relation, targetType, maxDepth, minConfidence }));
+      } catch (err) { res.status(500).json({ error: err instanceof Error ? err.message : String(err) }); }
+    });
+    router.post('/extract', (req: any, res: any) => {
+      const { text } = req.body;
+      if (!text || typeof text !== 'string') return res.status(400).json({ error: 'text required' });
+      try {
+        const result = this.entityLinker!.linkToGraph(text, this.knowledgeGraph!);
+        res.json({ newNodes: result.newNodes, newEdges: result.newEdges });
+      } catch (err) { res.status(500).json({ error: err instanceof Error ? err.message : String(err) }); }
+    });
+    router.get('/stats', (_req: any, res: any) => {
+      res.json(this.knowledgeGraph!.stats());
+    });
     return router;
   }
 }

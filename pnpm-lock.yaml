@@ -856,6 +856,9 @@ importers:
       '@auxiora/autonomy':
         specifier: workspace:*
         version: link:../autonomy
+      '@auxiora/backup':
+        specifier: workspace:^
+        version: link:../backup
       '@auxiora/behaviors':
         specifier: workspace:*
         version: link:../behaviors
@@ -868,6 +871,9 @@ importers:
       '@auxiora/channels':
         specifier: workspace:*
         version: link:../channels
+      '@auxiora/code-interpreter':
+        specifier: workspace:^
+        version: link:../code-interpreter
       '@auxiora/compose':
         specifier: workspace:*
         version: link:../compose
