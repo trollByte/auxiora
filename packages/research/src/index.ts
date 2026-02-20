@@ -26,3 +26,5 @@ export { CitationTracker } from './citation.js';
 export { KnowledgeGraph } from './knowledge-graph.js';
 export { ResearchIntentDetector } from './intent-detector.js';
 export { ReportGenerator } from './report-generator.js';
+export { DeepResearchOrchestrator } from './deep-research.js';
+export type { SubtopicPlan, ResearchPlan, ResearchDocumentStore } from './deep-research.js';
