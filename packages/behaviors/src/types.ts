@@ -1,4 +1,4 @@
-export type BehaviorType = 'scheduled' | 'monitor' | 'one-shot';
+export type BehaviorType = 'scheduled' | 'monitor' | 'one-shot' | 'event';
 export type BehaviorStatus = 'active' | 'paused' | 'deleted' | 'missed';
 
 export interface BehaviorSchedule {
@@ -15,6 +15,19 @@ export interface BehaviorDelay {
   fireAt: string; // ISO timestamp
 }
 
+export interface EventCondition {
+  field: string;
+  op: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'gt' | 'lt' | 'exists';
+  value: string | number | boolean;
+}
+
+export interface BehaviorEventTrigger {
+  source: string;
+  event: string;
+  conditions: EventCondition[];
+  combinator: 'and' | 'or';
+}
+
 export interface BehaviorChannel {
   type: string;
   id: string;
@@ -29,6 +42,7 @@ export interface Behavior {
   schedule?: BehaviorSchedule;
   polling?: BehaviorPolling;
   delay?: BehaviorDelay;
+  eventTrigger?: BehaviorEventTrigger;
   channel: BehaviorChannel;
   createdBy: string;
   createdAt: string;
