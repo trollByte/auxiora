@@ -1135,6 +1135,11 @@ export class Auxiora {
     const researchRouter = this.createResearchRouter();
     this.gateway.mountRouter('/api/v1/research', researchRouter);
 
+    // Agent protocol API routes
+    if (this.agentProtocol) {
+      this.gateway.mountRouter('/api/v1/agent-protocol', this.createAgentProtocolRouter());
+    }
+
     // Webhooks management API routes
     if (this.webhookManager) {
       this.gateway.mountRouter('/api/v1/webhooks', this.createWebhooksRouter());
@@ -1148,6 +1153,16 @@ export class Auxiora {
     // Voice API routes
     if (this.voiceManager) {
       this.gateway.mountRouter('/api/v1/voice', this.createVoiceRouter());
+    }
+
+    // Trust engine API routes
+    if (this.trustEngine) {
+      this.gateway.mountRouter('/api/v1/trust', this.createTrustRouter());
+    }
+
+    // Workflow API routes
+    if (this.workflowEngine) {
+      this.gateway.mountRouter('/api/v1/workflows', this.createWorkflowRouter());
     }
 
     // Initialize plugin system (if enabled)
@@ -4676,6 +4691,262 @@ export class Auxiora {
         res.json(pending);
       } catch (err) {
         res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    return router;
+  }
+
+  private createAgentProtocolRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/identity', (_req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const identity = this.agentProtocol.getIdentity();
+        res.json(identity);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/inbox', (_req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const limit = _req.query.limit ? parseInt(_req.query.limit as string, 10) : 50;
+        const messages = this.agentProtocol.getInbox(limit);
+        res.json({ messages });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.post('/messages', async (req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const { to, type, payload, replyTo } = req.body;
+        const message = await this.agentProtocol.send(to, type, payload, replyTo);
+        res.json(message);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.post('/receive', async (req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const response = await this.agentProtocol.receive(req.body);
+        res.json(response ?? { accepted: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/directory', async (_req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const agents = await this.agentDirectory.listAll();
+        res.json({ agents });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/directory/search', async (req: any, res: any) => {
+      if (!this.agentProtocol || !this.agentDirectory) {
+        return res.status(503).json({ error: 'Agent protocol not initialized' });
+      }
+      try {
+        const results = await this.agentDirectory.search(req.query.q as string);
+        res.json({ results });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    return router;
+  }
+
+  private createTrustRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    router.get('/levels', (_req: any, res: any) => {
+      if (!self.trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
+      try {
+        const levels = self.trustEngine.getAllLevels();
+        res.json({ levels });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/levels/:domain', (_req: any, res: any) => {
+      if (!self.trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
+      try {
+        const domain = _req.params.domain;
+        const level = self.trustEngine.getTrustLevel(domain);
+        const evidence = self.trustEngine.getEvidence(domain);
+        res.json({ domain, level, evidence });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.put('/levels/:domain', async (req: any, res: any) => {
+      if (!self.trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
+      try {
+        const domain = req.params.domain;
+        const { level, reason } = req.body;
+        await self.trustEngine.setTrustLevel(domain, level, reason);
+        res.json({ success: true });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/audit', (_req: any, res: any) => {
+      if (!self.trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
+      try {
+        const history = self.trustAuditTrail ? self.trustAuditTrail.getHistory() : [];
+        res.json({ history });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    return router;
+  }
+
+  private createWorkflowRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    // Static routes MUST come before parameterized /:id routes
+
+    // GET / — list all workflows
+    router.get('/', async (_req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const workflows = await self.workflowEngine.listAll();
+        res.json({ workflows });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST / — create workflow
+    router.post('/', async (req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const workflow = await self.workflowEngine.createWorkflow(req.body);
+        res.json(workflow);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /active — list active workflows
+    router.get('/active', async (_req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const workflows = await self.workflowEngine.listActive();
+        res.json({ workflows });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /approvals/pending — list pending approvals
+    router.get('/approvals/pending', async (req: any, res: any) => {
+      if (!self.approvalManager) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const approvals = await self.approvalManager.getPending(req.query.userId);
+        res.json({ approvals });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /approvals/:id/approve
+    router.post('/approvals/:id/approve', async (req: any, res: any) => {
+      if (!self.approvalManager) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const approval = await self.approvalManager.approve(req.params.id, req.body.decidedBy, req.body.reason);
+        if (!approval) return res.status(404).json({ error: 'Approval not found' });
+        res.json(approval);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /approvals/:id/reject
+    router.post('/approvals/:id/reject', async (req: any, res: any) => {
+      if (!self.approvalManager) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const rejection = await self.approvalManager.reject(req.params.id, req.body.decidedBy, req.body.reason);
+        if (!rejection) return res.status(404).json({ error: 'Approval not found' });
+        res.json(rejection);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id — get workflow by ID
+    router.get('/:id', async (req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const workflow = await self.workflowEngine.getWorkflow(req.params.id);
+        if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
+        res.json(workflow);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id/status — get workflow status
+    router.get('/:id/status', async (req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const status = await self.workflowEngine.getStatus(req.params.id);
+        if (!status) return res.status(404).json({ error: 'Workflow not found' });
+        res.json(status);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /:id/start — start workflow
+    router.post('/:id/start', async (req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const workflow = await self.workflowEngine.startWorkflow(req.params.id);
+        if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
+        res.json(workflow);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /:id/cancel — cancel workflow
+    router.post('/:id/cancel', async (req: any, res: any) => {
+      if (!self.workflowEngine) return res.status(503).json({ error: 'Workflow engine not initialized' });
+      try {
+        const result = await self.workflowEngine.cancelWorkflow(req.params.id);
+        if (!result) return res.status(404).json({ error: 'Workflow not found' });
+        res.json({ cancelled: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
       }
     });
 
