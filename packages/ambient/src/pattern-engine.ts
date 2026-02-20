@@ -94,6 +94,28 @@ export class AmbientPatternEngine {
     this.patterns.clear();
   }
 
+  /** Serialize engine state to a JSON string for persistence. */
+  serialize(): string {
+    return JSON.stringify({
+      events: this.events,
+      patterns: Array.from(this.patterns.entries()),
+      windowSize: this.windowSize,
+    });
+  }
+
+  /** Reconstruct an engine from a serialized JSON string. */
+  static deserialize(data: string): AmbientPatternEngine {
+    const parsed = JSON.parse(data) as {
+      events: ObservedEvent[];
+      patterns: [string, AmbientPattern][];
+      windowSize: number;
+    };
+    const engine = new AmbientPatternEngine(parsed.windowSize);
+    engine.events = parsed.events;
+    engine.patterns = new Map(parsed.patterns);
+    return engine;
+  }
+
   private detectSchedulePattern(type: string, events: ObservedEvent[]): AmbientPattern | null {
     // Check if events happen at similar hours of the day
     const hours = events.map(e => new Date(e.timestamp).getHours());
