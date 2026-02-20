@@ -2561,6 +2561,8 @@ export class Auxiora {
 
       // Execute streaming AI call with tool follow-up loop
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
+      const toolsUsed: Array<{ name: string; success: boolean }> = [];
+      let streamChunkCount = 0;
       const { response: fullResponse, usage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -2568,12 +2570,18 @@ export class Auxiora {
         provider,
         (type, data) => {
           if (type === 'text') {
+            streamChunkCount++;
             this.sendToClient(client, { type: 'chunk', id: requestId, payload: { content: data } });
           } else if (type === 'thinking') {
             this.sendToClient(client, { type: 'thinking', id: requestId, payload: { content: data } });
           } else if (type === 'tool_use') {
+            toolsUsed.push({ name: (data as any)?.name ?? 'unknown', success: true });
             this.sendToClient(client, { type: 'tool_use', id: requestId, payload: data });
           } else if (type === 'tool_result') {
+            // Update last tool's success based on result
+            if (toolsUsed.length > 0 && (data as any)?.error) {
+              toolsUsed[toolsUsed.length - 1].success = false;
+            }
             this.sendToClient(client, { type: 'tool_result', id: requestId, payload: data });
           } else if (type === 'status') {
             this.sendToClient(client, { type: 'status', id: requestId, payload: data });
@@ -2581,6 +2589,11 @@ export class Auxiora {
         },
         { tools, fallbackCandidates },
       );
+
+      // Feed tool usage to awareness collector
+      if (this.architectAwarenessCollector && toolsUsed.length > 0) {
+        this.architectAwarenessCollector.updateToolContext(toolsUsed);
+      }
 
       // ── Guardrail output scan ─────────────────────────────────────
       const outputScan = this.checkOutputGuardrails(fullResponse);
@@ -2663,7 +2676,8 @@ export class Auxiora {
           response: finalResponse,
           responseTime: Date.now() - (session.metadata.lastActiveAt ?? Date.now()),
           tokensUsed: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
-        }).catch(() => {});
+          streamChunks: streamChunkCount,
+        } as any).catch(() => {});
       }
 
       // Record conversation in consciousness journal
@@ -3518,6 +3532,7 @@ export class Auxiora {
       }
 
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
+      const channelToolsUsed: Array<{ name: string; success: boolean }> = [];
       const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -3527,10 +3542,21 @@ export class Auxiora {
           if (type === 'text' && data && draftLoop) {
             accumulatedText += data;
             draftLoop.update(accumulatedText);
+          } else if (type === 'tool_use') {
+            channelToolsUsed.push({ name: (data as any)?.name ?? 'unknown', success: true });
+          } else if (type === 'tool_result') {
+            if (channelToolsUsed.length > 0 && (data as any)?.error) {
+              channelToolsUsed[channelToolsUsed.length - 1].success = false;
+            }
           }
         },
         { tools, fallbackCandidates },
       );
+
+      // Feed tool usage to awareness collector
+      if (this.architectAwarenessCollector && channelToolsUsed.length > 0) {
+        this.architectAwarenessCollector.updateToolContext(channelToolsUsed);
+      }
 
       // Flush final draft text
       if (draftLoop) {
