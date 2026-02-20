@@ -1,0 +1,229 @@
+import { getLogger } from '@auxiora/logger';
+import type { ReActCallbacks, ReActConfig, ReActResult, ReActStep, LoopStatus } from './types.js';
+import { StepTracker } from './step-tracker.js';
+
+const log = getLogger('react-loop');
+
+const DEFAULT_MAX_STEPS = 10;
+const DEFAULT_MAX_TOKEN_BUDGET = 50_000;
+const DEFAULT_TIMEOUT_MS = 300_000;
+
+export class ReActLoop {
+  private status: LoopStatus = 'idle';
+  private tracker = new StepTracker();
+  private totalTokens = 0;
+  private abortReason?: string;
+
+  constructor(
+    private readonly callbacks: ReActCallbacks,
+    private readonly config?: ReActConfig,
+  ) {}
+
+  getStatus(): LoopStatus {
+    return this.status;
+  }
+
+  getSteps(): ReActStep[] {
+    return this.tracker.getSteps();
+  }
+
+  pause(): void {
+    if (this.status === 'running') {
+      this.status = 'paused';
+    }
+  }
+
+  resume(): void {
+    if (this.status === 'paused') {
+      this.status = 'running';
+    }
+  }
+
+  abort(reason?: string): void {
+    this.abortReason = reason ?? 'aborted';
+    this.status = 'failed';
+  }
+
+  async run(goal: string): Promise<ReActResult> {
+    const maxSteps = this.config?.maxSteps ?? DEFAULT_MAX_STEPS;
+    const maxTokenBudget = this.config?.maxTokenBudget ?? DEFAULT_MAX_TOKEN_BUDGET;
+    const timeoutMs = this.config?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const startTime = Date.now();
+
+    this.status = 'running';
+    log.info(`Starting ReAct loop for goal: ${goal}`);
+
+    let stepCount = 0;
+
+    try {
+      while (this.status === 'running') {
+        // Check step limit
+        if (stepCount >= maxSteps) {
+          this.status = 'max_steps_reached';
+          break;
+        }
+
+        // Check timeout
+        if (Date.now() - startTime > timeoutMs) {
+          this.status = 'failed';
+          return this.buildResult(startTime, 'Timeout exceeded');
+        }
+
+        // Check token budget
+        if (this.totalTokens >= maxTokenBudget) {
+          this.status = 'max_steps_reached';
+          break;
+        }
+
+        // Wait if paused
+        while (this.status === 'paused') {
+          await sleep(50);
+        }
+        if (this.status !== 'running') {
+          break;
+        }
+
+        // Think
+        const thinkStart = Date.now();
+        const thinkResult = await this.callbacks.think(goal, this.tracker.getSteps());
+        const thinkDuration = Date.now() - thinkStart;
+
+        // Record thought
+        const thoughtStep: ReActStep = {
+          type: 'thought',
+          content: thinkResult.thought,
+          timestamp: Date.now(),
+          durationMs: thinkDuration,
+        };
+        this.tracker.addStep(thoughtStep);
+        this.callbacks.onStep?.(thoughtStep);
+        this.estimateAndTrack(thinkResult.thought);
+        stepCount++;
+
+        // Answer provided — done
+        if (thinkResult.answer) {
+          const answerStep: ReActStep = {
+            type: 'answer',
+            content: thinkResult.answer,
+            timestamp: Date.now(),
+          };
+          this.tracker.addStep(answerStep);
+          this.callbacks.onStep?.(answerStep);
+          this.status = 'completed';
+          return this.buildResult(startTime, undefined, thinkResult.answer);
+        }
+
+        // Action requested
+        if (thinkResult.action) {
+          const { tool, params } = thinkResult.action;
+
+          // Check whitelist/blacklist
+          if (!this.isToolAllowed(tool)) {
+            const deniedStep: ReActStep = {
+              type: 'observation',
+              content: `Tool "${tool}" is not allowed by configuration.`,
+              toolName: tool,
+              timestamp: Date.now(),
+            };
+            this.tracker.addStep(deniedStep);
+            this.callbacks.onStep?.(deniedStep);
+            stepCount++;
+            continue;
+          }
+
+          // Record action step
+          const actionStep: ReActStep = {
+            type: 'action',
+            content: `Calling ${tool}`,
+            toolName: tool,
+            toolParams: params,
+            timestamp: Date.now(),
+          };
+          this.tracker.addStep(actionStep);
+          this.callbacks.onStep?.(actionStep);
+          stepCount++;
+
+          // Check approval
+          if (this.config?.requireApproval && this.callbacks.onApprovalNeeded) {
+            const approved = await this.callbacks.onApprovalNeeded(actionStep);
+            if (!approved) {
+              const deniedStep: ReActStep = {
+                type: 'observation',
+                content: 'Action denied by approval callback.',
+                toolName: tool,
+                timestamp: Date.now(),
+              };
+              this.tracker.addStep(deniedStep);
+              this.callbacks.onStep?.(deniedStep);
+              stepCount++;
+              continue;
+            }
+          }
+
+          // Execute tool
+          const execStart = Date.now();
+          const toolResult = await this.callbacks.executeTool(tool, params);
+          const execDuration = Date.now() - execStart;
+
+          const observationStep: ReActStep = {
+            type: 'observation',
+            content: toolResult,
+            toolName: tool,
+            toolResult,
+            timestamp: Date.now(),
+            durationMs: execDuration,
+          };
+          this.tracker.addStep(observationStep);
+          this.callbacks.onStep?.(observationStep);
+          this.estimateAndTrack(toolResult);
+          stepCount++;
+        }
+      }
+    } catch (err: unknown) {
+      const wrapped: Error = err instanceof Error ? err : new Error(String(err));
+      log.error('ReAct loop error', wrapped);
+      this.status = 'failed';
+      return this.buildResult(startTime, wrapped.message);
+    }
+
+    // Aborted
+    if (this.abortReason) {
+      return this.buildResult(startTime, this.abortReason);
+    }
+
+    return this.buildResult(startTime);
+  }
+
+  private isToolAllowed(tool: string): boolean {
+    const { allowedTools, deniedTools } = this.config ?? {};
+    if (allowedTools && !allowedTools.includes(tool)) {
+      return false;
+    }
+    if (deniedTools && deniedTools.includes(tool)) {
+      return false;
+    }
+    return true;
+  }
+
+  private estimateAndTrack(text: string): void {
+    const estimate = this.callbacks.estimateTokens
+      ? this.callbacks.estimateTokens(text)
+      : Math.ceil(text.length / 4);
+    this.totalTokens += estimate;
+  }
+
+  private buildResult(startTime: number, error?: string, answer?: string): ReActResult {
+    return {
+      status: this.status,
+      steps: this.tracker.getSteps(),
+      answer,
+      totalTokens: this.totalTokens,
+      totalDurationMs: Date.now() - startTime,
+      error,
+    };
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
