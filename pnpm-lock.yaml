@@ -916,6 +916,9 @@ importers:
       '@auxiora/email-intelligence':
         specifier: workspace:*
         version: link:../email-intelligence
+      '@auxiora/evaluation':
+        specifier: workspace:^
+        version: link:../evaluation
       '@auxiora/gateway':
         specifier: workspace:*
         version: link:../gateway
@@ -958,6 +961,9 @@ importers:
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
+      '@auxiora/rag':
+        specifier: workspace:^
+        version: link:../rag
       '@auxiora/research':
         specifier: workspace:*
         version: link:../research

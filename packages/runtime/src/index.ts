@@ -93,6 +93,9 @@ import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generat
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
+import { DocumentStore, ContextBuilder } from '@auxiora/rag';
+import { EvalRunner, EvalStore, exactMatch, containsExpected, lengthRatio, keywordCoverage, sentenceCompleteness, responseRelevance, toxicityScore } from '@auxiora/evaluation';
+import type { EvalCase } from '@auxiora/evaluation';
 import type { ScanResult } from '@auxiora/guardrails';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
@@ -252,6 +255,10 @@ export class Auxiora {
   // Security floor
   private securityFloor?: SecurityFloor;
   private guardrailPipeline?: GuardrailPipeline;
+  private evalRunner?: EvalRunner;
+  private evalStore?: EvalStore;
+  private documentStore?: DocumentStore;
+  private contextBuilder?: ContextBuilder;
   private updater?: Updater;
   private installationDetector?: InstallationDetector;
   private versionChecker?: VersionChecker;
@@ -395,6 +402,19 @@ export class Auxiora {
       });
       this.logger.info('Guardrails pipeline initialized');
     }
+
+    // Initialize evaluation system
+    this.evalStore = new EvalStore();
+    this.evalRunner = new EvalRunner({
+      exactMatch,
+      containsExpected,
+      lengthRatio,
+      keywordCoverage,
+      sentenceCompleteness,
+      responseRelevance,
+      toxicityScore,
+    });
+    this.logger.info('Evaluation system initialized');
 
     // Initialize consciousness orchestrator (self-model, journal, monitor, repair)
     if (this.architect && this.healthMonitor) {
@@ -1180,6 +1200,16 @@ export class Auxiora {
       this.gateway.mountRouter('/api/v1/update', this.createUpdateRouter());
     }
 
+    // RAG API routes
+    if (this.documentStore) {
+      this.gateway.mountRouter('/api/v1/rag', this.createRagRouter());
+    }
+
+    // Evaluation API routes
+    if (this.evalStore) {
+      this.gateway.mountRouter('/api/v1/eval', this.createEvalRouter());
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -1319,6 +1349,11 @@ export class Auxiora {
     this.anticipationEngine = new AnticipationEngine();
     this.ambientAwarenessCollector = new AmbientAwarenessCollector();
     this.logger.info('Ambient intelligence initialized');
+
+    // Initialize RAG document store
+    this.documentStore = new DocumentStore();
+    this.contextBuilder = new ContextBuilder();
+    this.logger.info('RAG document store initialized');
 
     // Initialize notification orchestrator
     this.notificationHub = new NotificationHub();
@@ -4422,6 +4457,8 @@ export class Auxiora {
       this.sendToClient(client, { type: 'research_progress', payload: { jobId: job.id, ...event } });
     };
     const provider = this.providers.getPrimaryProvider();
+    // NOTE: DeepResearchOrchestrator does not currently accept a DocumentStore parameter.
+    // When it gains that support, pass this.documentStore here.
     const orchestrator = new DeepResearchOrchestrator(provider as any, undefined, this.researchEngine);
     const result = await orchestrator.research(job.question, job.depth, onProgress);
 
@@ -5156,6 +5193,66 @@ export class Auxiora {
     return router;
   }
 
+  private createRagRouter(): import('express').Router {
+    const router = Router();
+
+    router.get('/documents', (_req: any, res: any) => {
+      res.json({ documents: this.documentStore!.listDocuments() });
+    });
+
+    router.post('/documents', (req: any, res: any) => {
+      const { title, content, type, metadata } = req.body;
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'title required' });
+      }
+      if (!content || typeof content !== 'string') {
+        return res.status(400).json({ error: 'content required' });
+      }
+      if (!type || typeof type !== 'string') {
+        return res.status(400).json({ error: 'type required' });
+      }
+      const doc = this.documentStore!.ingest(title, content, type as 'text' | 'markdown' | 'html' | 'json' | 'csv', metadata);
+      res.status(201).json(doc);
+    });
+
+    router.get('/documents/:id', (req: any, res: any) => {
+      const doc = this.documentStore!.getDocument(req.params.id);
+      if (!doc) return res.status(404).json({ error: 'document not found' });
+      res.json(doc);
+    });
+
+    router.delete('/documents/:id', (req: any, res: any) => {
+      const doc = this.documentStore!.getDocument(req.params.id);
+      if (!doc) return res.status(404).json({ error: 'document not found' });
+      this.documentStore!.removeDocument(req.params.id);
+      res.json({ deleted: true });
+    });
+
+    router.post('/search', (req: any, res: any) => {
+      const { query, limit, minScore, type } = req.body;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'query required' });
+      }
+      const results = this.documentStore!.search(query, { limit, minScore, type });
+      res.json({ results });
+    });
+
+    router.post('/context', (req: any, res: any) => {
+      const { query, maxTokens, maxChunks } = req.body;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'query required' });
+      }
+      const context = this.contextBuilder!.buildContext(query, this.documentStore!, { maxTokens, maxChunks });
+      res.json({ context });
+    });
+
+    router.get('/stats', (_req: any, res: any) => {
+      res.json(this.documentStore!.stats());
+    });
+
+    return router;
+  }
+
   private createMcpRouter(): import('express').Router {
     const router = Router();
 
@@ -5203,6 +5300,108 @@ export class Auxiora {
       }
       const tools = this.mcpClientManager.getToolsForServer(req.params.name);
       res.json({ tools });
+    });
+
+    return router;
+  }
+
+  private createEvalRouter(): import('express').Router {
+    const router = Router();
+
+    // GET /history/:suiteName — returns suite run history
+    router.get('/history/:suiteName', (_req: any, res: any) => {
+      if (!this.evalStore) {
+        return res.status(503).json({ error: 'Evaluation system not initialized' });
+      }
+      try {
+        const history = this.evalStore.getHistory(_req.params.suiteName);
+        res.json({ history });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // GET /latest/:suiteName — returns latest suite result or 404
+    router.get('/latest/:suiteName', (_req: any, res: any) => {
+      if (!this.evalStore) {
+        return res.status(503).json({ error: 'Evaluation system not initialized' });
+      }
+      try {
+        const latest = this.evalStore.getLatest(_req.params.suiteName);
+        if (!latest) {
+          return res.status(404).json({ error: 'No results found for suite' });
+        }
+        res.json(latest);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // GET /trend/:suiteName/:metricName — returns score trend for a metric
+    router.get('/trend/:suiteName/:metricName', (_req: any, res: any) => {
+      if (!this.evalStore) {
+        return res.status(503).json({ error: 'Evaluation system not initialized' });
+      }
+      try {
+        const trend = this.evalStore.getTrend(_req.params.suiteName, _req.params.metricName);
+        res.json({ trend });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /run — run evaluation suite
+    router.post('/run', async (req: any, res: any) => {
+      if (!this.evalRunner || !this.evalStore) {
+        return res.status(503).json({ error: 'Evaluation system not initialized' });
+      }
+      try {
+        const { suiteName, cases, mode } = req.body as {
+          suiteName?: string;
+          cases?: EvalCase[];
+          mode?: string;
+        };
+        if (!suiteName || !cases || !Array.isArray(cases) || cases.length === 0) {
+          return res.status(400).json({ error: 'suiteName and non-empty cases array required' });
+        }
+        const handler: (input: string) => Promise<string> =
+          mode === 'echo' || !mode
+            ? async (input: string) => input
+            : async (input: string) => input;
+        const result = await this.evalRunner.runSuite(suiteName, cases, handler);
+        this.evalStore.record(result);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /compare — compare latest results of two suites
+    router.post('/compare', (_req: any, res: any) => {
+      if (!this.evalRunner || !this.evalStore) {
+        return res.status(503).json({ error: 'Evaluation system not initialized' });
+      }
+      try {
+        const { suiteNameA, suiteNameB } = _req.body as {
+          suiteNameA?: string;
+          suiteNameB?: string;
+        };
+        if (!suiteNameA || !suiteNameB) {
+          return res.status(400).json({ error: 'suiteNameA and suiteNameB required' });
+        }
+        const latestA = this.evalStore.getLatest(suiteNameA);
+        const latestB = this.evalStore.getLatest(suiteNameB);
+        if (!latestA) {
+          return res.status(404).json({ error: `No results found for suite: ${suiteNameA}` });
+        }
+        if (!latestB) {
+          return res.status(404).json({ error: `No results found for suite: ${suiteNameB}` });
+        }
+        const comparison = this.evalRunner.compareSuites(latestA, latestB);
+        res.json(comparison);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
     });
 
     return router;
