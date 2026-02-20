@@ -1372,7 +1372,7 @@ export class Auxiora {
       if (this.ambientEngine) {
         this.ambientEngine.detectPatterns();
         try {
-          this.vault.set('ambient:patterns', this.ambientEngine.serialize());
+          await this.vault.add('ambient:patterns', this.ambientEngine.serialize());
         } catch { /* vault locked */ }
 
         // Update awareness collector
