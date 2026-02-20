@@ -38,8 +38,9 @@ export class ApprovalQueue {
     for (const listener of this.listeners) {
       try {
         listener(fullRequest);
-      } catch (err) {
-        logger.warn('Listener threw during notification', { error: err });
+      } catch (err: unknown) {
+        const wrapped: Error = err instanceof Error ? err : new Error(String(err));
+        logger.warn('Listener threw during notification', { error: wrapped });
       }
     }
 
