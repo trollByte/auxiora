@@ -850,6 +850,9 @@ importers:
       '@auxiora/ambient':
         specifier: workspace:*
         version: link:../ambient
+      '@auxiora/approval-queue':
+        specifier: workspace:^
+        version: link:../approval-queue
       '@auxiora/audit':
         specifier: workspace:*
         version: link:../audit
@@ -913,6 +916,9 @@ importers:
       '@auxiora/conversation':
         specifier: workspace:*
         version: link:../conversation
+      '@auxiora/conversation-branch':
+        specifier: workspace:^
+        version: link:../conversation-branch
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
@@ -949,6 +955,9 @@ importers:
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory
+      '@auxiora/nl-automation':
+        specifier: workspace:^
+        version: link:../nl-automation
       '@auxiora/notification-hub':
         specifier: workspace:*
         version: link:../notification-hub
@@ -1003,6 +1012,9 @@ importers:
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault
+      '@auxiora/vector-store':
+        specifier: workspace:^
+        version: link:../vector-store
       '@auxiora/voice':
         specifier: workspace:*
         version: link:../voice

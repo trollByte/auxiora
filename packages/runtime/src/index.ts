@@ -93,6 +93,8 @@ import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generat
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
+import { IntentParser as NLIntentParser, AutomationBuilder } from '@auxiora/nl-automation';
+import { BranchManager } from '@auxiora/conversation-branch';
 import { DocumentStore, ContextBuilder } from '@auxiora/rag';
 import { GraphStore, EntityLinker } from '@auxiora/knowledge-graph';
 import type { GraphQuery } from '@auxiora/knowledge-graph';
@@ -106,6 +108,8 @@ import type { ScanResult } from '@auxiora/guardrails';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
 import { BackupManager } from '@auxiora/backup';
 import type { BackupResult, DataCategory } from '@auxiora/backup';
+import { ApprovalQueue } from '@auxiora/approval-queue';
+import { VectorStore } from '@auxiora/vector-store';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
 import type { LivingMemoryState } from '@auxiora/memory';
@@ -277,6 +281,11 @@ export class Auxiora {
   private codeSessionManager?: CodeSessionManager;
   private backupManager?: BackupManager;
   private backupStore: Map<string, BackupResult> = new Map();
+  private nlIntentParser: NLIntentParser = new NLIntentParser();
+  private automationBuilder: AutomationBuilder = new AutomationBuilder();
+  private branchManagers: Map<string, BranchManager> = new Map();
+  private approvalQueue?: ApprovalQueue;
+  private vectorStore?: VectorStore;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
@@ -434,6 +443,14 @@ export class Auxiora {
     // Initialize backup manager
     this.backupManager = new BackupManager();
     this.logger.info('Backup manager initialized');
+
+    // Initialize approval queue
+    this.approvalQueue = new ApprovalQueue();
+    this.logger.info('Approval queue initialized');
+
+    // Initialize vector store
+    this.vectorStore = new VectorStore({ dimensions: 1536, maxEntries: 100_000 });
+    this.logger.info('Vector store initialized');
 
     // Initialize consciousness orchestrator (self-model, journal, monitor, repair)
     if (this.architect && this.healthMonitor) {
@@ -1248,6 +1265,22 @@ export class Auxiora {
     if (this.backupManager) {
       this.gateway.mountRouter('/api/v1/backup', this.createBackupRouter());
     }
+
+    // Approval queue API routes
+    if (this.approvalQueue) {
+      this.gateway.mountRouter('/api/v1/approvals', this.createApprovalQueueRouter());
+    }
+
+    // Vector store API routes
+    if (this.vectorStore) {
+      this.gateway.mountRouter('/api/v1/vectors', this.createVectorRouter());
+    }
+
+    // NL Automation API routes
+    this.gateway.mountRouter('/api/v1/automation', this.createAutomationRouter());
+
+    // Conversation branch API routes
+    this.gateway.mountRouter('/api/v1/branches', this.createBranchRouter());
 
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
@@ -5774,6 +5807,289 @@ export class Auxiora {
     router.get('/stats', (_req: any, res: any) => {
       res.json(this.knowledgeGraph!.stats());
     });
+    return router;
+  }
+
+  private createAutomationRouter(): import('express').Router {
+    const router = Router();
+
+    router.post('/parse', (req: any, res: any) => {
+      const { input } = req.body;
+      if (!input || typeof input !== 'string') {
+        return res.status(400).json({ error: 'input required' });
+      }
+      const spec = this.nlIntentParser.parse(input);
+      res.json({ spec });
+    });
+
+    router.post('/build', (req: any, res: any) => {
+      const { spec } = req.body;
+      if (!spec || typeof spec !== 'object') {
+        return res.status(400).json({ error: 'spec required' });
+      }
+      try {
+        const behavior = this.automationBuilder.build(spec);
+        res.json({ behavior });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.post('/validate', (req: any, res: any) => {
+      const { spec } = req.body;
+      if (!spec || typeof spec !== 'object') {
+        return res.status(400).json({ error: 'spec required' });
+      }
+      const result = this.automationBuilder.validate(spec, [], []);
+      res.json({ result });
+    });
+
+    return router;
+  }
+
+  private createBranchRouter(): import('express').Router {
+    const router = Router();
+
+    const getOrCreateManager = (conversationId: string): BranchManager => {
+      let mgr = this.branchManagers.get(conversationId);
+      if (!mgr) {
+        mgr = new BranchManager(conversationId);
+        this.branchManagers.set(conversationId, mgr);
+      }
+      return mgr;
+    };
+
+    router.get('/:conversationId', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      res.json({ branches: mgr.listBranches(), active: mgr.getActiveBranch() });
+    });
+
+    router.post('/:conversationId/fork', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      const { messageId, label } = req.body;
+      try {
+        const branch = mgr.fork(messageId, label);
+        res.status(201).json(branch);
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.post('/:conversationId/switch', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      const { branchId } = req.body;
+      if (!branchId || typeof branchId !== 'string') {
+        return res.status(400).json({ error: 'branchId required' });
+      }
+      try {
+        const branch = mgr.switchBranch(branchId);
+        res.json(branch);
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.get('/:conversationId/tree', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      res.json({ tree: mgr.getTree() });
+    });
+
+    router.post('/:conversationId/merge', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      const { sourceBranchId, targetBranchId } = req.body;
+      if (!sourceBranchId || typeof sourceBranchId !== 'string') {
+        return res.status(400).json({ error: 'sourceBranchId required' });
+      }
+      if (!targetBranchId || typeof targetBranchId !== 'string') {
+        return res.status(400).json({ error: 'targetBranchId required' });
+      }
+      try {
+        mgr.mergeBranch(sourceBranchId, targetBranchId);
+        res.json({ merged: true });
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    router.delete('/:conversationId/:branchId', (req: any, res: any) => {
+      const mgr = getOrCreateManager(req.params.conversationId);
+      try {
+        mgr.deleteBranch(req.params.branchId);
+        res.json({ deleted: true });
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    return router;
+  }
+
+  private createApprovalQueueRouter(): import('express').Router {
+    const router = Router();
+
+    // GET / — list all approval requests
+    router.get('/', (_req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      res.json(this.approvalQueue.listAll());
+    });
+
+    // GET /pending — list pending approval requests
+    router.get('/pending', (_req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      res.json(this.approvalQueue.listPending());
+    });
+
+    // POST /expire — expire stale requests
+    router.post('/expire', (_req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      const expired = this.approvalQueue.expireStale();
+      res.json({ expired });
+    });
+
+    // GET /:id — get a specific approval request
+    router.get('/:id', (req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      const request = this.approvalQueue.get(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: 'Approval request not found' });
+      }
+      res.json(request);
+    });
+
+    // POST /:id/approve — approve a request
+    router.post('/:id/approve', (req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      try {
+        const { decidedBy } = req.body as { decidedBy?: string; reason?: string };
+        const result = this.approvalQueue.approve(req.params.id, decidedBy);
+        res.json(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) {
+          return res.status(404).json({ error: message });
+        }
+        if (message.includes('already')) {
+          return res.status(409).json({ error: message });
+        }
+        res.status(500).json({ error: message });
+      }
+    });
+
+    // POST /:id/deny — deny a request
+    router.post('/:id/deny', (req: any, res: any) => {
+      if (!this.approvalQueue) {
+        return res.status(503).json({ error: 'Approval queue not initialized' });
+      }
+      try {
+        const { decidedBy, reason } = req.body as { decidedBy?: string; reason?: string };
+        const result = this.approvalQueue.deny(req.params.id, reason, decidedBy);
+        res.json(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) {
+          return res.status(404).json({ error: message });
+        }
+        if (message.includes('already')) {
+          return res.status(409).json({ error: message });
+        }
+        res.status(500).json({ error: message });
+      }
+    });
+
+    return router;
+  }
+
+  private createVectorRouter(): import('express').Router {
+    const router = Router();
+
+    // GET /stats — get store statistics
+    router.get('/stats', (_req: any, res: any) => {
+      if (!this.vectorStore) {
+        return res.status(503).json({ error: 'Vector store not initialized' });
+      }
+      res.json({ size: this.vectorStore.size() });
+    });
+
+    // POST / — add a vector entry
+    router.post('/', (req: any, res: any) => {
+      if (!this.vectorStore) {
+        return res.status(503).json({ error: 'Vector store not initialized' });
+      }
+      try {
+        const { id, vector, content, metadata } = req.body as {
+          id?: string;
+          vector?: number[];
+          content?: string;
+          metadata?: Record<string, unknown>;
+        };
+        if (!id || typeof id !== 'string') {
+          return res.status(400).json({ error: 'id required' });
+        }
+        if (!vector || !Array.isArray(vector)) {
+          return res.status(400).json({ error: 'vector required' });
+        }
+        const entry = this.vectorStore.add(id, vector, content ?? '', metadata);
+        res.status(201).json(entry);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /search — search vectors
+    router.post('/search', (req: any, res: any) => {
+      if (!this.vectorStore) {
+        return res.status(503).json({ error: 'Vector store not initialized' });
+      }
+      try {
+        const { vector, limit, minScore } = req.body as {
+          vector?: number[];
+          limit?: number;
+          minScore?: number;
+        };
+        if (!vector || !Array.isArray(vector)) {
+          return res.status(400).json({ error: 'vector required' });
+        }
+        const results = this.vectorStore.search(vector, limit, minScore);
+        res.json(results);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // GET /:id — get a vector entry by ID
+    router.get('/:id', (req: any, res: any) => {
+      if (!this.vectorStore) {
+        return res.status(503).json({ error: 'Vector store not initialized' });
+      }
+      const entry = this.vectorStore.get(req.params.id);
+      if (!entry) {
+        return res.status(404).json({ error: 'Vector entry not found' });
+      }
+      res.json(entry);
+    });
+
+    // DELETE /:id — remove a vector entry
+    router.delete('/:id', (req: any, res: any) => {
+      if (!this.vectorStore) {
+        return res.status(503).json({ error: 'Vector store not initialized' });
+      }
+      const removed = this.vectorStore.remove(req.params.id);
+      if (!removed) {
+        return res.status(404).json({ error: 'Vector entry not found' });
+      }
+      res.json({ deleted: true });
+    });
+
     return router;
   }
 }
