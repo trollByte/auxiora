@@ -233,6 +233,7 @@ export class Auxiora {
   private selfAwarenessAssembler?: SelfAwarenessAssembler;
   private architect?: TheArchitect;
   private architectBridge: ArchitectBridge | null = null;
+  private architectResetChats = new Set<string>();
   private architectAwarenessCollector: ArchitectAwarenessCollector | null = null;
   private consciousness?: Consciousness;
   private mcpClientManager?: McpClientManager;
@@ -2472,6 +2473,13 @@ export class Auxiora {
         enrichedPrompt = basePrompt + memorySection;
       }
 
+      // Reset Architect conversation state for new chats
+      if (useArchitect && this.architect && chatId && !this.architectResetChats.has(chatId)) {
+        this.architectResetChats.add(chatId);
+        this.architect.resetConversation();
+        audit('personality.reset', { sessionId: session.id, chatId });
+      }
+
       // Only apply Architect enrichment if this chat uses the Architect
       const architectResult = useArchitect
         ? await this.applyArchitectEnrichment(enrichedPrompt, processedContent, chatId)
@@ -3416,6 +3424,13 @@ export class Auxiora {
         }
       } else if (channelMemorySection) {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
+      }
+
+      const channelChatId = `${inbound.channelType}:${inbound.channelId}`;
+      if (this.architect && !this.architectResetChats.has(channelChatId)) {
+        this.architectResetChats.add(channelChatId);
+        this.architect.resetConversation();
+        audit('personality.reset', { sessionId: session.id, chatId: channelChatId });
       }
 
       const channelArchitectResult = await this.applyArchitectEnrichment(enrichedPrompt, messageContent);
