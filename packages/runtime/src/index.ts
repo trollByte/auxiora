@@ -1158,6 +1158,12 @@ export class Auxiora {
       this.gateway.mountRouter('/api/v1/personality', personalityRouter);
     }
 
+    // Ambient agent API routes
+    if (this.ambientEngine) {
+      const ambientRouter = this.createAmbientRouter();
+      this.gateway.mountRouter('/api/v1/ambient', ambientRouter);
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -4320,6 +4326,101 @@ export class Auxiora {
       } catch (err: any) {
         res.status(500).json({ error: err.message ?? 'Failed to record feedback' });
       }
+    });
+
+    return router;
+  }
+
+  private createAmbientRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    function guard(res: any): boolean {
+      if (!self.ambientEngine || !self.ambientNotifications) {
+        res.status(503).json({ error: 'Ambient system not available' });
+        return false;
+      }
+      return true;
+    }
+
+    // Pattern management
+    router.get('/patterns', (_req: any, res: any) => {
+      if (!guard(res)) return;
+      res.json({ patterns: self.ambientEngine!.getPatterns() });
+    });
+
+    router.get('/patterns/:id', (req: any, res: any) => {
+      if (!guard(res)) return;
+      const pattern = self.ambientEngine!.getPattern(req.params.id);
+      if (!pattern) return res.status(404).json({ error: 'Pattern not found' });
+      res.json(pattern);
+    });
+
+    router.post('/patterns/detect', async (_req: any, res: any) => {
+      if (!guard(res)) return;
+      const detected = self.ambientEngine!.detectPatterns();
+      await audit('ambient.patterns.detected', { count: detected.length });
+      res.json({ detected: detected.length });
+    });
+
+    router.delete('/patterns', async (_req: any, res: any) => {
+      if (!guard(res)) return;
+      self.ambientEngine!.reset();
+      await audit('ambient.patterns.reset', {});
+      res.json({ ok: true });
+    });
+
+    // Anticipations
+    router.get('/anticipations', (_req: any, res: any) => {
+      if (!self.anticipationEngine) return res.status(503).json({ error: 'Anticipation engine not available' });
+      res.json({ anticipations: self.anticipationEngine.getAnticipations() });
+    });
+
+    // Notifications
+    router.get('/notifications', (req: any, res: any) => {
+      if (!guard(res)) return;
+      const priority = req.query.priority as string | undefined;
+      const items = priority
+        ? self.ambientNotifications!.getByPriority(priority as any)
+        : self.ambientNotifications!.getQueue();
+      res.json({ notifications: items });
+    });
+
+    router.post('/notifications/:id/dismiss', (req: any, res: any) => {
+      if (!guard(res)) return;
+      const ok = self.ambientNotifications!.dismiss(req.params.id);
+      if (!ok) return res.status(404).json({ error: 'Notification not found' });
+      res.json({ ok: true });
+    });
+
+    router.get('/notifications/stats', (_req: any, res: any) => {
+      if (!guard(res)) return;
+      res.json({ pending: self.ambientNotifications!.getPendingCount() });
+    });
+
+    // Scheduler control
+    router.get('/scheduler/status', (_req: any, res: any) => {
+      if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
+      res.json({ running: self.ambientScheduler.isRunning(), config: self.ambientScheduler.getConfig() });
+    });
+
+    router.post('/scheduler/start', async (_req: any, res: any) => {
+      if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
+      self.ambientScheduler.start();
+      await audit('ambient.scheduler.started', {});
+      res.json({ ok: true });
+    });
+
+    router.post('/scheduler/stop', async (_req: any, res: any) => {
+      if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
+      self.ambientScheduler.stop();
+      await audit('ambient.scheduler.stopped', {});
+      res.json({ ok: true });
+    });
+
+    router.put('/scheduler/config', (_req: any, res: any) => {
+      if (!self.ambientScheduler) return res.status(503).json({ error: 'Scheduler not available' });
+      res.json({ config: self.ambientScheduler.getConfig() });
     });
 
     return router;
