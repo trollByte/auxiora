@@ -99,6 +99,7 @@ export type AuditEventType =
   | 'personality.correction'
   | 'personality.data.exported'
   | 'personality.data.cleared'
+  | 'personality.preferences.updated'
   // Trust / Autonomy (Phase 12)
   | 'trust.level_changed'
   | 'trust.promoted'

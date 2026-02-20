@@ -3985,8 +3985,8 @@ export class Auxiora {
     router.put('/traits/:trait', async (req: any, res: any) => {
       if (!guard(req, res)) return;
       const { offset, source, reason } = req.body ?? {};
-      if (offset === undefined || offset === null) {
-        res.status(400).json({ error: 'Missing required field: offset' });
+      if (typeof offset !== 'number') {
+        res.status(400).json({ error: 'Missing or invalid field: offset must be a number' });
         return;
       }
       try {
@@ -4051,6 +4051,7 @@ export class Auxiora {
         for (const [key, value] of Object.entries(body)) {
           await this.architect!.updatePreference(key as any, value as any);
         }
+        audit('personality.preferences.updated', { keys: Object.keys(body) });
         res.json({ ok: true });
       } catch (err: any) {
         res.status(500).json({ error: err.message ?? 'Failed to update preferences' });
