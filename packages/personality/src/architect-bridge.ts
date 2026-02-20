@@ -2,6 +2,7 @@ import type { ArchitectAwarenessCollector, ArchitectSnapshot } from './architect
 
 export interface ArchitectLike {
   getConversationSummary(): { theme: string | null; messageCount: number };
+  loadConversationState?(state: { theme: string | null; messageCount: number }): void;
 }
 
 export interface VaultLike {
@@ -66,9 +67,16 @@ export class ArchitectBridge {
     if (this.restoredChats.has(chatId)) return;
     this.restoredChats.add(chatId);
     try {
-      this.vault.get(`architect:chat:${chatId}`);
+      const stored = this.vault.get(`architect:chat:${chatId}`);
+      if (stored && this.architect.loadConversationState) {
+        const parsed = JSON.parse(stored) as { theme: string | null; messageCount: number };
+        this.architect.loadConversationState({
+          theme: parsed.theme ?? null,
+          messageCount: parsed.messageCount ?? 0,
+        });
+      }
     } catch {
-      // Vault locked or missing — proceed with fresh state
+      // Vault locked, missing, or corrupt — proceed with fresh state
     }
   }
 
