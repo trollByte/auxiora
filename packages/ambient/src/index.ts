@@ -27,3 +27,4 @@ export {
   type OrchestratorNotification,
   type DeliveryChannelFn,
 } from './orchestrator.js';
+export { AmbientAwarenessCollector } from './ambient-awareness-collector.js';
