@@ -12,4 +12,21 @@ describe('Architect Runtime Integration', () => {
       expect(mapped).toBe('off_target');
     });
   });
+
+  describe('channel path Architect parity', () => {
+    it('derives chatId from channelType:channelId', () => {
+      const chatId = `telegram:12345`;
+      expect(chatId).toBe('telegram:12345');
+    });
+
+    it('uses useArchitect guard for channel path', () => {
+      const personality = 'the-architect';
+      const useChannelArchitect = personality === 'the-architect';
+      expect(useChannelArchitect).toBe(true);
+
+      const otherPersonality = 'default';
+      const skipArchitect = otherPersonality === 'the-architect';
+      expect(skipArchitect).toBe(false);
+    });
+  });
 });

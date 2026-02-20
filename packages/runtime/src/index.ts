@@ -3455,13 +3455,16 @@ export class Auxiora {
       }
 
       const channelChatId = `${inbound.channelType}:${inbound.channelId}`;
-      if (this.architect && !this.architectResetChats.has(channelChatId)) {
+      const useChannelArchitect = this.config.agent.personality === 'the-architect';
+      if (useChannelArchitect && this.architect && !this.architectResetChats.has(channelChatId)) {
         this.architectResetChats.add(channelChatId);
         this.architect.resetConversation();
         audit('personality.reset', { sessionId: session.id, chatId: channelChatId });
       }
 
-      const channelArchitectResult = await this.applyArchitectEnrichment(enrichedPrompt, messageContent);
+      const channelArchitectResult = useChannelArchitect
+        ? await this.applyArchitectEnrichment(enrichedPrompt, messageContent, channelChatId)
+        : { prompt: enrichedPrompt };
       enrichedPrompt = channelArchitectResult.prompt;
 
       // Use executeWithTools for channels — collect final text for channel reply
@@ -3554,7 +3557,7 @@ export class Auxiora {
       await this.sessions.addMessage(session.id, 'assistant', finalChannelResponse, {
         input: channelUsage.inputTokens,
         output: channelUsage.outputTokens,
-      });
+      }, channelArchitectResult.architectMeta ? { architectDomain: channelArchitectResult.architectMeta.detectedContext.domain } : undefined);
 
       // Extract memories and learn from conversation (if auto-extract enabled)
       if (this.config.memory?.autoExtract !== false && this.memoryStore && finalChannelResponse && messageContent.length > 20) {
