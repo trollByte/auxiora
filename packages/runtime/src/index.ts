@@ -4860,7 +4860,7 @@ export class Auxiora {
     router.get('/audit', (_req: any, res: any) => {
       if (!self.trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
       try {
-        const history = self.trustAuditTrail ? self.trustAuditTrail.getHistory() : [];
+        const history = self.trustAuditTrail ? self.trustAuditTrail.getAll() : [];
         res.json({ history });
       } catch (err) {
         res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

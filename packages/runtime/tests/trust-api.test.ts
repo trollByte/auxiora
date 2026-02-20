@@ -16,7 +16,7 @@ interface MockTrustEngine {
 }
 
 interface MockAuditTrail {
-  getHistory: ReturnType<typeof vi.fn>;
+  getAll: ReturnType<typeof vi.fn>;
 }
 
 function createTestTrustRouter(
@@ -62,7 +62,7 @@ function createTestTrustRouter(
   router.get('/audit', (_req: any, res: any) => {
     if (!trustEngine) return res.status(503).json({ error: 'Trust engine not initialized' });
     try {
-      const history = trustAuditTrail ? trustAuditTrail.getHistory() : [];
+      const history = trustAuditTrail ? trustAuditTrail.getAll() : [];
       res.json({ history });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -85,7 +85,7 @@ describe('Trust REST API', () => {
       setTrustLevel: vi.fn(),
     };
     trustAuditTrail = {
-      getHistory: vi.fn(),
+      getAll: vi.fn(),
     };
     app = express();
     app.use(express.json());
@@ -170,12 +170,12 @@ describe('Trust REST API', () => {
 
   it('GET /audit returns audit history', async () => {
     const history = [{ id: 'a1', action: 'set_level', timestamp: Date.now() }];
-    trustAuditTrail.getHistory.mockReturnValue(history);
+    trustAuditTrail.getAll.mockReturnValue(history);
 
     const res = await request(app).get('/api/v1/trust/audit');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ history });
-    expect(trustAuditTrail.getHistory).toHaveBeenCalledOnce();
+    expect(trustAuditTrail.getAll).toHaveBeenCalledOnce();
   });
 
   it('GET /audit returns empty array when trustAuditTrail is undefined', async () => {
@@ -189,7 +189,7 @@ describe('Trust REST API', () => {
   });
 
   it('GET /audit returns 500 on error', async () => {
-    trustAuditTrail.getHistory.mockImplementation(() => {
+    trustAuditTrail.getAll.mockImplementation(() => {
       throw new Error('audit db error');
     });
 
