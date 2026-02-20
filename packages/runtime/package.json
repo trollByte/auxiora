@@ -64,6 +64,7 @@
     "@auxiora/stt": "workspace:*",
     "@auxiora/tools": "workspace:*",
     "@auxiora/tts": "workspace:*",
+    "@auxiora/updater": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "@auxiora/voice": "workspace:*",
     "@auxiora/webhooks": "workspace:*",

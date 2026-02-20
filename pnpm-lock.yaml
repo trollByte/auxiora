@@ -985,6 +985,9 @@ importers:
       '@auxiora/tts':
         specifier: workspace:*
         version: link:../tts
+      '@auxiora/updater':
+        specifier: workspace:*
+        version: link:../updater
       '@auxiora/vault':
         specifier: workspace:*
         version: link:../vault

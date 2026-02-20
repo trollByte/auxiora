@@ -71,6 +71,8 @@ import { createLoopDetectionState, recordToolCall, recordToolOutcome, detectLoop
 import { UserManager } from '@auxiora/social';
 import { WorkflowEngine, ApprovalManager, AutonomousExecutor } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
+import { Updater, InstallationDetector, VersionChecker, HealthChecker, createStrategyMap } from '@auxiora/updater';
+import type { UpdateChannel } from '@auxiora/updater';
 import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator, AmbientAwarenessCollector } from '@auxiora/ambient';
 import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
 import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager, type TriggerEvent } from '@auxiora/connectors';
@@ -250,6 +252,9 @@ export class Auxiora {
   // Security floor
   private securityFloor?: SecurityFloor;
   private guardrailPipeline?: GuardrailPipeline;
+  private updater?: Updater;
+  private installationDetector?: InstallationDetector;
+  private versionChecker?: VersionChecker;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
@@ -1165,6 +1170,16 @@ export class Auxiora {
       this.gateway.mountRouter('/api/v1/workflows', this.createWorkflowRouter());
     }
 
+    // Connector API routes
+    if (this.connectorRegistry) {
+      this.gateway.mountRouter('/api/v1/connectors', this.createConnectorRouter());
+    }
+
+    // Self-update API routes
+    if (this.updater) {
+      this.gateway.mountRouter('/api/v1/update', this.createUpdateRouter());
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -1261,6 +1276,33 @@ export class Auxiora {
     );
     this.agentProtocol = new AgentProtocol(agentId, agentSigner, this.agentDirectory);
     this.logger.info('Agent protocol initialized');
+
+    // Initialize self-update system
+    try {
+      this.installationDetector = new InstallationDetector();
+      this.versionChecker = new VersionChecker('auxiora', 'auxiora');
+      const healthChecker = new HealthChecker(`http://${agentHost}`);
+      const strategies = createStrategyMap();
+      this.updater = new Updater({
+        detector: this.installationDetector,
+        versionChecker: this.versionChecker,
+        healthChecker,
+        strategies,
+      });
+      // Recover from any incomplete previous update
+      const recovery = await this.updater.recoverIfNeeded();
+      if (recovery) {
+        this.logger.warn('Recovered from incomplete update', {
+          previousVersion: recovery.previousVersion,
+          targetVersion: recovery.newVersion,
+        });
+      }
+      this.logger.info('Self-update system initialized');
+    } catch (err) {
+      this.logger.warn('Failed to initialize self-update system', {
+        error: err instanceof Error ? err : new Error(String(err)),
+      });
+    }
 
     // [P15] Initialize ambient intelligence
     // Restore persisted patterns from vault, or start fresh
@@ -4945,6 +4987,167 @@ export class Auxiora {
         const result = await self.workflowEngine.cancelWorkflow(req.params.id);
         if (!result) return res.status(404).json({ error: 'Workflow not found' });
         res.json({ cancelled: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    return router;
+  }
+
+  private createUpdateRouter(): import('express').Router {
+    const router = Router();
+    const self = this;
+
+    // GET /status — installation info + current version
+    router.get('/status', async (_req: any, res: any) => {
+      if (!self.installationDetector || !self.versionChecker) {
+        return res.status(503).json({ error: 'Update system not initialized' });
+      }
+      try {
+        const info = self.installationDetector.detect();
+        res.json({
+          method: info.method,
+          currentVersion: info.currentVersion,
+          installPath: info.installPath,
+          canSelfUpdate: info.canSelfUpdate,
+          requiresSudo: info.requiresSudo,
+        });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /check — check for available updates
+    router.post('/check', async (req: any, res: any) => {
+      if (!self.installationDetector || !self.versionChecker) {
+        return res.status(503).json({ error: 'Update system not initialized' });
+      }
+      try {
+        const channel = (req.body?.channel ?? 'stable') as UpdateChannel;
+        const info = self.installationDetector.detect();
+        const result = await self.versionChecker.check(info.currentVersion, channel);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /apply — trigger an update
+    router.post('/apply', async (req: any, res: any) => {
+      if (!self.updater) {
+        return res.status(503).json({ error: 'Update system not initialized' });
+      }
+      try {
+        const channel = (req.body?.channel ?? 'stable') as UpdateChannel;
+        const result = await self.updater.update(channel);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // POST /rollback — rollback a staged update
+    router.post('/rollback', async (_req: any, res: any) => {
+      if (!self.updater) {
+        return res.status(503).json({ error: 'Update system not initialized' });
+      }
+      try {
+        await self.updater.rollback();
+        res.json({ success: true });
+      } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    return router;
+  }
+
+  private createConnectorRouter(): import('express').Router {
+    const router = Router();
+
+    // GET / — list all connectors
+    router.get('/', (_req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      try {
+        res.json({ connectors: this.connectorRegistry.list() });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id — get connector by id
+    router.get('/:id', (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      try {
+        const connector = this.connectorRegistry.get(req.params.id);
+        if (!connector) return res.status(404).json({ error: 'Connector not found' });
+        res.json(connector);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id/actions — get actions for connector
+    router.get('/:id/actions', (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      try {
+        if (!this.connectorRegistry.has(req.params.id)) return res.status(404).json({ error: 'Connector not found' });
+        const actions = this.connectorRegistry.getActions(req.params.id);
+        res.json({ actions });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id/triggers — get triggers for connector
+    router.get('/:id/triggers', (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      try {
+        if (!this.connectorRegistry.has(req.params.id)) return res.status(404).json({ error: 'Connector not found' });
+        const triggers = this.connectorRegistry.getTriggers(req.params.id);
+        res.json({ triggers });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /:id/authenticate — authenticate connector
+    router.post('/:id/authenticate', async (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      if (!this.connectorAuthManager) return res.status(503).json({ error: 'Auth manager not configured' });
+      try {
+        if (!this.connectorRegistry.has(req.params.id)) return res.status(404).json({ error: 'Connector not found' });
+        await this.connectorAuthManager.authenticate(req.params.id, req.params.id, req.body.credentials);
+        res.json({ authenticated: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // POST /:id/disconnect — revoke connector token
+    router.post('/:id/disconnect', async (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      if (!this.connectorAuthManager) return res.status(503).json({ error: 'Auth manager not configured' });
+      try {
+        if (!this.connectorRegistry.has(req.params.id)) return res.status(404).json({ error: 'Connector not found' });
+        await this.connectorAuthManager.revokeToken(req.params.id);
+        res.json({ disconnected: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /:id/status — get connector auth status
+    router.get('/:id/status', (req: any, res: any) => {
+      if (!this.connectorRegistry) return res.status(503).json({ error: 'Connectors not configured' });
+      if (!this.connectorAuthManager) return res.status(503).json({ error: 'Auth manager not configured' });
+      try {
+        if (!this.connectorRegistry.has(req.params.id)) return res.status(404).json({ error: 'Connector not found' });
+        res.json({
+          connected: this.connectorAuthManager.hasToken(req.params.id),
+          expired: this.connectorAuthManager.isTokenExpired(req.params.id),
+        });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
