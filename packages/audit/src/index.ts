@@ -159,7 +159,12 @@ export type AuditEventType =
   | 'agent_protocol.message_sent'
   | 'agent_protocol.message_received'
   // Guardrails
-  | 'guardrail.triggered';
+  | 'guardrail.triggered'
+  // Deep Research
+  | 'research.started'
+  | 'research.completed'
+  | 'research.failed'
+  | 'research.cancelled';
 
 export interface AuditEntry {
   timestamp: string;
