@@ -45,6 +45,21 @@ export class SessionDatabase {
       CREATE INDEX IF NOT EXISTS idx_chats_updated ON chats(updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_chats_sender ON chats(sender_id, channel);
     `);
+
+    // Add metadata column to existing messages tables (pre-v1.4 databases)
+    const msgCols = this.db.prepare('PRAGMA table_info(messages)').all() as Array<{ name: string }>;
+    if (!msgCols.some(c => c.name === 'metadata')) {
+      this.db.exec('ALTER TABLE messages ADD COLUMN metadata TEXT');
+    }
+
+    // Add metadata/sender_id columns to existing chats tables (pre-v1.4 databases)
+    const chatCols = this.db.prepare('PRAGMA table_info(chats)').all() as Array<{ name: string }>;
+    if (!chatCols.some(c => c.name === 'metadata')) {
+      this.db.exec('ALTER TABLE chats ADD COLUMN metadata TEXT');
+    }
+    if (!chatCols.some(c => c.name === 'sender_id')) {
+      this.db.exec('ALTER TABLE chats ADD COLUMN sender_id TEXT');
+    }
   }
 
   // ── Chat operations ──
