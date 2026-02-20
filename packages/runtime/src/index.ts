@@ -3281,6 +3281,42 @@ export class Auxiora {
     if (inbound.attachments && inbound.attachments.length > 0 && this.mediaProcessor) {
       messageContent = await this.mediaProcessor.process(inbound.attachments, inbound.content);
     }
+    // ── Guardrail input scan ──────────────────────────────────────
+    const inputScan = this.checkInputGuardrails(messageContent);
+    if (inputScan && inputScan.action === 'block') {
+      audit('guardrail.triggered', {
+        action: 'block',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: inbound.channelType,
+      });
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: this.GUARDRAIL_BLOCK_MESSAGE,
+          replyToId: inbound.id,
+        });
+      }
+      return;
+    }
+
+    // Apply redaction if guardrails flagged PII
+    if (inputScan?.action === 'redact' && inputScan.redactedContent) {
+      messageContent = inputScan.redactedContent;
+      audit('guardrail.triggered', {
+        action: 'redact',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: inbound.channelType,
+      });
+    } else if (inputScan?.action === 'warn') {
+      audit('guardrail.triggered', {
+        action: 'warn',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: inbound.channelType,
+      });
+    }
+
     await this.sessions.addMessage(session.id, 'user', messageContent);
 
     // Check if providers are available
@@ -3321,7 +3357,7 @@ export class Auxiora {
       let channelMemorySection: string | null = null;
       if (this.memoryRetriever && this.memoryStore) {
         const memories = await this.memoryStore.getAll();
-        channelMemorySection = this.memoryRetriever.retrieve(memories, inbound.content);
+        channelMemorySection = this.memoryRetriever.retrieve(memories, messageContent);
       }
 
       if (this.promptAssembler && this.config.modes?.enabled !== false) {
@@ -3329,25 +3365,25 @@ export class Auxiora {
 
         // Security context check — BEFORE mode detection
         if (this.securityFloor) {
-          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: inbound.content });
+          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: messageContent });
           if (securityContext.active) {
             modeState.suspendedMode = modeState.activeMode;
             enrichedPrompt = this.promptAssembler.enrichForSecurityContext(securityContext, this.securityFloor, channelMemorySection);
           } else if (modeState.suspendedMode) {
             modeState.activeMode = modeState.suspendedMode;
             delete modeState.suspendedMode;
-            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
+            enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
           } else {
-            enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
+            enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
           }
         } else {
-          enrichedPrompt = this.buildModeEnrichedPrompt(inbound.content, modeState, channelMemorySection, inbound.channelType);
+          enrichedPrompt = this.buildModeEnrichedPrompt(messageContent, modeState, channelMemorySection, inbound.channelType);
         }
       } else if (channelMemorySection) {
         enrichedPrompt = this.systemPrompt + channelMemorySection;
       }
 
-      const channelArchitectResult = await this.applyArchitectEnrichment(enrichedPrompt, inbound.content);
+      const channelArchitectResult = await this.applyArchitectEnrichment(enrichedPrompt, messageContent);
       enrichedPrompt = channelArchitectResult.prompt;
 
       // Use executeWithTools for channels — collect final text for channel reply
@@ -3423,8 +3459,8 @@ export class Auxiora {
       });
 
       // Extract memories and learn from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && channelResponse && inbound.content.length > 20) {
-        void this.extractAndLearn(inbound.content, channelResponse, session.id);
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && channelResponse && messageContent.length > 20) {
+        void this.extractAndLearn(messageContent, channelResponse, session.id);
       }
 
       // Send response (skip if draft streaming already delivered it)
