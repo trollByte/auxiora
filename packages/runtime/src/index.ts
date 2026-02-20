@@ -2320,6 +2320,24 @@ export class Auxiora {
       return;
     }
 
+    // ── Guardrail input scan ──────────────────────────────────────
+    const inputScan = this.checkInputGuardrails(content);
+    if (inputScan && inputScan.action === 'block') {
+      audit('guardrail.triggered', {
+        action: 'block',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: 'webchat',
+      });
+      this.sendToClient(client, {
+        type: 'message',
+        id: requestId,
+        payload: { role: 'assistant', content: this.GUARDRAIL_BLOCK_MESSAGE },
+      });
+      this.sendToClient(client, { type: 'done', id: requestId, payload: {} });
+      return;
+    }
+
     // Handle commands
     if (content.startsWith('/')) {
       await this.handleCommand(client, content, requestId);
@@ -2348,8 +2366,29 @@ export class Auxiora {
       });
     }
 
+    // Apply redaction if guardrails flagged PII
+    let processedContent = content;
+    if (inputScan?.action === 'redact' && inputScan.redactedContent) {
+      processedContent = inputScan.redactedContent;
+      audit('guardrail.triggered', {
+        action: 'redact',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: 'webchat',
+        sessionId: session.id,
+      });
+    } else if (inputScan?.action === 'warn') {
+      audit('guardrail.triggered', {
+        action: 'warn',
+        direction: 'input',
+        threatCount: inputScan.threats.length,
+        channelType: 'webchat',
+        sessionId: session.id,
+      });
+    }
+
     // Add user message
-    await this.sessions.addMessage(session.id, 'user', content);
+    await this.sessions.addMessage(session.id, 'user', processedContent);
 
     // Check if providers are available
     if (!this.providers) {
@@ -2393,7 +2432,7 @@ export class Auxiora {
       let memorySection: string | null = null;
       if (this.memoryRetriever && this.memoryStore) {
         const memories = await this.memoryStore.getAll();
-        memorySection = this.memoryRetriever.retrieve(memories, content);
+        memorySection = this.memoryRetriever.retrieve(memories, processedContent);
       }
 
       if (this.promptAssembler && this.config.modes?.enabled !== false) {
@@ -2401,7 +2440,7 @@ export class Auxiora {
 
         // Security context check — BEFORE mode detection
         if (this.securityFloor) {
-          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: content });
+          const securityContext = this.securityFloor.detectSecurityContext({ userMessage: processedContent });
           if (securityContext.active) {
             // Suspend current mode and use security floor prompt
             modeState.suspendedMode = modeState.activeMode;
@@ -2413,11 +2452,11 @@ export class Auxiora {
             enrichedPrompt = this.promptAssembler.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, 'webchat');
           } else {
             // Normal mode detection
-            enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection, 'webchat');
+            enrichedPrompt = this.buildModeEnrichedPrompt(processedContent, modeState, memorySection, 'webchat');
           }
         } else {
           // No security floor — normal mode detection
-          enrichedPrompt = this.buildModeEnrichedPrompt(content, modeState, memorySection, 'webchat');
+          enrichedPrompt = this.buildModeEnrichedPrompt(processedContent, modeState, memorySection, 'webchat');
         }
       } else if (memorySection) {
         enrichedPrompt = basePrompt + memorySection;
@@ -2425,7 +2464,7 @@ export class Auxiora {
 
       // Only apply Architect enrichment if this chat uses the Architect
       const architectResult = useArchitect
-        ? await this.applyArchitectEnrichment(enrichedPrompt, content, chatId)
+        ? await this.applyArchitectEnrichment(enrichedPrompt, processedContent, chatId)
         : { prompt: enrichedPrompt };
       enrichedPrompt = architectResult.prompt;
 
@@ -2435,7 +2474,7 @@ export class Auxiora {
           userId: client.senderId ?? 'anonymous',
           sessionId: session.id,
           chatId: chatId ?? session.id,
-          currentMessage: content,
+          currentMessage: processedContent,
           recentMessages: contextMessages,
         };
         const awarenessFragment = await this.selfAwarenessAssembler.assemble(awarenessContext);
@@ -2453,7 +2492,7 @@ export class Auxiora {
         provider = this.providers.getProvider(providerOverride || this.config.provider.primary);
       } else if (this.modelRouter && this.config.routing?.enabled !== false) {
         try {
-          routingResult = this.modelRouter.route(content, { hasImages: false });
+          routingResult = this.modelRouter.route(processedContent, { hasImages: false });
           provider = this.providers.getProvider(routingResult.selection.provider);
         } catch {
           provider = this.providers.getPrimaryProvider();
@@ -2504,8 +2543,8 @@ export class Auxiora {
       }
 
       // Extract memories and learn from conversation (if auto-extract enabled)
-      if (this.config.memory?.autoExtract !== false && this.memoryStore && fullResponse && content.length > 20) {
-        void this.extractAndLearn(content, fullResponse, session.id);
+      if (this.config.memory?.autoExtract !== false && this.memoryStore && fullResponse && processedContent.length > 20) {
+        void this.extractAndLearn(processedContent, fullResponse, session.id);
       }
 
       // Auto-title webchat chats after first exchange
@@ -2514,7 +2553,7 @@ export class Auxiora {
         session.metadata.channelType === 'webchat' &&
         session.messages.length <= 3
       ) {
-        void this.generateChatTitle(session.id, content, fullResponse, client);
+        void this.generateChatTitle(session.id, processedContent, fullResponse, client);
       }
 
       // Send done signal
@@ -2543,7 +2582,7 @@ export class Auxiora {
           userId: client.senderId ?? 'anonymous',
           sessionId: session.id,
           chatId: chatId ?? session.id,
-          currentMessage: content,
+          currentMessage: processedContent,
           recentMessages: contextMessages,
           response: fullResponse,
           responseTime: Date.now() - (session.metadata.lastActiveAt ?? Date.now()),
@@ -2567,7 +2606,7 @@ export class Auxiora {
             uptime: Math.round(process.uptime()),
           },
         };
-        this.consciousness.journal.record({ ...journalBase, message: { role: 'user', content } }).catch(() => {});
+        this.consciousness.journal.record({ ...journalBase, message: { role: 'user', content: processedContent } }).catch(() => {});
         this.consciousness.journal.record({ ...journalBase, message: { role: 'assistant', content: fullResponse } }).catch(() => {});
       }
 
