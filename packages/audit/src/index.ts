@@ -89,6 +89,9 @@ export type AuditEventType =
   | 'settings.vault_password_changed'
   | 'settings.notification_preferences'
   | 'system.error'
+  // Personality (Architect runtime)
+  | 'personality.reset'
+  | 'personality.feedback'
   // Trust / Autonomy (Phase 12)
   | 'trust.level_changed'
   | 'trust.promoted'

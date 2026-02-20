@@ -2315,6 +2315,34 @@ export class Auxiora {
       return;
     }
 
+    // Handle message feedback (thumbs up/down for Architect learning)
+    if (message.type === 'message_feedback') {
+      const fbPayload = payload as { messageId?: string; sessionId?: string; rating?: 'up' | 'down'; note?: string } | undefined;
+      if (this.architect && fbPayload?.messageId && fbPayload?.rating) {
+        // Look up the message to get architectDomain from metadata
+        let domain = 'general';
+        if (fbPayload.sessionId) {
+          const msgs = this.sessions.getMessages(fbPayload.sessionId);
+          const msg = msgs.find((m: Message) => m.id === fbPayload.messageId);
+          if (msg?.metadata?.architectDomain) {
+            domain = msg.metadata.architectDomain as string;
+          }
+        }
+        const mapped = fbPayload.rating === 'up' ? 'helpful' : 'off_target';
+        await this.architect.recordFeedback({
+          domain: domain as import('@auxiora/personality/architect').ContextDomain,
+          rating: mapped,
+          note: fbPayload.note,
+        });
+        audit('personality.feedback', {
+          sessionId: fbPayload.sessionId,
+          messageId: fbPayload.messageId,
+          rating: fbPayload.rating,
+        });
+      }
+      return;
+    }
+
     const msgPayload = payload as { content?: string; model?: string; provider?: string; thinkingLevel?: ThinkingLevel; chatId?: string } | undefined;
     const content = msgPayload?.content;
     const modelOverride = msgPayload?.model;
@@ -2571,7 +2599,7 @@ export class Auxiora {
         await this.sessions.addMessage(session.id, 'assistant', finalResponse, {
           input: usage.inputTokens,
           output: usage.outputTokens,
-        });
+        }, architectResult.architectMeta ? { architectDomain: architectResult.architectMeta.detectedContext.domain } : undefined);
       }
 
       // Record usage for cost tracking
