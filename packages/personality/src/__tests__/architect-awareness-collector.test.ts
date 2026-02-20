@@ -60,4 +60,55 @@ describe('ArchitectAwarenessCollector', () => {
     expect(collector.name).toBe('architect-bridge');
     expect(collector.enabled).toBe(true);
   });
+
+  it('collects tool context signals when tools were used', async () => {
+    const collector = new ArchitectAwarenessCollector();
+    collector.updateOutput({
+      detectedContext: { domain: 'general', emotionalRegister: 'neutral', stakes: 'moderate', complexity: 'moderate' },
+    });
+    collector.updateToolContext([
+      { name: 'web_search', success: true },
+      { name: 'code_interpreter', success: false },
+    ]);
+
+    const signals = await collector.collect(ctx());
+
+    const toolSignal = signals.find(s => s.dimension === 'architect-tools');
+    expect(toolSignal).toBeDefined();
+    expect(toolSignal!.text).toContain('web_search');
+    expect(toolSignal!.text).toContain('code_interpreter');
+    expect(toolSignal!.data).toEqual({
+      tools: ['web_search', 'code_interpreter'],
+      successCount: 1,
+      failureCount: 1,
+    });
+  });
+
+  it('omits tool signal when no tools were used', async () => {
+    const collector = new ArchitectAwarenessCollector();
+    collector.updateOutput({
+      detectedContext: { domain: 'general', emotionalRegister: 'neutral', stakes: 'moderate', complexity: 'moderate' },
+    });
+
+    const signals = await collector.collect(ctx());
+
+    const toolSignal = signals.find(s => s.dimension === 'architect-tools');
+    expect(toolSignal).toBeUndefined();
+  });
+
+  it('resets tool usages after collection', async () => {
+    const collector = new ArchitectAwarenessCollector();
+    collector.updateOutput({
+      detectedContext: { domain: 'general', emotionalRegister: 'neutral', stakes: 'moderate', complexity: 'moderate' },
+    });
+    collector.updateToolContext([{ name: 'web_search', success: true }]);
+
+    // First collect — has tool signal
+    const first = await collector.collect(ctx());
+    expect(first.find(s => s.dimension === 'architect-tools')).toBeDefined();
+
+    // Second collect — no tool signal (reset after first collect)
+    const second = await collector.collect(ctx());
+    expect(second.find(s => s.dimension === 'architect-tools')).toBeUndefined();
+  });
 });

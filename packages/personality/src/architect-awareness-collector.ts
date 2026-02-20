@@ -1,5 +1,10 @@
 import type { SignalCollector, AwarenessSignal, CollectionContext } from '@auxiora/self-awareness';
 
+export interface ToolUsage {
+  name: string;
+  success: boolean;
+}
+
 export interface ArchitectSnapshot {
   detectedContext: {
     domain: string;
@@ -17,9 +22,14 @@ export class ArchitectAwarenessCollector implements SignalCollector {
   enabled = true;
 
   private latest: ArchitectSnapshot | null = null;
+  private toolUsages: ToolUsage[] = [];
 
   updateOutput(snapshot: ArchitectSnapshot): void {
     this.latest = snapshot;
+  }
+
+  updateToolContext(tools: ToolUsage[]): void {
+    this.toolUsages = tools;
   }
 
   async collect(_context: CollectionContext): Promise<AwarenessSignal[]> {
@@ -53,6 +63,19 @@ export class ArchitectAwarenessCollector implements SignalCollector {
         text: 'Emotional escalation detected — user may need de-escalation support',
         data: { escalation: true, domain: detectedContext.domain },
       });
+    }
+
+    if (this.toolUsages.length > 0) {
+      const names = this.toolUsages.map(t => t.name);
+      const successCount = this.toolUsages.filter(t => t.success).length;
+      const failureCount = this.toolUsages.length - successCount;
+      signals.push({
+        dimension: 'architect-tools',
+        priority: 0.4,
+        text: `Tools used: ${names.join(', ')} (${successCount} succeeded, ${failureCount} failed)`,
+        data: { tools: names, successCount, failureCount },
+      });
+      this.toolUsages = []; // Reset after collection
     }
 
     return signals;
