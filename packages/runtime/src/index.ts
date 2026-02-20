@@ -70,7 +70,7 @@ import { createLoopDetectionState, recordToolCall, recordToolOutcome, detectLoop
 import { UserManager } from '@auxiora/social';
 import { WorkflowEngine, ApprovalManager, AutonomousExecutor } from '@auxiora/workflows';
 import { AgentProtocol, MessageSigner, AgentDirectory } from '@auxiora/agent-protocol';
-import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator } from '@auxiora/ambient';
+import { AmbientPatternEngine, QuietNotificationManager, BriefingGenerator, AnticipationEngine, AmbientScheduler, DEFAULT_AMBIENT_SCHEDULER_CONFIG, NotificationOrchestrator, AmbientAwarenessCollector } from '@auxiora/ambient';
 import { NotificationHub, DoNotDisturbManager } from '@auxiora/notification-hub';
 import { ConnectorRegistry, AuthManager as ConnectorAuthManager, TriggerManager } from '@auxiora/connectors';
 import { googleWorkspaceConnector } from '@auxiora/connector-google-workspace';
@@ -223,6 +223,7 @@ export class Auxiora {
   private triggerManager?: TriggerManager;
   private ambientScheduler?: AmbientScheduler;
   private ambientDetectTimer?: ReturnType<typeof setInterval>;
+  private ambientAwarenessCollector?: AmbientAwarenessCollector;
   private notificationHub?: NotificationHub;
   private dndManager?: DoNotDisturbManager;
   private notificationOrchestrator?: NotificationOrchestrator;
@@ -1267,6 +1268,7 @@ export class Auxiora {
     this.ambientNotifications = new QuietNotificationManager();
     this.briefingGenerator = new BriefingGenerator();
     this.anticipationEngine = new AnticipationEngine();
+    this.ambientAwarenessCollector = new AmbientAwarenessCollector();
     this.logger.info('Ambient intelligence initialized');
 
     // Initialize notification orchestrator
@@ -1386,6 +1388,19 @@ export class Auxiora {
         try {
           this.vault.set('ambient:patterns', this.ambientEngine.serialize());
         } catch { /* vault locked */ }
+
+        // Update awareness collector
+        if (this.ambientAwarenessCollector) {
+          this.ambientAwarenessCollector.updatePatterns(this.ambientEngine.getPatterns());
+          if (this.anticipationEngine) {
+            const anticipations = this.anticipationEngine.generateAnticipations(this.ambientEngine.getPatterns());
+            this.ambientAwarenessCollector.updateAnticipations(anticipations);
+          }
+          this.ambientAwarenessCollector.updateActivity({
+            eventRate: this.ambientEngine.getEventCount(),
+            activeBehaviors: 0,
+          });
+        }
       }
     }, PATTERN_DETECT_INTERVAL);
 
@@ -2098,6 +2113,9 @@ export class Auxiora {
       ];
       if (this.architectAwarenessCollector) {
         collectors.push(this.architectAwarenessCollector);
+      }
+      if (this.ambientAwarenessCollector) {
+        collectors.push(this.ambientAwarenessCollector);
       }
       this.selfAwarenessAssembler = new SelfAwarenessAssembler(collectors, {
         tokenBudget: this.config.selfAwareness.tokenBudget ?? 500,
