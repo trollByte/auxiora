@@ -92,6 +92,13 @@ export type AuditEventType =
   // Personality (Architect runtime)
   | 'personality.reset'
   | 'personality.feedback'
+  | 'personality.decision.created'
+  | 'personality.decision.updated'
+  | 'personality.trait.override'
+  | 'personality.preset.applied'
+  | 'personality.correction'
+  | 'personality.data.exported'
+  | 'personality.data.cleared'
   // Trust / Autonomy (Phase 12)
   | 'trust.level_changed'
   | 'trust.promoted'

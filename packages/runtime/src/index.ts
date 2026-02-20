@@ -1150,6 +1150,12 @@ export class Auxiora {
       this.gateway.mountRouter('/api/v1/mcp', mcpRouter);
     }
 
+    // Personality management API routes
+    if (this.architect) {
+      const personalityRouter = this.createPersonalityRouter();
+      this.gateway.mountRouter('/api/v1/personality', personalityRouter);
+    }
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -3888,6 +3894,321 @@ export class Auxiora {
 
   getAgentName(): string {
     return this.config.agent?.name ?? 'Auxiora';
+  }
+
+  private createPersonalityRouter(): import('express').Router {
+    const router = Router();
+    const guard = (_req: any, res: any): boolean => {
+      if (!this.architect) {
+        res.status(503).json({ error: 'Architect not available' });
+        return false;
+      }
+      return true;
+    };
+
+    // --- Decisions (Gap 4) ---
+
+    router.post('/decisions', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { domain, summary, context, followUpDate } = req.body ?? {};
+      if (!domain || !summary || !context) {
+        res.status(400).json({ error: 'Missing required fields: domain, summary, context' });
+        return;
+      }
+      try {
+        const decision = await this.architect!.recordDecision({ domain, summary, context, followUpDate, status: 'active' });
+        audit('personality.decision.created', { decisionId: decision.id, domain });
+        res.status(201).json(decision);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to record decision' });
+      }
+    });
+
+    router.patch('/decisions/:id', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { status, outcome, followUpDate } = req.body ?? {};
+      try {
+        await this.architect!.updateDecision(req.params.id, { status, outcome, followUpDate });
+        audit('personality.decision.updated', { decisionId: req.params.id });
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to update decision' });
+      }
+    });
+
+    router.get('/decisions', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const { domain, status, since, search, limit } = req.query;
+        const query: Record<string, unknown> = {};
+        if (domain) query.domain = domain;
+        if (status) query.status = status;
+        if (since) query.since = since;
+        if (search) query.search = search;
+        if (limit) query.limit = Number(limit);
+        const decisions = await this.architect!.queryDecisions(query);
+        res.json({ decisions });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to query decisions' });
+      }
+    });
+
+    router.get('/decisions/due', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const due = await this.architect!.getDueFollowUps();
+        res.json({ decisions: due });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to get due follow-ups' });
+      }
+    });
+
+    // --- Traits (Gap 5) ---
+
+    router.get('/traits', (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const mix = this.architect!.getTraitMix({
+          domain: 'general' as any,
+          emotionalRegister: 'neutral' as any,
+          stakes: 'moderate',
+          complexity: 'moderate',
+          mode: 'solo_work',
+        });
+        const overrides = this.architect!.getActiveOverrides();
+        res.json({ mix, overrides });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to get traits' });
+      }
+    });
+
+    router.put('/traits/:trait', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { offset, source, reason } = req.body ?? {};
+      if (offset === undefined || offset === null) {
+        res.status(400).json({ error: 'Missing required field: offset' });
+        return;
+      }
+      try {
+        await this.architect!.setTraitOverride(req.params.trait as any, offset);
+        audit('personality.trait.override', { trait: req.params.trait, offset, source, reason });
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to set trait override' });
+      }
+    });
+
+    router.delete('/traits/:trait', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        await this.architect!.removeTraitOverride(req.params.trait as any);
+        audit('personality.trait.override', { trait: req.params.trait, action: 'removed' });
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to remove trait override' });
+      }
+    });
+
+    // --- Presets (Gap 5) ---
+
+    router.get('/presets', (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const presets = this.architect!.listPresets();
+        res.json({ presets });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to list presets' });
+      }
+    });
+
+    router.post('/presets/:name/apply', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        await this.architect!.loadPreset(req.params.name);
+        audit('personality.preset.applied', { preset: req.params.name });
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to apply preset' });
+      }
+    });
+
+    // --- Preferences (Gap 12) ---
+
+    router.get('/preferences', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const prefs = await this.architect!.getPreferences();
+        res.json(prefs);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to get preferences' });
+      }
+    });
+
+    router.put('/preferences', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const body = req.body ?? {};
+      try {
+        for (const [key, value] of Object.entries(body)) {
+          await this.architect!.updatePreference(key as any, value as any);
+        }
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to update preferences' });
+      }
+    });
+
+    // --- Feedback insights ---
+
+    router.get('/feedback/insights', (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const insights = this.architect!.getFeedbackInsights();
+        res.json(insights);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to get feedback insights' });
+      }
+    });
+
+    // --- User model ---
+
+    router.get('/user-model', (_req: any, res: any) => {
+      if (!guard(_req, res)) return;
+      const model = this.getCachedUserModel();
+      if (!model) {
+        res.status(404).json({ error: 'User model not available' });
+        return;
+      }
+      res.json(model);
+    });
+
+    // --- Corrections (Gap 8) ---
+
+    router.post('/corrections', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { userMessage, detectedDomain, correctedDomain } = req.body ?? {};
+      if (!userMessage || !detectedDomain || !correctedDomain) {
+        res.status(400).json({ error: 'Missing required fields: userMessage, detectedDomain, correctedDomain' });
+        return;
+      }
+      try {
+        await this.architect!.recordCorrection(
+          userMessage,
+          detectedDomain as import('@auxiora/personality/architect').ContextDomain,
+          correctedDomain as import('@auxiora/personality/architect').ContextDomain,
+        );
+        audit('personality.correction', { detectedDomain, correctedDomain });
+        res.status(201).json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to record correction' });
+      }
+    });
+
+    router.get('/corrections/stats', (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const stats = this.architect!.getCorrectionStats();
+        res.json(stats);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to get correction stats' });
+      }
+    });
+
+    // --- Data portability (Gap 10) ---
+
+    router.get('/export', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        const data = await this.architect!.exportData();
+        audit('personality.data.exported', {});
+        res.set('Content-Type', 'application/json');
+        res.send(data);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to export data' });
+      }
+    });
+
+    router.delete('/data', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      try {
+        await this.architect!.clearAllData();
+        audit('personality.data.cleared', {});
+        res.json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to clear data' });
+      }
+    });
+
+    // --- Conversation export (Gap 9 / Task 7) ---
+
+    router.get('/sessions/:sessionId/export', (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const format = (req.query.format as string) || 'json';
+      if (!['json', 'markdown', 'csv'].includes(format)) {
+        res.status(400).json({ error: 'Invalid format. Must be json, markdown, or csv' });
+        return;
+      }
+      try {
+        const msgs = this.sessions.getMessages(req.params.sessionId);
+        const chatMessages = msgs
+          .filter((m: Message) => m.role === 'user' || m.role === 'assistant')
+          .map((m: Message) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: m.timestamp,
+            metadata: m.metadata as any,
+          }));
+        const exported = this.architect!.exportConversationAs(
+          chatMessages,
+          req.params.sessionId,
+          format as 'json' | 'markdown' | 'csv',
+        );
+        if (format === 'json') {
+          res.set('Content-Type', 'application/json');
+        } else if (format === 'markdown') {
+          res.set('Content-Type', 'text/markdown');
+        } else {
+          res.set('Content-Type', 'text/csv');
+        }
+        res.send(exported);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to export conversation' });
+      }
+    });
+
+    // --- Feedback REST (Task 9) ---
+
+    router.post('/sessions/:sessionId/messages/:messageId/feedback', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { rating, note } = req.body ?? {};
+      if (!rating || !['up', 'down'].includes(rating)) {
+        res.status(400).json({ error: 'Missing or invalid rating. Must be "up" or "down"' });
+        return;
+      }
+      try {
+        let domain = 'general';
+        const msgs = this.sessions.getMessages(req.params.sessionId);
+        const msg = msgs.find((m: Message) => m.id === req.params.messageId);
+        if (msg?.metadata?.architectDomain) {
+          domain = msg.metadata.architectDomain as string;
+        }
+        const mapped = rating === 'up' ? 'helpful' : 'off_target';
+        await this.architect!.recordFeedback({
+          domain: domain as import('@auxiora/personality/architect').ContextDomain,
+          rating: mapped,
+          note,
+        });
+        audit('personality.feedback', {
+          sessionId: req.params.sessionId,
+          messageId: req.params.messageId,
+          rating,
+        });
+        res.status(201).json({ ok: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message ?? 'Failed to record feedback' });
+      }
+    });
+
+    return router;
   }
 }
 
