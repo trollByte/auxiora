@@ -102,7 +102,7 @@ export class PiiDetector {
       }
     }
 
-    logger.debug({ threatCount: threats.length }, 'PII scan complete');
+    logger.debug('PII scan complete', { threatCount: threats.length });
     return threats;
   }
 

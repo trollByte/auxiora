@@ -140,7 +140,7 @@ export class InjectionDetector {
       }
     }
 
-    logger.debug({ threatCount: threats.length, totalWeight }, 'Injection scan complete');
+    logger.debug('Injection scan complete', { threatCount: threats.length, totalWeight });
     return threats;
   }
 }

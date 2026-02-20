@@ -94,7 +94,7 @@ export class ToxicityFilter {
       }
     }
 
-    logger.debug({ threatCount: threats.length }, 'Toxicity scan complete');
+    logger.debug('Toxicity scan complete', { threatCount: threats.length });
     return threats;
   }
 }

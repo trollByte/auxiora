@@ -89,6 +89,8 @@ import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
+import { GuardrailPipeline } from '@auxiora/guardrails';
+import type { ScanResult } from '@auxiora/guardrails';
 import type { SelfModelSnapshot } from '@auxiora/consciousness';
 import type { IntrospectionSources, AutoFixActions, SelfAwarenessContext } from '@auxiora/introspection';
 import type { CaptureBackend, VisionBackend } from '@auxiora/screen';
@@ -240,6 +242,7 @@ export class Auxiora {
 
   // Security floor
   private securityFloor?: SecurityFloor;
+  private guardrailPipeline?: GuardrailPipeline;
   private sessionEscalation: Map<string, EscalationStateMachine> = new Map();
   /** Tracks the most recent channel ID for each connected channel type (e.g. discord → snowflake).
    *  Used for proactive delivery (behaviors, ambient briefings). Persisted to disk. */
@@ -368,6 +371,18 @@ export class Auxiora {
 
     // Initialize modes system
     await this.initializeModes();
+
+    // Initialize guardrails pipeline (if enabled)
+    if (this.config.guardrails?.enabled !== false) {
+      this.guardrailPipeline = new GuardrailPipeline({
+        piiDetection: this.config.guardrails?.piiDetection,
+        promptInjection: this.config.guardrails?.promptInjection,
+        toxicityFilter: this.config.guardrails?.toxicityFilter,
+        blockThreshold: this.config.guardrails?.blockThreshold,
+        redactPii: this.config.guardrails?.redactPii,
+      });
+      this.logger.info('Guardrails pipeline initialized');
+    }
 
     // Initialize consciousness orchestrator (self-model, journal, monitor, repair)
     if (this.architect && this.healthMonitor) {
@@ -2246,6 +2261,31 @@ export class Auxiora {
       }
     }
     return this.promptAssembler!.enrichForMessage(modeState, memorySection, this.userPreferences, undefined, channelType);
+  }
+
+  private readonly GUARDRAIL_BLOCK_MESSAGE = 'I\'m not able to process that request. If you believe this is an error, please rephrase your message.';
+
+  private checkInputGuardrails(content: string): ScanResult | null {
+    if (!this.guardrailPipeline) return null;
+    const result = this.guardrailPipeline.scanInput(content);
+    if (result.action !== 'allow') {
+      this.logger.debug('Input guardrail triggered', { action: result.action, threatCount: result.threats.length });
+    }
+    return result;
+  }
+
+  private checkOutputGuardrails(response: string): { response: string; wasModified: boolean } {
+    if (!this.guardrailPipeline || this.config.guardrails?.scanOutput === false) {
+      return { response, wasModified: false };
+    }
+    const result = this.guardrailPipeline.scanOutput(response);
+    if (result.action === 'block') {
+      return { response: this.GUARDRAIL_BLOCK_MESSAGE, wasModified: true };
+    }
+    if (result.action === 'redact' && result.redactedContent) {
+      return { response: result.redactedContent, wasModified: true };
+    }
+    return { response, wasModified: false };
   }
 
   private async handleMessage(client: ClientConnection, message: WsMessage): Promise<void> {

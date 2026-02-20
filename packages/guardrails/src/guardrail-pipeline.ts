@@ -152,7 +152,7 @@ export class GuardrailPipeline {
       result.redactedContent = this.piiDetector.redact(text);
     }
 
-    logger.debug({ action, threatCount: threats.length, highest }, 'Pipeline scan complete');
+    logger.debug('Pipeline scan complete', { action, threatCount: threats.length, highest });
     return result;
   }
 }
