@@ -206,6 +206,7 @@ export class SessionManager {
     role: MessageRole,
     content: string,
     tokens?: { input?: number; output?: number },
+    metadata?: Record<string, unknown>,
   ): Promise<Message> {
     const session = await this.get(sessionId);
     if (!session) {
@@ -218,13 +219,14 @@ export class SessionManager {
       content,
       timestamp: Date.now(),
       tokens,
+      metadata,
     };
 
     session.messages.push(message);
     session.metadata.lastActiveAt = Date.now();
 
     // Persist to DB
-    this.db.addMessage(sessionId, message.id, role, content, message.timestamp, tokens?.input, tokens?.output);
+    this.db.addMessage(sessionId, message.id, role, content, message.timestamp, tokens?.input, tokens?.output, metadata);
 
     return message;
   }

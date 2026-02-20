@@ -37,7 +37,8 @@ export class SessionDatabase {
         content     TEXT NOT NULL,
         timestamp   INTEGER NOT NULL,
         tokens_in   INTEGER,
-        tokens_out  INTEGER
+        tokens_out  INTEGER,
+        metadata    TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_messages_chat_ts ON messages(chat_id, timestamp);
@@ -98,10 +99,11 @@ export class SessionDatabase {
     timestamp: number,
     tokensIn?: number,
     tokensOut?: number,
+    metadata?: Record<string, unknown>,
   ): void {
     this.db.prepare(
-      'INSERT INTO messages (id, chat_id, role, content, timestamp, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(msgId, chatId, role, content, timestamp, tokensIn ?? null, tokensOut ?? null);
+      'INSERT INTO messages (id, chat_id, role, content, timestamp, tokens_in, tokens_out, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(msgId, chatId, role, content, timestamp, tokensIn ?? null, tokensOut ?? null, metadata ? JSON.stringify(metadata) : null);
     this.db.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').run(timestamp, chatId);
   }
 
@@ -177,6 +179,7 @@ export class SessionDatabase {
       tokens: (row.tokens_in != null || row.tokens_out != null)
         ? { input: (row.tokens_in as number) ?? undefined, output: (row.tokens_out as number) ?? undefined }
         : undefined,
+      metadata: row.metadata ? JSON.parse(row.metadata as string) as Record<string, unknown> : undefined,
     };
   }
 

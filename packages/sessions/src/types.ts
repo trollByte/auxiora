@@ -9,6 +9,7 @@ export interface Message {
     input?: number;
     output?: number;
   };
+  metadata?: Record<string, unknown>;
 }
 
 export interface SessionMetadata {

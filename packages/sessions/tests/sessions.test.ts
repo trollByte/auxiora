@@ -64,6 +64,39 @@ describe('SessionManager', () => {
       const messages = manager.getMessages(session.id);
       expect(messages[0].tokens).toEqual({ input: 100, output: 50 });
     });
+
+    it('should store metadata on messages', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+
+      const msg = await manager.addMessage(
+        session.id,
+        'assistant',
+        'Here is my response',
+        undefined,
+        { architectDomain: 'software-engineering', confidence: 0.92 },
+      );
+
+      expect(msg.metadata).toEqual({ architectDomain: 'software-engineering', confidence: 0.92 });
+
+      // Verify in-memory retrieval
+      const messages = manager.getMessages(session.id);
+      expect(messages[0].metadata).toEqual({ architectDomain: 'software-engineering', confidence: 0.92 });
+
+      // Verify DB persistence by fetching via getChatMessages (reads from DB)
+      const dbMessages = manager.getChatMessages(session.id);
+      expect(dbMessages[0].metadata).toEqual({ architectDomain: 'software-engineering', confidence: 0.92 });
+    });
+
+    it('should leave metadata undefined when not provided', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+
+      const msg = await manager.addMessage(session.id, 'user', 'Hello');
+
+      expect(msg.metadata).toBeUndefined();
+
+      const dbMessages = manager.getChatMessages(session.id);
+      expect(dbMessages[0].metadata).toBeUndefined();
+    });
   });
 
   describe('getOrCreate', () => {
