@@ -1090,6 +1090,10 @@ export class Auxiora {
               if (updates.agent) {
                 await this.loadPersonality();
               }
+              // Re-initialize channels when channel config changes
+              if (updates.channels) {
+                await this.reinitializeChannels();
+              }
             },
             getAgentName: () => this.config.agent?.name ?? 'Auxiora',
             getAgentPronouns: () => this.config.agent?.pronouns ?? 'they/them',
@@ -2146,6 +2150,39 @@ export class Auxiora {
 
     if (this.pluginLoader) {
       this.pluginLoader.setChannelManager(this.channels);
+    }
+  }
+
+  private async reinitializeChannels(): Promise<void> {
+    // Disconnect existing channels gracefully
+    if (this.channels) {
+      try {
+        await this.channels.disconnectAll();
+      } catch (error) {
+        this.logger.warn('Error disconnecting channels during reinit', {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+      this.channels = undefined;
+    }
+
+    // Re-initialize with updated config and vault
+    await this.initializeChannels();
+
+    // Connect the newly initialized channels (cast needed: initializeChannels may set this.channels)
+    const channels = this.channels as ChannelManager | undefined;
+    if (channels) {
+      try {
+        await channels.connectAll();
+        const connected = channels.getConnectedChannels();
+        if (connected.length > 0) {
+          this.logger.info(`Channels reconnected: ${connected.join(', ')}`);
+        }
+      } catch (error) {
+        this.logger.warn('Some channels failed to connect during reinit', {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
     }
   }
 
