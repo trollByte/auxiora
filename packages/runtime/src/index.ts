@@ -222,6 +222,7 @@ export class Auxiora {
   private connectorAuthManager?: ConnectorAuthManager;
   private triggerManager?: TriggerManager;
   private ambientScheduler?: AmbientScheduler;
+  private ambientDetectTimer?: ReturnType<typeof setInterval>;
   private notificationHub?: NotificationHub;
   private dndManager?: DoNotDisturbManager;
   private notificationOrchestrator?: NotificationOrchestrator;
@@ -1254,7 +1255,15 @@ export class Auxiora {
     this.logger.info('Agent protocol initialized');
 
     // [P15] Initialize ambient intelligence
-    this.ambientEngine = new AmbientPatternEngine();
+    // Restore persisted patterns from vault, or start fresh
+    try {
+      const storedPatterns = this.vault.get('ambient:patterns');
+      this.ambientEngine = storedPatterns
+        ? AmbientPatternEngine.deserialize(storedPatterns)
+        : new AmbientPatternEngine();
+    } catch {
+      this.ambientEngine = new AmbientPatternEngine();
+    }
     this.ambientNotifications = new QuietNotificationManager();
     this.briefingGenerator = new BriefingGenerator();
     this.anticipationEngine = new AnticipationEngine();
@@ -1368,6 +1377,17 @@ export class Auxiora {
       this.ambientScheduler.start();
       this.logger.info('Ambient scheduler started');
     }
+
+    // Run pattern detection and persist to vault every 5 minutes
+    const PATTERN_DETECT_INTERVAL = 5 * 60 * 1000;
+    this.ambientDetectTimer = setInterval(() => {
+      if (this.ambientEngine) {
+        this.ambientEngine.detectPatterns();
+        try {
+          this.vault.set('ambient:patterns', this.ambientEngine.serialize());
+        } catch { /* vault locked */ }
+      }
+    }, PATTERN_DETECT_INTERVAL);
 
     // [P15] Initialize conversation engine
     this.conversationEngine = new ConversationEngine();
@@ -3897,6 +3917,9 @@ export class Auxiora {
     }
     if (this.ambientScheduler) {
       this.ambientScheduler.stop();
+    }
+    if (this.ambientDetectTimer) {
+      clearInterval(this.ambientDetectTimer);
     }
     if (this.autonomousExecutor) {
       this.autonomousExecutor.stop();

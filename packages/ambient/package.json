@@ -21,7 +21,8 @@
     "@auxiora/memory": "workspace:*",
     "@auxiora/connectors": "workspace:*",
     "@auxiora/notification-hub": "workspace:*",
-    "@auxiora/personality": "workspace:*"
+    "@auxiora/personality": "workspace:*",
+    "@auxiora/self-awareness": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

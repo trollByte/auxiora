@@ -59,6 +59,9 @@ importers:
       '@auxiora/personality':
         specifier: workspace:*
         version: link:../personality
+      '@auxiora/self-awareness':
+        specifier: workspace:*
+        version: link:../self-awareness
 
   packages/approval-queue:
     dependencies:
