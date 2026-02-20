@@ -1,7 +1,7 @@
 import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { MediaProcessor, detectProviders } from '@auxiora/media';
-import { ProviderFactory, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
+import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, DraftStreamLoop, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -2265,6 +2265,16 @@ export class Auxiora {
 
   private readonly GUARDRAIL_BLOCK_MESSAGE = 'I\'m not able to process that request. If you believe this is an error, please rephrase your message.';
 
+  private buildModelIdentityFragment(provider: Provider, model?: string): string {
+    const activeModel = model ?? provider.defaultModel;
+    const caps = provider.metadata.models[activeModel];
+    return '\n\n[Model Identity]\n'
+      + `You are running as ${activeModel} via ${provider.metadata.displayName}.`
+      + (caps ? ` Context window: ${caps.maxContextTokens.toLocaleString()} tokens.` : '')
+      + (caps?.supportsVision ? ' You have vision capabilities.' : '')
+      + ` Today's date: ${new Date().toISOString().slice(0, 10)}.`;
+  }
+
   private checkInputGuardrails(content: string): ScanResult | null {
     if (!this.guardrailPipeline) return null;
     const result = this.guardrailPipeline.scanInput(content);
@@ -2500,6 +2510,12 @@ export class Auxiora {
       } else {
         provider = this.providers.getPrimaryProvider();
       }
+
+      // Inject model identity so the AI knows what it's running on
+      enrichedPrompt += this.buildModelIdentityFragment(
+        provider,
+        routingResult?.selection.model ?? modelOverride,
+      );
 
       // Execute streaming AI call with tool follow-up loop
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
@@ -3407,6 +3423,10 @@ export class Auxiora {
 
       // Use executeWithTools for channels — collect final text for channel reply
       const provider = this.providers.getPrimaryProvider();
+
+      // Inject model identity so the AI knows what it's running on
+      enrichedPrompt += this.buildModelIdentityFragment(provider);
+
       this.agentStart(channelAgentId, 'channel', `Processing message on ${inbound.channelType}`, inbound.channelType);
 
       // Draft streaming: edit message in place if adapter supports it
