@@ -10,3 +10,4 @@ export type {
   JobQueueStats,
 } from './types.js';
 export { NonRetryableError } from './errors.js';
+export { JobDatabase } from './db.js';
