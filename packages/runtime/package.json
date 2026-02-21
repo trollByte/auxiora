@@ -53,6 +53,7 @@
     "@auxiora/image-gen": "workspace:^",
     "@auxiora/intent": "workspace:*",
     "@auxiora/introspection": "workspace:*",
+    "@auxiora/job-queue": "workspace:^",
     "@auxiora/knowledge-graph": "workspace:^",
     "@auxiora/logger": "workspace:*",
     "@auxiora/mcp": "workspace:*",

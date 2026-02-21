@@ -90,6 +90,7 @@ import { ContactGraph, ContextRecall } from '@auxiora/contacts';
 import { ComposeEngine, GrammarChecker, LanguageDetector } from '@auxiora/compose';
 import { ScreenCapturer, ScreenAnalyzer } from '@auxiora/screen';
 import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generatePromptFragment } from '@auxiora/introspection';
+import { JobQueue, NonRetryableError } from '@auxiora/job-queue';
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
@@ -223,6 +224,7 @@ export class Auxiora {
   private intentParser?: IntentParser;
   private actionPlanner?: ActionPlanner;
   private orchestrationEngine?: OrchestrationEngine;
+  private jobQueue?: JobQueue;
   // [P14] Team / Social
   private userManager?: UserManager;
   private workflowEngine?: WorkflowEngine;
@@ -563,10 +565,40 @@ export class Auxiora {
       }
     };
 
+    // Initialize durable job queue
+    const jobQueueDbPath = path.join(path.dirname(getBehaviorsPath()), 'jobs.db');
+    this.jobQueue = new JobQueue(jobQueueDbPath, {
+      pollIntervalMs: 2000,
+      concurrency: 5,
+    });
+
+    // Register behavior handler
+    this.jobQueue.register<{ behaviorId: string }, void>('behavior', async (payload) => {
+      if (this.behaviors) {
+        await this.behaviors.executeNow(payload.behaviorId);
+      }
+    });
+
+    // Register ambient pattern flush handler (re-enqueues itself)
+    this.jobQueue.register<Record<string, never>, void>('ambient-flush', async (_payload, ctx) => {
+      if (this.ambientEngine) {
+        const serialized = this.ambientEngine.serialize();
+        ctx.checkpoint(serialized);
+      }
+      // Re-enqueue next flush in 5 minutes
+      if (this.jobQueue) {
+        this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+      }
+    });
+
+    this.jobQueue.start();
+    this.logger.info('Durable job queue initialized');
+
     // Initialize behavior system
     if (this.providers) {
       this.behaviors = new BehaviorManager({
         storePath: getBehaviorsPath(),
+        jobQueue: this.jobQueue,
         executorDeps: {
           getProvider: () => this.providers.getPrimaryProvider() as any,
           sendToChannel: async (channelType: string, channelId: string, message: { content: string }) => {
@@ -1325,6 +1357,19 @@ export class Auxiora {
     // Sandbox API routes
     this.gateway.mountRouter('/api/v1/sandbox', this.createSandboxRouter());
 
+    // Job queue status endpoint
+    this.gateway.mountRouter('/api/v1/jobs', (() => {
+      const jobsRouter = Router();
+      jobsRouter.get('/status', (_req: Request, res: Response) => {
+        if (!this.jobQueue) {
+          res.status(503).json({ error: 'Job queue not initialized' });
+          return;
+        }
+        res.json(this.jobQueue.getStats());
+      });
+      return jobsRouter;
+    })());
+
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
@@ -1463,6 +1508,9 @@ export class Auxiora {
     this.briefingGenerator = new BriefingGenerator();
     this.anticipationEngine = new AnticipationEngine();
     this.ambientAwarenessCollector = new AmbientAwarenessCollector();
+    if (this.jobQueue) {
+      this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+    }
     this.logger.info('Ambient intelligence initialized');
 
     // Initialize RAG document store
@@ -4196,6 +4244,9 @@ export class Auxiora {
     }
     if (this.mcpClientManager) {
       await this.mcpClientManager.disconnectAll();
+    }
+    if (this.jobQueue) {
+      await this.jobQueue.stop(30000);
     }
     this.consciousness?.shutdown();
     this.sessions.destroy();

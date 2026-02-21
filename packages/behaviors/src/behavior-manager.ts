@@ -29,6 +29,9 @@ export interface CreateBehaviorInput {
 
 export interface BehaviorManagerOptions {
   storePath: string;
+  jobQueue?: {
+    enqueue(type: string, payload: unknown, options?: { priority?: number; maxAttempts?: number; scheduledAt?: number }): string;
+  };
   executorDeps: ExecutorDeps;
   auditFn: (event: string, details: Record<string, unknown>) => Promise<void> | void;
 }
@@ -41,6 +44,7 @@ export class BehaviorManager {
   private auditFn: (event: string, details: Record<string, unknown>) => Promise<void> | void;
   private executionQueue: Promise<void> = Promise.resolve();
   private oneshotTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private jobQueue?: BehaviorManagerOptions['jobQueue'];
 
   constructor(options: BehaviorManagerOptions) {
     this.store = new BehaviorStore(options.storePath);
@@ -48,6 +52,7 @@ export class BehaviorManager {
     this.monitor = new MonitorEngine();
     this.executor = new BehaviorExecutor(options.executorDeps);
     this.auditFn = options.auditFn;
+    this.jobQueue = options.jobQueue;
   }
 
   async start(): Promise<void> {
@@ -218,6 +223,15 @@ export class BehaviorManager {
 
       case 'one-shot':
         if (behavior.delay) {
+          if (this.jobQueue) {
+            const fireAt = new Date(behavior.delay.fireAt).getTime();
+            this.jobQueue.enqueue('behavior', { behaviorId: behavior.id }, {
+              maxAttempts: 2,
+              scheduledAt: fireAt,
+            });
+            return;
+          }
+          // Existing setTimeout code stays as fallback
           const delayMs = new Date(behavior.delay.fireAt).getTime() - Date.now();
           if (delayMs > 0) {
             const timer = setTimeout(() => {
@@ -245,6 +259,11 @@ export class BehaviorManager {
   }
 
   private enqueueExecution(behaviorId: string): void {
+    if (this.jobQueue) {
+      this.jobQueue.enqueue('behavior', { behaviorId }, { maxAttempts: 2 });
+      return;
+    }
+    // Fallback: in-memory queue (backward compat)
     this.executionQueue = this.executionQueue.then(async () => {
       await this.executeWithRetry(behaviorId);
     }).catch((error) => {

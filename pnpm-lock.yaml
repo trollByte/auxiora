@@ -104,6 +104,9 @@ importers:
       '@auxiora/errors':
         specifier: workspace:*
         version: link:../errors
+      '@auxiora/job-queue':
+        specifier: workspace:^
+        version: link:../job-queue
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
@@ -594,6 +597,8 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@25.1.0)(jsdom@28.1.0(@noble/hashes@1.8.0))
 
+  packages/job-queue: {}
+
   packages/knowledge-graph:
     dependencies:
       '@auxiora/logger':
@@ -952,6 +957,9 @@ importers:
       '@auxiora/introspection':
         specifier: workspace:*
         version: link:../introspection
+      '@auxiora/job-queue':
+        specifier: workspace:^
+        version: link:../job-queue
       '@auxiora/knowledge-graph':
         specifier: workspace:^
         version: link:../knowledge-graph
