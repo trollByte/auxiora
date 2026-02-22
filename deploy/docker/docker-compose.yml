@@ -27,7 +27,7 @@ services:
       - ${AUXIORA_HOST_WORKSPACE:-~/.auxiora/workspace}:/data/.auxiora/workspace:rw
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:18800/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:18800/health"]
       interval: 30s
       timeout: 5s
       retries: 3

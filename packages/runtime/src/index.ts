@@ -3771,6 +3771,7 @@ export class Auxiora {
     const CHANNEL_RESPONSE_TIMEOUT_MS = 120_000;
 
     let draftLoop: DraftStreamLoop | null = null;
+    let draftMessageId: string | null = null;
 
     try { // outer try — finally block guarantees stopTyping() runs
     try {
@@ -3819,7 +3820,6 @@ export class Auxiora {
       const adapter = this.channels?.getAdapter(inbound.channelType);
       const supportsDraft = !!adapter?.editMessage;
 
-      let draftMessageId: string | null = null;
       let accumulatedText = '';
 
       if (supportsDraft && this.channels) {
@@ -3943,10 +3943,29 @@ export class Auxiora {
       audit('channel.error', { sessionId: session.id, error: errorMessage });
 
       if (this.channels) {
-        await this.channels.send(inbound.channelType, inbound.channelId, {
-          content: `Error: ${errorMessage}`,
-          replyToId: inbound.id,
-        });
+        const errorContent = `Error: ${errorMessage}`;
+        // If a draft message exists, edit it with the error instead of sending a new one
+        if (draftMessageId) {
+          try {
+            await this.channels.editMessage(
+              inbound.channelType,
+              inbound.channelId,
+              draftMessageId,
+              { content: errorContent },
+            );
+          } catch {
+            // Edit failed — fall back to new message
+            await this.channels.send(inbound.channelType, inbound.channelId, {
+              content: errorContent,
+              replyToId: inbound.id,
+            });
+          }
+        } else {
+          await this.channels.send(inbound.channelType, inbound.channelId, {
+            content: errorContent,
+            replyToId: inbound.id,
+          });
+        }
       }
     }
     } finally {

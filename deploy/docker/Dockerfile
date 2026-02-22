@@ -69,7 +69,7 @@ ENV XDG_STATE_HOME=/data/state
 EXPOSE 18800
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:18800/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:18800/health || exit 1
 
 COPY deploy/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
