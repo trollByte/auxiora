@@ -78,4 +78,81 @@ describe('chunkMarkdown', () => {
     expect(chunkMarkdown(text, 25)).toHaveLength(4);
     expect(chunkMarkdown(text, 100)).toHaveLength(1);
   });
+
+  describe('maxLines option', () => {
+    it('splits text exceeding maxLines at paragraph boundaries', () => {
+      const lines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}`).join('\n');
+      const chunks = chunkMarkdown(lines, 2000, { maxLines: 10 });
+      expect(chunks.length).toBeGreaterThan(1);
+      for (const chunk of chunks) {
+        const lineCount = chunk.split('\n').length;
+        expect(lineCount).toBeLessThanOrEqual(10);
+      }
+    });
+
+    it('does not split when lines are within maxLines', () => {
+      const text = 'Line 1\nLine 2\nLine 3';
+      const chunks = chunkMarkdown(text, 2000, { maxLines: 10 });
+      expect(chunks).toEqual([text]);
+    });
+
+    it('splits at newline boundary when no paragraph boundary available', () => {
+      const lines = Array.from({ length: 6 }, (_, i) => `Line ${i + 1}`).join('\n');
+      const chunks = chunkMarkdown(lines, 2000, { maxLines: 3 });
+      expect(chunks.length).toBeGreaterThan(1);
+      for (const chunk of chunks) {
+        expect(chunk.split('\n').length).toBeLessThanOrEqual(3);
+      }
+      // All content preserved
+      expect(chunks.join('\n').replace(/\n+/g, '\n')).toContain('Line 1');
+      expect(chunks.join('\n').replace(/\n+/g, '\n')).toContain('Line 6');
+    });
+
+    it('respects both maxLength and maxLines', () => {
+      // Each line is 50 chars, 20 lines = 1000 chars
+      const lines = Array.from({ length: 20 }, (_, i) => `Line ${String(i + 1).padStart(2, '0')}: ${'x'.repeat(43)}`).join('\n');
+      const chunks = chunkMarkdown(lines, 200, { maxLines: 5 });
+      for (const chunk of chunks) {
+        expect(chunk.length).toBeLessThanOrEqual(200);
+        expect(chunk.split('\n').length).toBeLessThanOrEqual(5);
+      }
+    });
+  });
+
+  describe('code fence rebalancing', () => {
+    it('closes and reopens fences when code block is split by maxLines', () => {
+      const codeLines = Array.from({ length: 10 }, (_, i) => `  code line ${i + 1}`);
+      const text = '```js\n' + codeLines.join('\n') + '\n```';
+      const chunks = chunkMarkdown(text, 2000, { maxLines: 5 });
+      expect(chunks.length).toBeGreaterThan(1);
+      // Each chunk should have balanced fences
+      for (const chunk of chunks) {
+        const opens = (chunk.match(/^```/gm) || []).length;
+        const closes = (chunk.match(/^```$/gm) || []).length;
+        // First chunk: opens with ```js, ends with ```
+        // Middle/last chunks: open with ```js, end with ```
+        expect(opens).toBeGreaterThanOrEqual(1);
+      }
+      // First chunk starts with the original fence
+      expect(chunks[0]).toMatch(/^```js\n/);
+      // Last chunk ends with closing fence
+      expect(chunks[chunks.length - 1]).toMatch(/\n```$/);
+    });
+
+    it('closes and reopens fences when code block is split by maxLength', () => {
+      const longLines = Array.from({ length: 10 }, (_, i) => `line ${i}: ${'x'.repeat(80)}`);
+      const text = '```python\n' + longLines.join('\n') + '\n```';
+      const chunks = chunkMarkdown(text, 300);
+      expect(chunks.length).toBeGreaterThan(1);
+      // First chunk should start with ```python and end with ```
+      expect(chunks[0]).toMatch(/^```python\n/);
+      expect(chunks[0]).toMatch(/\n```$/);
+      // Continuation chunks should reopen with ```python
+      for (let i = 1; i < chunks.length; i++) {
+        expect(chunks[i]).toMatch(/^```python\n/);
+      }
+      // Last chunk should end with ```
+      expect(chunks[chunks.length - 1]).toMatch(/\n```$/);
+    });
+  });
 });

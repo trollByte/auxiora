@@ -21,6 +21,7 @@ export interface DiscordAdapterConfig {
 }
 
 const MAX_MESSAGE_LENGTH = 2000;
+const MAX_LINES_PER_MESSAGE = 17;
 
 export class DiscordAdapter implements ChannelAdapter {
   readonly type = 'discord' as const;
@@ -161,14 +162,17 @@ export class DiscordAdapter implements ChannelAdapter {
         return { success: false, error: 'Channel not found or not text-based' };
       }
 
-      // Chunk long messages
-      const chunks = chunkMarkdown(message.content, MAX_MESSAGE_LENGTH);
+      // Chunk long messages with line limit to prevent Discord collapse
+      const chunks = chunkMarkdown(message.content, MAX_MESSAGE_LENGTH, {
+        maxLines: MAX_LINES_PER_MESSAGE,
+      });
       let lastMessageId: string | undefined;
 
-      for (const chunk of chunks) {
+      for (let i = 0; i < chunks.length; i++) {
         const sent = await channel.send({
-          content: chunk,
-          reply: message.replyToId
+          content: chunks[i],
+          // Only attach reply reference to the first chunk
+          reply: i === 0 && message.replyToId
             ? { messageReference: message.replyToId }
             : undefined,
         });
