@@ -7,7 +7,7 @@ import type { Briefing } from '../src/briefing.js';
 function createMockScheduler() {
   const jobs = new Map<string, { cron: string; callback: () => void }>();
   return {
-    schedule: vi.fn((id: string, cron: string, callback: () => void) => {
+    schedule: vi.fn((id: string, cron: string, callback: () => void, _timezone?: string) => {
       jobs.set(id, { cron, callback });
     }),
     stop: vi.fn((id: string) => {
@@ -110,19 +110,33 @@ describe('AmbientScheduler', () => {
     expect(deps.triggerManager.pollAll).toHaveBeenCalled();
   });
 
-  it('should generate and deliver morning briefing', async () => {
-    scheduler.start();
-    await scheduler.generateAndDeliverBriefing('morning');
-    expect(deps.deliveryChannel).toHaveBeenCalledTimes(1);
-    const delivered = (deps.deliveryChannel as any).mock.calls[0][0] as string;
+  it('should generate and deliver morning briefing when data exists', async () => {
+    const calDeps = createMockDeps({
+      calendarIntelligence: {
+        analyzeDay: vi.fn(async () => ({
+          events: [{ title: 'Standup', time: '10:00' }],
+        })),
+      },
+    });
+    const s = new AmbientScheduler(calDeps);
+    await s.generateAndDeliverBriefing('morning');
+    expect(calDeps.deliveryChannel).toHaveBeenCalledTimes(1);
+    const delivered = (calDeps.deliveryChannel as any).mock.calls[0][0] as string;
     expect(delivered).toContain('Good morning');
   });
 
-  it('should generate and deliver evening briefing', async () => {
-    scheduler.start();
-    await scheduler.generateAndDeliverBriefing('evening');
-    expect(deps.deliveryChannel).toHaveBeenCalledTimes(1);
-    const delivered = (deps.deliveryChannel as any).mock.calls[0][0] as string;
+  it('should generate and deliver evening briefing when data exists', async () => {
+    const calDeps = createMockDeps({
+      calendarIntelligence: {
+        analyzeDay: vi.fn(async () => ({
+          events: [{ title: 'Sprint planning', time: '09:00' }],
+        })),
+      },
+    });
+    const s = new AmbientScheduler(calDeps);
+    await s.generateAndDeliverBriefing('evening');
+    expect(calDeps.deliveryChannel).toHaveBeenCalledTimes(1);
+    const delivered = (calDeps.deliveryChannel as any).mock.calls[0][0] as string;
     expect(delivered).toContain('evening summary');
   });
 
@@ -164,7 +178,7 @@ describe('AmbientScheduler', () => {
     });
     const s = new AmbientScheduler(errorDeps);
     await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
-    expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+    // No data means no delivery (empty briefing suppressed)
   });
 
   it('should handle email fetch errors gracefully', async () => {
@@ -177,7 +191,33 @@ describe('AmbientScheduler', () => {
     });
     const s = new AmbientScheduler(errorDeps);
     await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
-    expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+  });
+
+  it('should not deliver briefing when there are no sections', async () => {
+    // Default deps have no data sources, so briefing will have 0 sections
+    await scheduler.generateAndDeliverBriefing('morning');
+    expect(deps.deliveryChannel).not.toHaveBeenCalled();
+  });
+
+  it('should pass timezone to scheduler.schedule', () => {
+    const tzDeps = createMockDeps({
+      config: { timezone: 'America/Los_Angeles' },
+    });
+    const s = new AmbientScheduler(tzDeps);
+    s.start();
+    const calls = tzDeps._scheduler.schedule.mock.calls;
+    // Every job should receive the timezone as the 4th argument
+    for (const call of calls) {
+      expect(call[3]).toBe('America/Los_Angeles');
+    }
+  });
+
+  it('should not pass timezone when not configured', () => {
+    scheduler.start();
+    const calls = deps._scheduler.schedule.mock.calls;
+    for (const call of calls) {
+      expect(call[3]).toBeUndefined();
+    }
   });
 
   it('should schedule notification poll job on start', () => {
@@ -316,8 +356,8 @@ describe('AmbientScheduler', () => {
       });
       const s = new AmbientScheduler(healthDeps);
       await s.generateAndDeliverBriefing('morning');
-      const delivered = (healthDeps.deliveryChannel as any).mock.calls[0][0] as string;
-      expect(delivered).not.toContain('System health');
+      // Healthy system + no other data = empty briefing = no delivery
+      expect(healthDeps.deliveryChannel).not.toHaveBeenCalled();
     });
 
     it('should include satisfaction trend as observed pattern', async () => {
@@ -349,8 +389,8 @@ describe('AmbientScheduler', () => {
       });
       const s = new AmbientScheduler(feedbackDeps);
       await s.generateAndDeliverBriefing('morning');
-      const delivered = (feedbackDeps.deliveryChannel as any).mock.calls[0][0] as string;
-      expect(delivered).not.toContain('satisfaction');
+      // No feedback + no other data = empty briefing = no delivery
+      expect(feedbackDeps.deliveryChannel).not.toHaveBeenCalled();
     });
 
     it('should handle decisionLog errors gracefully', async () => {
@@ -362,7 +402,7 @@ describe('AmbientScheduler', () => {
       });
       const s = new AmbientScheduler(errorDeps);
       await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
-      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
+      // Error swallowed, no crash — but also no delivery since no sections
     });
 
     it('should handle consciousnessMonitor errors gracefully', async () => {
@@ -373,7 +413,6 @@ describe('AmbientScheduler', () => {
       });
       const s = new AmbientScheduler(errorDeps);
       await expect(s.generateAndDeliverBriefing('evening')).resolves.toBeUndefined();
-      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
     });
 
     it('should handle feedbackStore errors gracefully', async () => {
@@ -384,7 +423,6 @@ describe('AmbientScheduler', () => {
       });
       const s = new AmbientScheduler(errorDeps);
       await expect(s.generateAndDeliverBriefing('morning')).resolves.toBeUndefined();
-      expect(errorDeps.deliveryChannel).toHaveBeenCalled();
     });
 
     it('should combine all data sources in a single briefing', async () => {

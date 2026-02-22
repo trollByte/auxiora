@@ -23,6 +23,8 @@ export interface AmbientSchedulerConfig {
   enabled: boolean;
   /** Categories to include in briefings. */
   categories: string[];
+  /** IANA timezone for cron schedules (e.g. 'America/New_York'). Defaults to system timezone. */
+  timezone?: string;
 }
 
 export const DEFAULT_AMBIENT_SCHEDULER_CONFIG: AmbientSchedulerConfig = {
@@ -121,25 +123,27 @@ export class AmbientScheduler {
   start(): void {
     if (!this.config.enabled || this.running) return;
 
+    const tz = this.config.timezone;
+
     this.scheduler.schedule(JOB_IDS.emailPoll, this.config.emailPollCron, () => {
       void this.triggerManager.pollAll();
-    });
+    }, tz);
 
     this.scheduler.schedule(JOB_IDS.calendarPoll, this.config.calendarPollCron, () => {
       void this.pollCalendar();
-    });
+    }, tz);
 
     this.scheduler.schedule(JOB_IDS.morningBriefing, this.config.morningCron, () => {
       void this.generateAndDeliverBriefing('morning');
-    });
+    }, tz);
 
     this.scheduler.schedule(JOB_IDS.eveningSummary, this.config.eveningCron, () => {
       void this.generateAndDeliverBriefing('evening');
-    });
+    }, tz);
 
     this.scheduler.schedule(JOB_IDS.notificationPoll, this.config.notificationPollCron, () => {
       void this.pollAndNotify();
-    });
+    }, tz);
 
     this.running = true;
   }
@@ -182,6 +186,9 @@ export class AmbientScheduler {
         patterns,
       },
     );
+
+    // Don't send empty briefings — "No updates right now" is noise
+    if (briefing.sections.length === 0) return;
 
     const formatted = formatBriefingAsText(briefing);
     await this.deliveryChannel(formatted);
