@@ -3765,6 +3765,14 @@ export class Auxiora {
 
     const channelAgentId = `channel:${inbound.channelType}:${inbound.channelId}:${Date.now()}`;
 
+    // 2-minute timeout for the entire LLM response cycle.
+    // If the provider stream hangs (network issue, overloaded API), this
+    // ensures the user gets an error message instead of infinite "typing…".
+    const CHANNEL_RESPONSE_TIMEOUT_MS = 120_000;
+
+    let draftLoop: DraftStreamLoop | null = null;
+
+    try { // outer try — finally block guarantees stopTyping() runs
     try {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
@@ -3813,7 +3821,6 @@ export class Auxiora {
 
       let draftMessageId: string | null = null;
       let accumulatedText = '';
-      let draftLoop: DraftStreamLoop | null = null;
 
       if (supportsDraft && this.channels) {
         const channels = this.channels;
@@ -3845,25 +3852,30 @@ export class Auxiora {
 
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const channelToolsUsed: Array<{ name: string; success: boolean }> = [];
-      const { response: channelResponse, usage: channelUsage } = await this.executeWithTools(
-        session.id,
-        chatMessages,
-        enrichedPrompt,
-        provider,
-        (type, data) => {
-          if (type === 'text' && data && draftLoop) {
-            accumulatedText += data;
-            draftLoop.update(accumulatedText);
-          } else if (type === 'tool_use') {
-            channelToolsUsed.push({ name: (data as any)?.name ?? 'unknown', success: true });
-          } else if (type === 'tool_result') {
-            if (channelToolsUsed.length > 0 && (data as any)?.error) {
-              channelToolsUsed[channelToolsUsed.length - 1].success = false;
+      const { response: channelResponse, usage: channelUsage } = await Promise.race([
+        this.executeWithTools(
+          session.id,
+          chatMessages,
+          enrichedPrompt,
+          provider,
+          (type, data) => {
+            if (type === 'text' && data && draftLoop) {
+              accumulatedText += data;
+              draftLoop.update(accumulatedText);
+            } else if (type === 'tool_use') {
+              channelToolsUsed.push({ name: (data as any)?.name ?? 'unknown', success: true });
+            } else if (type === 'tool_result') {
+              if (channelToolsUsed.length > 0 && (data as any)?.error) {
+                channelToolsUsed[channelToolsUsed.length - 1].success = false;
+              }
             }
-          }
-        },
-        { tools, fallbackCandidates },
-      );
+          },
+          { tools, fallbackCandidates },
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 2 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
+        ),
+      ]);
 
       // Feed tool usage to awareness collector
       if (this.architectAwarenessCollector && channelToolsUsed.length > 0) {
@@ -3879,8 +3891,6 @@ export class Auxiora {
         await draftLoop.flush();
         draftLoop.stop();
       }
-
-      stopTyping();
 
       // ── Guardrail output scan ─────────────────────────────────────
       const channelOutputScan = this.checkOutputGuardrails(channelResponse);
@@ -3926,7 +3936,7 @@ export class Auxiora {
 
       this.agentEnd(channelAgentId, true);
     } catch (error) {
-      stopTyping();
+      if (draftLoop) draftLoop.stop();
       this.agentEnd(channelAgentId, false);
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -3938,6 +3948,9 @@ export class Auxiora {
           replyToId: inbound.id,
         });
       }
+    }
+    } finally {
+      stopTyping();
     }
     }); // end runWithRequestId
   }
