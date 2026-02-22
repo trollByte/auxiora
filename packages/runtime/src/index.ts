@@ -94,6 +94,8 @@ import { JobQueue, NonRetryableError } from '@auxiora/job-queue';
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
 import { GuardrailPipeline } from '@auxiora/guardrails';
+import { collectTransparencyMeta } from './transparency/index.js';
+import type { TransparencyMeta } from './transparency/index.js';
 import { IntentParser as NLIntentParser, AutomationBuilder } from '@auxiora/nl-automation';
 import { BranchManager } from '@auxiora/conversation-branch';
 import { ReActLoop } from '@auxiora/react-loop';
@@ -2855,6 +2857,7 @@ export class Auxiora {
       );
 
       // Execute streaming AI call with tool follow-up loop
+      const processingStartTime = Date.now();
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const toolsUsed: Array<{ name: string; success: boolean }> = [];
       let streamChunkCount = 0;
@@ -2910,12 +2913,37 @@ export class Auxiora {
         });
       }
 
+      // Collect transparency metadata (best-effort)
+      let transparencyMeta: TransparencyMeta | undefined;
+      try {
+        const modelId = routingResult?.selection.model ?? modelOverride ?? provider.defaultModel;
+        const caps = provider.metadata.models[modelId];
+        if (caps) {
+          transparencyMeta = collectTransparencyMeta({
+            enrichment: this.enrichmentPipeline
+              ? { prompt: enrichedPrompt, metadata: { architect: architectResult.architectMeta, stages: (architectResult as any).stages ?? [] } }
+              : { prompt: enrichedPrompt, metadata: { stages: [] } },
+            completion: { content: finalResponse, usage, model: modelId, finishReason: 'stop', toolUse: toolsUsed.map(t => ({ name: t.name })) },
+            capabilities: { costPer1kInput: caps.costPer1kInput, costPer1kOutput: caps.costPer1kOutput },
+            providerName: provider.name,
+            awarenessSignals: [],
+            responseText: finalResponse,
+            processingStartTime,
+          });
+        }
+      } catch {
+        // Transparency is best-effort — never block message delivery
+      }
+
       // Save assistant message (skip if empty — happens when response is tool-only)
       if (finalResponse) {
         await this.sessions.addMessage(session.id, 'assistant', finalResponse, {
           input: usage.inputTokens,
           output: usage.outputTokens,
-        }, architectResult.architectMeta ? { architectDomain: architectResult.architectMeta.detectedContext.domain } : undefined);
+        }, {
+          ...(architectResult.architectMeta ? { architectDomain: architectResult.architectMeta.detectedContext.domain } : {}),
+          ...(transparencyMeta ? { transparency: transparencyMeta } : {}),
+        });
       }
 
       // Record usage for cost tracking
@@ -2959,6 +2987,7 @@ export class Auxiora {
             override: true,
           } : undefined,
           architect: architectResult.architectMeta,
+          transparency: transparencyMeta,
         },
       });
 

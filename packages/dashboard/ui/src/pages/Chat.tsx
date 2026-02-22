@@ -7,6 +7,7 @@ import { SourcesButton } from '../components/SourcesButton.js';
 import { ContextOverrideMenu } from '../components/ContextOverrideMenu.js';
 import { ContextRecommendation as ContextRecommendationBanner } from '../components/ContextRecommendation.js';
 import { DOMAIN_META } from '../components/context-meta.js';
+import { TransparencyFooter } from '../components/TransparencyFooter.js';
 
 interface ChatMessage {
   id: string;
@@ -19,6 +20,7 @@ interface ChatMessage {
   recommendation?: ContextRecommendation;
   /** The user message that triggered this response (for correction recording). */
   userMessage?: string;
+  transparency?: any;
 }
 
 interface ChatThread {
@@ -446,6 +448,10 @@ export function Chat() {
               updates.activeTraits = architect.activeTraits;
               updates.traitWeights = architect.traitWeights;
               updates.recommendation = architect.recommendation;
+            }
+            const transparency = msg.payload?.transparency;
+            if (transparency) {
+              updates.transparency = transparency;
             }
             if (Object.keys(updates).length > 0) {
               const doneRequestId = msg.id != null ? String(msg.id) : null;
@@ -932,6 +938,9 @@ export function Chat() {
                 )}
                 {msg.model && (
                   <div className="model-label">{msg.model}</div>
+                )}
+                {msg.role === 'assistant' && msg.transparency && (
+                  <TransparencyFooter meta={msg.transparency} />
                 )}
               </div>
             ))}
