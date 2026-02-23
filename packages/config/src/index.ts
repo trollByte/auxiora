@@ -159,9 +159,9 @@ const ChannelConfigSchema = z.object({
 });
 
 const VoiceConfigSchema = z.object({
-  enabled: z.boolean().default(false),
-  sttProvider: z.enum(['openai-whisper']).default('openai-whisper'),
-  ttsProvider: z.enum(['openai-tts']).default('openai-tts'),
+  enabled: z.boolean().default(true),
+  sttProvider: z.enum(['openai-whisper', 'whisper-local', 'auto']).default('auto'),
+  ttsProvider: z.enum(['openai-tts', 'elevenlabs-tts', 'piper-local', 'auto']).default('auto'),
   defaultVoice: z.string().default('alloy'),
   language: z.string().default('en'),
   maxAudioDuration: z.number().int().positive().default(30),
