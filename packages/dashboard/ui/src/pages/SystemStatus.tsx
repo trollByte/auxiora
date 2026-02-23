@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getFeatureStatus, type FeatureStatus } from '../api.js';
+import { ProviderHealth } from '../components/ProviderHealth.js';
 
 export function SystemStatus() {
   const [features, setFeatures] = useState<FeatureStatus[]>([]);
@@ -23,6 +24,7 @@ export function SystemStatus() {
   return (
     <div className="system-status">
       <h2>System Status</h2>
+      <ProviderHealth />
 
       <section className="status-section-active">
         <h3>Active ({active.length})</h3>
