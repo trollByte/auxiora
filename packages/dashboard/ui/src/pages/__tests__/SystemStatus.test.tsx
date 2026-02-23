@@ -12,7 +12,7 @@ const mockFeatures = [
 ];
 
 vi.mock('../../api', () => ({
-  getFeatureStatus: vi.fn().mockResolvedValue({ features: mockFeatures }),
+  getFeatureStatus: vi.fn(),
 }));
 
 import { getFeatureStatus } from '../../api.js';

@@ -39,3 +39,4 @@ auxiora_origin.txt
 test-token.js
 .npmrc
 .worktrees/
+.claude/worktrees/

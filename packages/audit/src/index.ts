@@ -32,6 +32,7 @@ export type AuditEventType =
   | 'channel.connected'
   | 'channel.disconnected'
   | 'channel.error'
+  | 'channel.skipped'
   | 'message.received'
   | 'message.sent'
   | 'message.filtered'
