@@ -57,7 +57,7 @@ import { WhisperSTT } from '@auxiora/stt';
 import { OpenAITTS } from '@auxiora/tts';
 import { WebhookManager } from '@auxiora/webhooks';
 import { createDashboardRouter } from '@auxiora/dashboard';
-import { PluginLoader } from '@auxiora/plugins';
+import { PluginLoader, registerCreateSkillTool } from '@auxiora/plugins';
 import {
   MemoryStore,
   MemoryRetriever,
@@ -1402,6 +1402,24 @@ export class Auxiora {
       const successful = loaded.filter(p => p.status === 'loaded');
       if (loaded.length > 0) {
         this.logger.info(`Plugins: ${successful.length} loaded, ${loaded.length - successful.length} failed`);
+      }
+
+      // Register the create_skill tool so the AI can author new plugins at runtime
+      if (this.providers) {
+        try {
+          const provider = this.providers.getPrimaryProvider();
+          registerCreateSkillTool({
+            loader: this.pluginLoader,
+            generate: async (prompt: string) => {
+              const result = await provider.complete([{ role: 'user', content: prompt }]);
+              return result.content;
+            },
+            pluginsDir: pluginsDir,
+          });
+          this.logger.info('Self-authoring skills enabled (create_skill tool registered)');
+        } catch {
+          this.logger.warn('Self-authoring skills disabled: no AI provider available');
+        }
       }
     }
 
