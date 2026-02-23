@@ -34,7 +34,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm build
+        run: pnpm -r --filter '!@auxiora/desktop' build
 
       - name: Typecheck
         run: pnpm typecheck
