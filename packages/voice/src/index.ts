@@ -21,3 +21,16 @@ export {
   type WakeDetectorState,
   type WakeEvent,
 } from './wake-detector.js';
+export {
+  detectVoiceProviders,
+  type DetectedProviders,
+  type DetectedSTT,
+  type DetectedTTS,
+  type VoiceProviderConfig,
+} from './detect-providers.js';
+export {
+  createSTTProvider,
+  createTTSProvider,
+  type STTProviderOptions,
+  type TTSProviderOptions,
+} from './provider-factory.js';
