@@ -20,6 +20,7 @@ import { SetupProvider } from './pages/SetupProvider';
 import { SetupChannels } from './pages/SetupChannels';
 import { SetupConnections } from './pages/SetupConnections';
 import { SetupComplete } from './pages/SetupComplete';
+import { SetupPreferences } from './pages/SetupPreferences';
 import { SetupAppearance } from './pages/SetupAppearance';
 import { SettingsAppearance } from './pages/settings/Appearance';
 import { SettingsConnections } from './pages/SettingsConnections';
@@ -36,6 +37,7 @@ export function App() {
       <Route path="/setup/vault" element={<SetupVault />} />
       <Route path="/setup/dashboard-password" element={<SetupDashboardPassword />} />
       <Route path="/setup/identity" element={<SetupIdentity />} />
+      <Route path="/setup/preferences" element={<SetupPreferences />} />
       <Route path="/setup/personality" element={<SetupPersonality />} />
       <Route path="/setup/appearance" element={<SetupAppearance />} />
       <Route path="/setup/provider" element={<SetupProvider />} />

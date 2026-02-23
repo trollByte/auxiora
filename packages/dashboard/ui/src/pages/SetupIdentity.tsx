@@ -34,7 +34,7 @@ export function SetupIdentity() {
     try {
       await api.setupIdentity(name || randomName, pronouns, vibe || undefined);
       if (vibe) localStorage.setItem('auxiora_setup_vibe', vibe);
-      navigate('/setup/personality');
+      navigate('/setup/preferences');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save identity');
     } finally {
