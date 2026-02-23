@@ -11,6 +11,11 @@ export interface InboundMessage {
   replyToId?: string;        // If replying to a message
   attachments?: Attachment[];
   raw?: unknown;             // Original platform message
+  groupContext?: {
+    isGroup: boolean;
+    groupName?: string;
+    participantCount?: number;
+  };
 }
 
 export interface Attachment {
