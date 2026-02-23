@@ -19,3 +19,5 @@ export {
   MissingDependencyError,
 } from './resolver.js';
 export type { DependencyNode, ResolvedTree } from './resolver.js';
+export { createRegistryServer } from './server/index.js';
+export type { RegistryServerConfig } from './server/index.js';
