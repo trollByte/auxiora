@@ -22,6 +22,17 @@ interface JwtPayload {
   exp: number;
 }
 
+interface FeatureStatus {
+  id: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  configured: boolean;
+  active: boolean;
+  missing?: string[];
+  settingsPath?: string | null;
+}
+
 export type { ClientConnection, WsMessage };
 
 export interface GatewayOptions {
@@ -161,6 +172,57 @@ export class Gateway {
       } catch {
         res.status(500).json({ error: 'Failed to check update status' });
       }
+    });
+
+    // Feature status endpoint
+    this.app.get('/api/v1/features/status', (_req: Request, res: Response) => {
+      const channels = this.config.channels;
+      const channelDefs: Array<{ id: string; name: string; key: keyof typeof channels }> = [
+        { id: 'discord', name: 'Discord', key: 'discord' },
+        { id: 'telegram', name: 'Telegram', key: 'telegram' },
+        { id: 'slack', name: 'Slack', key: 'slack' },
+        { id: 'signal', name: 'Signal', key: 'signal' },
+        { id: 'email', name: 'Email', key: 'email' },
+        { id: 'teams', name: 'Teams', key: 'teams' },
+        { id: 'matrix', name: 'Matrix', key: 'matrix' },
+        { id: 'whatsapp', name: 'WhatsApp', key: 'whatsapp' },
+        { id: 'webchat', name: 'Webchat', key: 'webchat' },
+      ];
+
+      const channelFeatures: FeatureStatus[] = channelDefs.map(ch => {
+        const enabled = channels[ch.key]?.enabled ?? false;
+        return {
+          id: ch.id,
+          name: ch.name,
+          category: 'channel',
+          enabled,
+          configured: enabled,
+          active: enabled,
+          settingsPath: '/settings/channels',
+        };
+      });
+
+      const capabilityDefs: Array<{ id: string; name: string; enabled: boolean }> = [
+        { id: 'plugins', name: 'Plugins', enabled: this.config.plugins?.enabled ?? false },
+        { id: 'webhooks', name: 'Webhooks', enabled: this.config.webhooks?.enabled ?? false },
+        { id: 'voice', name: 'Voice', enabled: this.config.voice?.enabled ?? false },
+        { id: 'research', name: 'Research', enabled: this.config.research?.enabled ?? false },
+        { id: 'behaviors', name: 'Behaviors', enabled: true },
+        { id: 'memory', name: 'Memory', enabled: this.config.memory?.enabled ?? false },
+        { id: 'orchestration', name: 'Orchestration', enabled: this.config.orchestration?.enabled ?? false },
+      ];
+
+      const capabilityFeatures: FeatureStatus[] = capabilityDefs.map(cap => ({
+        id: cap.id,
+        name: cap.name,
+        category: 'capability',
+        enabled: cap.enabled,
+        configured: cap.enabled,
+        active: cap.enabled,
+        settingsPath: null,
+      }));
+
+      res.json({ features: [...channelFeatures, ...capabilityFeatures] });
     });
 
     // Pairing endpoints

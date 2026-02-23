@@ -342,3 +342,20 @@ export const api = {
 };
 
 export type { PluginListing, PersonalityListing };
+
+export interface FeatureStatus {
+  id: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  configured: boolean;
+  active: boolean;
+  missing?: string[];
+  settingsPath?: string | null;
+}
+
+export async function getFeatureStatus(): Promise<{ features: FeatureStatus[] }> {
+  const res = await fetch('/api/v1/features/status', { credentials: 'include' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
