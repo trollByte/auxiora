@@ -586,7 +586,7 @@ export class Gateway {
             },
           );
           proxyReq.on('error', (err) => {
-            logger.warn('Marketplace proxy error', { error: err instanceof Error ? err.message : String(err) });
+            logger.warn('Marketplace proxy error', { error: err instanceof Error ? err : new Error(String(err)) });
             res.status(502).json({ error: 'Marketplace unavailable' });
           });
           if (req.body && typeof req.body === 'object') {
