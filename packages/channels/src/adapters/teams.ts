@@ -76,6 +76,10 @@ export class TeamsAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.microsoftAppId || !this.config.microsoftAppPassword) {
+      audit('channel.skipped', { channelType: 'teams', reason: 'missing microsoftAppId or microsoftAppPassword' });
+      return;
+    }
     // Verify credentials by obtaining a token
     await this.getAccessToken();
     this.connected = true;

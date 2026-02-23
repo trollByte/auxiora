@@ -20,7 +20,7 @@ describe('Config', () => {
       expect(config.pairing.expiryMinutes).toBe(15);
       expect(config.provider.primary).toBe('anthropic');
       expect(config.channels.webchat.enabled).toBe(true);
-      expect(config.channels.discord.enabled).toBe(false);
+      expect(config.channels.discord.enabled).toBe(true);
     });
 
     it('should validate port range', () => {
@@ -89,14 +89,19 @@ describe('Config', () => {
       expect(config.channels.webchat).toBeDefined();
     });
 
-    it('should default channels to disabled except webchat and telegram', () => {
+    it('should default all channels to enabled except twilio', () => {
       const config = ConfigSchema.parse({});
 
-      expect(config.channels.discord.enabled).toBe(false);
+      expect(config.channels.discord.enabled).toBe(true);
       expect(config.channels.telegram.enabled).toBe(true);
-      expect(config.channels.slack.enabled).toBe(false);
+      expect(config.channels.slack.enabled).toBe(true);
       expect(config.channels.twilio.enabled).toBe(false);
       expect(config.channels.webchat.enabled).toBe(true);
+      expect(config.channels.matrix.enabled).toBe(true);
+      expect(config.channels.signal.enabled).toBe(true);
+      expect(config.channels.email.enabled).toBe(true);
+      expect(config.channels.teams.enabled).toBe(true);
+      expect(config.channels.whatsapp.enabled).toBe(true);
     });
   });
 

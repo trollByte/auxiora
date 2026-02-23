@@ -112,6 +112,10 @@ export class MatrixAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.homeserverUrl || !this.config.accessToken) {
+      audit('channel.skipped', { channelType: 'matrix', reason: 'missing homeserverUrl or accessToken' });
+      return;
+    }
     // Verify credentials by calling whoami
     await this.matrixFetch('/account/whoami');
     this.connected = true;

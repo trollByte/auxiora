@@ -57,6 +57,10 @@ export class EmailAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.imapHost || !this.config.smtpHost || !this.config.email || !this.config.password) {
+      audit('channel.skipped', { channelType: 'email', reason: 'missing IMAP/SMTP credentials' });
+      return;
+    }
     try {
       // Connect IMAP
       this.imapConnection = await this.connectImap();

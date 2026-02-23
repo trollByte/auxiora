@@ -110,6 +110,10 @@ export class SignalAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.signalCliEndpoint || !this.config.phoneNumber) {
+      audit('channel.skipped', { channelType: 'signal', reason: 'missing signalCliEndpoint or phoneNumber' });
+      return;
+    }
     // Verify connection by listing accounts
     await this.rpcCall('listAccounts');
     this.connected = true;
