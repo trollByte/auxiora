@@ -94,6 +94,10 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.token) {
+      audit('channel.skipped', { channelType: 'telegram', reason: 'missing token' });
+      return;
+    }
     if (this.config.webhookUrl) {
       await this.bot.api.setWebhook(this.config.webhookUrl);
     } else {

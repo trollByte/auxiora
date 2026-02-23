@@ -104,6 +104,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.phoneNumberId || !this.config.accessToken || !this.config.verifyToken) {
+      audit('channel.skipped', { channelType: 'whatsapp', reason: 'missing phoneNumberId, accessToken, or verifyToken' });
+      return;
+    }
     // Verify credentials by checking the phone number ID
     const response = await fetch(
       `${GRAPH_API_BASE}/${this.config.phoneNumberId}`,

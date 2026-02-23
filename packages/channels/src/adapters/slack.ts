@@ -171,6 +171,10 @@ export class SlackAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.botToken || !this.config.appToken) {
+      audit('channel.skipped', { channelType: 'slack', reason: 'missing botToken or appToken' });
+      return;
+    }
     await this.app.start();
     this.connected = true;
     audit('channel.connected', { channelType: 'slack' });

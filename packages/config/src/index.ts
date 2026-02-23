@@ -120,7 +120,7 @@ const LoggingConfigSchema = z.object({
 
 const ChannelConfigSchema = z.object({
   discord: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
     mentionOnly: z.boolean().default(true),
   }).default({}),
   telegram: z.object({
@@ -128,7 +128,7 @@ const ChannelConfigSchema = z.object({
     webhookMode: z.boolean().default(false),
   }).default({}),
   slack: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
     socketMode: z.boolean().default(true),
   }).default({}),
   twilio: z.object({
@@ -140,21 +140,21 @@ const ChannelConfigSchema = z.object({
     enabled: z.boolean().default(true),
   }).default({}),
   matrix: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
     autoJoinRooms: z.boolean().default(true),
   }).default({}),
   signal: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
   }).default({}),
   email: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
     pollInterval: z.number().int().positive().default(30000),
   }).default({}),
   teams: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
   }).default({}),
   whatsapp: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
   }).default({}),
 });
 

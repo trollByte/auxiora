@@ -151,6 +151,10 @@ export class DiscordAdapter implements ChannelAdapter {
   }
 
   async connect(): Promise<void> {
+    if (!this.config.token) {
+      audit('channel.skipped', { channelType: 'discord', reason: 'missing token' });
+      return;
+    }
     await this.client.login(this.config.token);
   }
 
