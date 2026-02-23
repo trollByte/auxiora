@@ -3249,3 +3249,128 @@ body {
 .marketplace-detail-tone { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--text-secondary); }
 .marketplace-detail-meta { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem; color: var(--text-secondary); }
 .marketplace-detail-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+/* ── System Status ─────────────────────────────── */
+
+.system-status {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.system-status h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.system-status h3 {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--transition-fast);
+}
+
+.status-section-active .status-card {
+  border-left: 3px solid #34d399;
+}
+
+.status-section-ready .status-card {
+  border-left: 3px solid #fbbf24;
+}
+
+.status-section-available .status-card {
+  border-left: 3px solid #6b7280;
+}
+
+.status-card:hover {
+  border-color: var(--border-strong);
+}
+
+.status-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.status-card-info strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-card-category {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.status-dot-green,
+.status-dot-yellow,
+.status-dot-gray {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-green {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
+}
+
+.status-dot-yellow {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+}
+
+.status-dot-gray {
+  background: #6b7280;
+}
+
+.status-configure-btn {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.status-configure-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.status-empty {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 0.5rem 0;
+}

@@ -22,6 +22,7 @@ import { SettingsArchitect } from '../pages/settings/Architect.js';
 import { SettingsNotifications } from '../pages/SettingsNotifications.js';
 import { AuditLog } from '../pages/AuditLog.js';
 import { Marketplace } from '../pages/Marketplace.js';
+import { SystemStatus } from '../pages/SystemStatus.js';
 
 interface AppEntry {
   id: string;
@@ -34,6 +35,7 @@ interface AppEntry {
 
 const APPS: AppEntry[] = [
   { id: 'chat', label: 'Chat', icon: '\u{1F4AC}', component: () => <Chat />, defaultWidth: 860, defaultHeight: 600 },
+  { id: 'status', label: 'System Status', icon: '\u{1F4CA}', component: () => <SystemStatus />, defaultWidth: 860, defaultHeight: 640 },
   { id: 'overview', label: 'Mission Control', icon: '\u{1F3AF}', component: () => <Overview />, defaultWidth: 820, defaultHeight: 600 },
   { id: 'architect', label: 'The Architect', icon: '\u{1F9E0}', component: () => <SettingsArchitect />, defaultWidth: 780, defaultHeight: 600 },
   { id: 'behaviors', label: 'Behaviors', icon: '\u{1F9E9}', component: () => <Behaviors />, defaultWidth: 780, defaultHeight: 560 },
