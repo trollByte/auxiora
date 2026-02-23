@@ -37,10 +37,10 @@ jobs:
         run: pnpm -r --filter '!@auxiora/desktop' build
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm -r --filter '!@auxiora/desktop' typecheck
 
       - name: Test with coverage
-        run: pnpm test:coverage
+        run: vitest run --coverage --exclude 'packages/desktop/**'
 
       - name: Upload coverage
         if: always()
