@@ -537,6 +537,45 @@ export class PluginLoader {
     return [...this.registeredChannels];
   }
 
+  async seedStarterSkills(): Promise<number> {
+    // 1. Ensure plugins dir exists
+    await fs.mkdir(this.pluginsDir, { recursive: true });
+
+    // 2. Check if plugins dir already has .js files — if so, return 0 (don't overwrite)
+    const existing = await fs.readdir(this.pluginsDir);
+    const hasPlugins = existing.some((entry: any) => {
+      const name = typeof entry === 'string' ? entry : entry.name;
+      return name.endsWith('.js');
+    });
+    if (hasPlugins) return 0;
+
+    // 3. Find starter-skills directory relative to this file
+    const starterDir = new URL('../starter-skills', import.meta.url).pathname;
+    let starterFiles: string[];
+    try {
+      const entries = await fs.readdir(starterDir);
+      starterFiles = entries
+        .map((e: any) => (typeof e === 'string' ? e : e.name))
+        .filter((name: string) => name.endsWith('.js'));
+    } catch {
+      return 0; // No starter skills directory
+    }
+
+    // 4. Copy each starter skill to plugins dir
+    let count = 0;
+    for (const file of starterFiles) {
+      const src = path.join(starterDir, file);
+      const dest = path.join(this.pluginsDir, file);
+      try {
+        await fs.copyFile(src, dest);
+        count++;
+      } catch {
+        // Skip files that fail to copy
+      }
+    }
+    return count;
+  }
+
   async shutdownAll(): Promise<void> {
     for (const plugin of this.loaded) {
       if (plugin.shutdown) {
