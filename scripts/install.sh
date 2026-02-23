@@ -27,6 +27,13 @@ warn()    { printf "${YELLOW}[!]${RESET} %s\n" "$*"; }
 error()   { printf "${RED}[x]${RESET} %s\n" "$*" >&2; }
 fatal()   { error "$*"; exit 1; }
 
+NON_INTERACTIVE=0
+for arg in "$@"; do
+  case "$arg" in
+    --non-interactive) NON_INTERACTIVE=1 ;;
+  esac
+done
+
 # ---------------------------------------------------------------------------
 # Detect platform
 # ---------------------------------------------------------------------------
@@ -197,6 +204,136 @@ install_node() {
 }
 
 # ---------------------------------------------------------------------------
+# Interactive provider setup
+# ---------------------------------------------------------------------------
+prompt_provider() {
+  [ "$NON_INTERACTIVE" = "1" ] && return
+
+  echo ""
+  printf "${BOLD}AI Provider Setup${RESET}\n"
+  printf "Auxiora needs an AI provider. You can configure this later in the dashboard.\n\n"
+
+  if command_exists curl && curl -s --max-time 2 http://localhost:11434/api/version >/dev/null 2>&1; then
+    printf "${GREEN}✓ Ollama detected on this system!${RESET}\n"
+    printf "Use Ollama as your AI provider? [Y/n] "
+    read -r use_ollama
+    if [ "$use_ollama" != "n" ] && [ "$use_ollama" != "N" ]; then
+      PROVIDER="ollama"
+      return
+    fi
+  fi
+
+  printf "Do you have an API key for an AI provider? [y/N] "
+  read -r has_key
+  if [ "$has_key" != "y" ] && [ "$has_key" != "Y" ]; then
+    printf "No problem — configure a provider in the dashboard later.\n"
+    return
+  fi
+
+  printf "\nWhich provider?\n"
+  printf "  1) Anthropic (Claude)\n"
+  printf "  2) OpenAI (GPT)\n"
+  printf "  3) Google (Gemini)\n"
+  printf "  4) Skip\n"
+  printf "Choice [1]: "
+  read -r provider_choice
+
+  case "${provider_choice:-1}" in
+    1) PROVIDER="anthropic"; PROVIDER_ENV="ANTHROPIC_API_KEY" ;;
+    2) PROVIDER="openai"; PROVIDER_ENV="OPENAI_API_KEY" ;;
+    3) PROVIDER="google"; PROVIDER_ENV="GOOGLE_API_KEY" ;;
+    *) return ;;
+  esac
+
+  printf "Paste your API key: "
+  read -rs api_key
+  echo ""
+
+  if [ -n "$api_key" ]; then
+    API_KEY="$api_key"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Interactive channel setup
+# ---------------------------------------------------------------------------
+prompt_channel() {
+  [ "$NON_INTERACTIVE" = "1" ] && return
+
+  echo ""
+  printf "${BOLD}Messaging Channel Setup${RESET}\n"
+  printf "Connect a messaging platform so you can chat with Auxiora anywhere.\n\n"
+  printf "Want to connect a channel now? [y/N] "
+  read -r has_channel
+  if [ "$has_channel" != "y" ] && [ "$has_channel" != "Y" ]; then
+    return
+  fi
+
+  printf "\nWhich channel?\n"
+  printf "  1) Telegram (easiest — just needs a bot token from @BotFather)\n"
+  printf "  2) Discord\n"
+  printf "  3) Slack\n"
+  printf "  4) Skip\n"
+  printf "Choice [1]: "
+  read -r channel_choice
+
+  case "${channel_choice:-1}" in
+    1) CHANNEL="telegram"; TOKEN_NAME="Telegram bot token" ;;
+    2) CHANNEL="discord"; TOKEN_NAME="Discord bot token" ;;
+    3) CHANNEL="slack"; TOKEN_NAME="Slack bot token" ;;
+    *) return ;;
+  esac
+
+  printf "Paste your %s: " "$TOKEN_NAME"
+  read -rs channel_token
+  echo ""
+
+  if [ -n "$channel_token" ]; then
+    CHANNEL_TOKEN="$channel_token"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Write user config
+# ---------------------------------------------------------------------------
+write_user_config() {
+  local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/auxiora"
+  mkdir -p "$config_dir"
+  chmod 700 "$config_dir"
+
+  # Write provider config
+  if [ -n "$PROVIDER" ]; then
+    local config_file="$config_dir/config.json"
+    if [ "$PROVIDER" = "ollama" ]; then
+      printf '{"provider":{"primary":"ollama"}}\n' > "$config_file"
+    else
+      printf '{"provider":{"primary":"%s"}}\n' "$PROVIDER" > "$config_file"
+    fi
+    chmod 600 "$config_file"
+  fi
+
+  # Store API key in env file
+  if [ -n "$PROVIDER_ENV" ] && [ -n "$API_KEY" ]; then
+    local env_file="$config_dir/.env"
+    echo "${PROVIDER_ENV}=${API_KEY}" >> "$env_file"
+    chmod 600 "$env_file"
+  fi
+
+  # Store channel token
+  if [ -n "$CHANNEL" ] && [ -n "$CHANNEL_TOKEN" ]; then
+    local env_file="$config_dir/.env"
+    local token_var
+    case "$CHANNEL" in
+      telegram) token_var="TELEGRAM_BOT_TOKEN" ;;
+      discord) token_var="DISCORD_BOT_TOKEN" ;;
+      slack) token_var="SLACK_BOT_TOKEN" ;;
+    esac
+    echo "${token_var}=${CHANNEL_TOKEN}" >> "$env_file"
+    chmod 600 "$env_file"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Main install
 # ---------------------------------------------------------------------------
 do_install() {
@@ -260,13 +397,19 @@ do_install() {
     warn "You may need to add $(dirname "$BIN_LINK") to your PATH."
   fi
 
+  # -- Interactive setup ----------------------------------------------------
+  PROVIDER="" PROVIDER_ENV="" API_KEY="" CHANNEL="" CHANNEL_TOKEN="" TOKEN_NAME=""
+  prompt_provider
+  prompt_channel
+  write_user_config
+
   # -- Done -----------------------------------------------------------------
   echo ""
-  success "Auxiora ${VERSION} installed successfully!"
-  echo ""
-  info "Getting started:"
-  echo "    auxiora start          # Start the assistant"
-  echo "    auxiora --help         # Show all commands"
+  printf "${GREEN}${BOLD}✅ Auxiora installed${RESET}\n"
+  [ -n "$PROVIDER" ] && printf "${GREEN}✅ Provider: ${PROVIDER}${RESET}\n"
+  [ -n "$CHANNEL" ] && printf "${GREEN}✅ Channel: ${CHANNEL} configured${RESET}\n"
+  printf "${GREEN}✅ 5 starter skills included${RESET}\n"
+  printf "\n${BOLD}Dashboard: http://localhost:18800/dashboard${RESET}\n"
   echo ""
 
   # Check if BIN_LINK dir is in PATH
@@ -327,6 +470,7 @@ case "${1:-}" in
     echo "Usage: install.sh [OPTIONS]"
     echo ""
     echo "Options:"
+    echo "  --non-interactive Skip interactive provider/channel prompts"
     echo "  --uninstall, -u   Remove Auxiora from this system"
     echo "  --help, -h        Show this help message"
     echo ""
@@ -334,6 +478,9 @@ case "${1:-}" in
     echo "  VERSION           Override version (default: ${VERSION})"
     echo "  RELEASE_URL       Override download base URL"
     echo "  INSTALL_DIR       Override installation directory"
+    ;;
+  --non-interactive)
+    do_install
     ;;
   "")
     do_install
