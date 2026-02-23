@@ -163,7 +163,7 @@ import {
   MetaCognitor,
 } from '@auxiora/self-awareness';
 import type { SignalCollector } from '@auxiora/self-awareness';
-import { EnrichmentPipeline, MemoryStage, ModeStage, ArchitectStage, SelfAwarenessStage } from './enrichment/index.js';
+import { EnrichmentPipeline, MemoryStage, ModeStage, ArchitectStage, SelfAwarenessStage, GroupContextStage } from './enrichment/index.js';
 import type { EnrichmentContext } from './enrichment/index.js';
 
 export interface AuxioraOptions {
@@ -2583,6 +2583,9 @@ export class Auxiora {
   private buildEnrichmentPipeline(): void {
     this.enrichmentPipeline = new EnrichmentPipeline();
 
+    // Group context (order 150) — self-gates via enabled()
+    this.enrichmentPipeline.addStage(new GroupContextStage());
+
     // Stage 1: Memory (order 100)
     if (this.memoryStore && this.memoryRetriever) {
       this.enrichmentPipeline.addStage(new MemoryStage(this.memoryStore, this.memoryRetriever));
@@ -3858,6 +3861,8 @@ export class Auxiora {
           userId: inbound.senderId ?? 'anonymous',
           toolsUsed: this.lastToolsUsed.get(session.id) ?? [],
           config: this.config,
+          senderName: inbound.senderName,
+          groupContext: inbound.groupContext,
         };
         const result = await this.enrichmentPipeline.run(enrichCtx);
         enrichedPrompt = result.prompt;
