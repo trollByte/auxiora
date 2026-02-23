@@ -3747,11 +3747,13 @@ export class Auxiora {
       return;
     }
 
-    // Get context messages
+    // Get context messages — channel sessions use a capped token budget and turn limit
+    // to prevent excessively long API calls from models with huge context windows.
     const contextMessages = this.sessions.getContextMessages(
       session.id,
       this.getProviderMaxTokens(this.providers.getPrimaryProvider()),
       4096,
+      { isChannel: true },
     );
     const chatMessages = sanitizeTranscript(contextMessages).map((m) => ({
       role: m.role,

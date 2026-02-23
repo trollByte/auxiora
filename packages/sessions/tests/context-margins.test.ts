@@ -120,3 +120,120 @@ describe('getContextMessages — safety margins', () => {
     expect(context[2].content).toBe('Third');
   });
 });
+
+describe('getContextMessages — channel auto-truncation', () => {
+  it('should cap token budget for channel messages', async () => {
+    const session = await manager.create({ channelType: 'discord' });
+
+    // Add 60 messages of 400 chars each (100 tokens each = 6000 total)
+    for (let i = 0; i < 60; i++) {
+      await manager.addMessage(session.id, i % 2 === 0 ? 'user' : 'assistant', 'a'.repeat(400));
+    }
+
+    // Without isChannel: maxTokens=200000, budget = 200000*0.8 - 0 - 2000 = 158000 → all 60 fit
+    const contextUnlimited = manager.getContextMessages(session.id, 200000, 0);
+    expect(contextUnlimited.length).toBe(60);
+
+    // With isChannel: capped at 40000, budget = 40000*0.8 - 0 - 2000 = 30000 → all 60 still fit (6000 < 30000)
+    const contextChannel = manager.getContextMessages(session.id, 200000, 0, { isChannel: true });
+    expect(contextChannel.length).toBe(60);
+
+    // With isChannel + many more messages that exceed the capped budget
+    for (let i = 0; i < 300; i++) {
+      await manager.addMessage(session.id, i % 2 === 0 ? 'user' : 'assistant', 'a'.repeat(400));
+    }
+    // Total now: 360 messages = 36000 tokens, budget capped at 30000
+    const contextCapped = manager.getContextMessages(session.id, 1000000, 0, { isChannel: true });
+    expect(contextCapped.length).toBeLessThan(360);
+    expect(contextCapped.length).toBeGreaterThan(0);
+  });
+
+  it('should apply maxTurns option to limit conversation turns', async () => {
+    const session = await manager.create({ channelType: 'discord' });
+
+    // Add 10 user/assistant turn pairs (20 messages)
+    for (let i = 0; i < 10; i++) {
+      await manager.addMessage(session.id, 'user', `User message ${i}`);
+      await manager.addMessage(session.id, 'assistant', `Assistant reply ${i}`);
+    }
+
+    // Limit to 3 turns = 6 conversation messages + 1 omission marker = 7
+    const context = manager.getContextMessages(session.id, 100000, 0, { maxTurns: 3 });
+    // degradeContext adds an omission marker when messages are dropped
+    const conversationMsgs = context.filter(m => !m.content.startsWith('[...'));
+    expect(conversationMsgs.length).toBe(6);
+    // Should be the most recent 3 turns
+    expect(conversationMsgs[0].content).toBe('User message 7');
+    expect(conversationMsgs[1].content).toBe('Assistant reply 7');
+    expect(conversationMsgs[4].content).toBe('User message 9');
+    expect(conversationMsgs[5].content).toBe('Assistant reply 9');
+    // Omission marker should be present
+    expect(context.some(m => m.content.includes('earlier messages omitted'))).toBe(true);
+  });
+
+  it('should use config maxChannelTurns when isChannel is true', async () => {
+    // Create a separate manager with maxChannelTurns=5
+    const channelManager = new SessionManager({
+      maxContextTokens: 10000,
+      maxChannelTurns: 5,
+      ttlMinutes: 60,
+      autoSave: true,
+      compactionEnabled: true,
+      dbPath: path.join(testDir, 'sessions-channel.db'),
+    });
+
+    const session = await channelManager.create({ channelType: 'discord' });
+
+    // Add 10 turn pairs (20 messages)
+    for (let i = 0; i < 10; i++) {
+      await channelManager.addMessage(session.id, 'user', `Msg ${i}`);
+      await channelManager.addMessage(session.id, 'assistant', `Reply ${i}`);
+    }
+
+    // isChannel=true should use config maxChannelTurns=5 → 10 conversation messages + omission marker
+    const context = channelManager.getContextMessages(session.id, 100000, 0, { isChannel: true });
+    const conversationMsgs = context.filter(m => !m.content.startsWith('[...'));
+    expect(conversationMsgs.length).toBe(10);
+    // Should be the most recent 5 turns
+    expect(conversationMsgs[0].content).toBe('Msg 5');
+    expect(conversationMsgs[9].content).toBe('Reply 9');
+
+    channelManager.destroy();
+  });
+
+  it('should preserve system messages when applying turn limit', async () => {
+    const session = await manager.create({ channelType: 'discord' });
+
+    // Add a system message, then 5 turn pairs
+    await manager.addMessage(session.id, 'system', 'You are a helpful assistant.');
+    for (let i = 0; i < 5; i++) {
+      await manager.addMessage(session.id, 'user', `User ${i}`);
+      await manager.addMessage(session.id, 'assistant', `Reply ${i}`);
+    }
+
+    // Limit to 2 turns — should keep system message + last 4 conversation messages + omission marker
+    const context = manager.getContextMessages(session.id, 100000, 0, { maxTurns: 2 });
+    expect(context[0].content).toBe('You are a helpful assistant.');
+    expect(context[0].role).toBe('system');
+    // Filter out omission marker for conversation assertion
+    const conversationMsgs = context.filter(m => m.role !== 'system' && !m.content.startsWith('[...'));
+    expect(conversationMsgs.length).toBe(4);
+    expect(conversationMsgs[0].content).toBe('User 3');
+    expect(conversationMsgs[3].content).toBe('Reply 4');
+    // Omission marker should be present (6 messages dropped from original 11)
+    expect(context.some(m => m.content.includes('earlier messages omitted'))).toBe(true);
+  });
+
+  it('should not apply turn limit when maxTurns is 0', async () => {
+    const session = await manager.create({ channelType: 'webchat' });
+
+    for (let i = 0; i < 10; i++) {
+      await manager.addMessage(session.id, 'user', `Msg ${i}`);
+      await manager.addMessage(session.id, 'assistant', `Reply ${i}`);
+    }
+
+    // maxTurns=0 means unlimited
+    const context = manager.getContextMessages(session.id, 100000, 0, { maxTurns: 0 });
+    expect(context.length).toBe(20);
+  });
+});

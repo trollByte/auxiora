@@ -29,6 +29,9 @@ export class SessionManager {
   /** Minimum effective budget before warning. */
   private static readonly MIN_BUDGET_WARNING = 4000;
 
+  /** Hard cap on context tokens for channel messages to prevent excessively long API calls. */
+  private static readonly CHANNEL_TOKEN_CAP = 40000;
+
   /** Minimum fraction of messages that must be dropped to trigger compaction. */
   private static readonly COMPACTION_THRESHOLD = 0.40;
 
@@ -239,13 +242,29 @@ export class SessionManager {
     return this.db.getMessages(sessionId);
   }
 
-  getContextMessages(sessionId: string, maxTokens?: number, outputReserve?: number): Message[] {
-    const rawLimit = maxTokens || this.config.maxContextTokens;
+  getContextMessages(
+    sessionId: string,
+    maxTokens?: number,
+    outputReserve?: number,
+    options?: { maxTurns?: number; isChannel?: boolean },
+  ): Message[] {
+    let rawLimit = maxTokens || this.config.maxContextTokens;
+
+    // For channel messages, cap the token budget to prevent huge context windows
+    // from models that report 200K–1M context limits (e.g. Claude Sonnet 4.6: 1M).
+    if (options?.isChannel) {
+      rawLimit = Math.min(rawLimit, SessionManager.CHANNEL_TOKEN_CAP);
+    }
+
     const reserve = outputReserve ?? SessionManager.DEFAULT_OUTPUT_RESERVE;
     const effectiveBudget = Math.max(
       rawLimit * SessionManager.SAFETY_MARGIN - reserve - SessionManager.SYSTEM_RESERVE,
       0,
     );
+
+    // Resolve turn limit: explicit option > config default > unlimited
+    const maxTurns = options?.maxTurns
+      ?? (options?.isChannel ? (this.config.maxChannelTurns ?? 0) : 0);
 
     if (effectiveBudget < SessionManager.MIN_BUDGET_WARNING) {
       console.warn(
@@ -257,10 +276,14 @@ export class SessionManager {
     // Try in-memory first
     const session = this.sessions.get(sessionId);
     if (session) {
+      const source = maxTurns > 0
+        ? SessionManager.applyTurnLimit(session.messages, maxTurns)
+        : session.messages;
+
       const selected: Message[] = [];
       let tokenCount = 0;
-      for (let i = session.messages.length - 1; i >= 0; i--) {
-        const msg = session.messages[i];
+      for (let i = source.length - 1; i >= 0; i--) {
+        const msg = source[i];
         const msgTokens = estimateTokens(msg.content);
         if (tokenCount + msgTokens > effectiveBudget) break;
         selected.unshift(msg);
@@ -274,8 +297,41 @@ export class SessionManager {
       return degraded;
     }
 
-    // Fall back to DB
-    return this.db.getContextMessages(sessionId, effectiveBudget);
+    // Fall back to DB — apply turn limit via SQL LIMIT if needed
+    const dbMaxMessages = maxTurns > 0 ? maxTurns * 2 : undefined;
+    return this.db.getContextMessages(sessionId, effectiveBudget, dbMaxMessages);
+  }
+
+  /**
+   * Keep only the last N user/assistant turn pairs from the message list.
+   * System messages are always preserved. A "turn" starts with each user message.
+   */
+  private static applyTurnLimit(messages: Message[], maxTurns: number): Message[] {
+    const systemMessages: Message[] = [];
+    const conversationMessages: Message[] = [];
+
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemMessages.push(msg);
+      } else {
+        conversationMessages.push(msg);
+      }
+    }
+
+    // Walk backwards, counting user messages as turn boundaries.
+    // cutIndex tracks the start of the oldest kept turn.
+    let turnCount = 0;
+    let cutIndex = conversationMessages.length;
+    for (let i = conversationMessages.length - 1; i >= 0; i--) {
+      if (conversationMessages[i].role === 'user') {
+        turnCount++;
+        if (turnCount > maxTurns) break;
+        cutIndex = i; // this user message starts a kept turn
+      }
+    }
+
+    const keptConversation = conversationMessages.slice(cutIndex);
+    return [...systemMessages, ...keptConversation];
   }
 
   async setSystemPrompt(sessionId: string, prompt: string): Promise<void> {

@@ -33,6 +33,8 @@ export interface Session {
 
 export interface SessionConfig {
   maxContextTokens: number;
+  /** Maximum user/assistant turn pairs for non-webchat channel sessions (0 = unlimited). */
+  maxChannelTurns?: number;
   ttlMinutes: number;
   autoSave: boolean;
   compactionEnabled: boolean;

@@ -126,8 +126,13 @@ export class SessionDatabase {
     return (this.db.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp ASC').all(chatId) as Record<string, unknown>[]).map(r => this.rowToMessage(r));
   }
 
-  getContextMessages(chatId: string, maxTokens: number): Message[] {
-    const rows = this.db.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp DESC').all(chatId) as Record<string, unknown>[];
+  getContextMessages(chatId: string, maxTokens: number, maxMessages?: number): Message[] {
+    const query = maxMessages
+      ? 'SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT ?'
+      : 'SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp DESC';
+    const rows = (maxMessages
+      ? this.db.prepare(query).all(chatId, maxMessages)
+      : this.db.prepare(query).all(chatId)) as Record<string, unknown>[];
     const messages: Message[] = [];
     let tokenCount = 0;
     for (const row of rows) {
