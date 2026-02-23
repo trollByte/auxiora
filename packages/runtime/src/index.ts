@@ -1398,6 +1398,10 @@ export class Auxiora {
     if (this.config.plugins?.enabled !== false) {
       const pluginsDir = this.config.plugins?.dir || undefined;
       this.pluginLoader = new PluginLoader(pluginsDir);
+      const seeded = await this.pluginLoader.seedStarterSkills();
+      if (seeded > 0) {
+        this.logger.info(`Starter skills seeded: ${seeded}`);
+      }
       const loaded = await this.pluginLoader.loadAll();
       const successful = loaded.filter(p => p.status === 'loaded');
       if (loaded.length > 0) {
