@@ -91,6 +91,13 @@ export class PluginLoader {
     return this.loaded;
   }
 
+  /** Hot-load a single plugin file (used by self-authoring). */
+  async loadSingle(filePath: string): Promise<LoadedPlugin> {
+    await this.loadPlugin(filePath);
+    const loaded = this.loaded[this.loaded.length - 1];
+    return loaded;
+  }
+
   private async loadPlugin(filePath: string): Promise<void> {
     const fileName = path.basename(filePath);
 
