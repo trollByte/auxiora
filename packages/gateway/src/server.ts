@@ -4,9 +4,11 @@ import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import * as crypto from 'node:crypto';
 import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
+import * as path from 'node:path';
 import { type Config } from '@auxiora/config';
 import { audit } from '@auxiora/audit';
 import { getLogger, generateRequestId, runWithRequestId } from '@auxiora/logger';
+import { paths } from '@auxiora/core';
 import { RateLimiter } from './rate-limiter.js';
 
 const logger = getLogger('gateway');
@@ -539,13 +541,32 @@ export class Gateway {
   public async start(): Promise<void> {
     const { host, port } = this.config.gateway;
 
-    return new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       this.server.listen(port, host, () => {
         audit('system.startup', { host, port });
         logger.info(`Auxiora Gateway running at http://${host}:${port}`);
         resolve();
       });
     });
+
+    // Start marketplace registry sidecar if enabled
+    const marketplace = (this.config as Record<string, unknown>).marketplace as
+      | { enabled?: boolean; dataDir?: string; port?: number; apiKeys?: string[] }
+      | undefined;
+    if (marketplace?.enabled) {
+      try {
+        const { createRegistryServer } = await import('@auxiora/marketplace');
+        const registryServer = await createRegistryServer({
+          dataDir: marketplace.dataDir ?? path.join(paths.data(), 'registry'),
+          port: marketplace.port ?? 18801,
+          apiKeys: marketplace.apiKeys ?? [],
+        });
+        await registryServer.listen({ port: marketplace.port ?? 18801, host: '127.0.0.1' });
+        logger.info(`Marketplace registry listening on port ${marketplace.port ?? 18801}`);
+      } catch (err) {
+        logger.warn(`Failed to start marketplace registry sidecar: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   }
 
   public async stop(): Promise<void> {

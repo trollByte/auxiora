@@ -21,6 +21,7 @@
     "@auxiora/logger": "workspace:*",
     "@auxiora/config": "workspace:*",
     "@auxiora/core": "workspace:*",
+    "@auxiora/marketplace": "workspace:*",
     "@auxiora/updater": "workspace:*",
     "@auxiora/vault": "workspace:*",
     "argon2": "^0.44.0",
