@@ -3407,3 +3407,41 @@ body {
 .provider-health-cost-value { font-size: 1rem; font-weight: 600; font-family: var(--font-mono, monospace); }
 .cost-over { color: var(--danger, #e74c3c); }
 .cost-warning { color: var(--warning, #f0ad4e); }
+
+/* -- Dead Letter Queue Monitor -------------- */
+
+.dlq-monitor { margin-bottom: 1.5rem; }
+.dlq-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.dlq-header h3 { margin: 0; font-size: 1rem; }
+.dlq-refresh {
+  padding: 0.25rem 0.5rem; border: 1px solid var(--border); background: var(--bg-secondary);
+  color: var(--text-primary); border-radius: var(--radius); font-size: 0.75rem; cursor: pointer;
+}
+.dlq-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); }
+.dlq-stat-warn { color: var(--warning, #f0ad4e); }
+.dlq-stat-danger { color: var(--danger, #e74c3c); font-weight: 600; }
+.dlq-list h4 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.dlq-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.dlq-table th { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-weight: 500; }
+.dlq-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
+.dlq-error { color: var(--danger, #e74c3c); font-family: var(--font-mono, monospace); font-size: 0.75rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dlq-retry-btn {
+  padding: 0.2rem 0.5rem; border: 1px solid var(--accent); background: transparent;
+  color: var(--accent); border-radius: var(--radius); font-size: 0.7rem; cursor: pointer;
+}
+.dlq-retry-btn:hover { background: var(--accent); color: white; }
+.dlq-empty { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* -- Setup Preferences Questionnaire -------- */
+
+.preferences-questions { display: flex; flex-direction: column; gap: 1.25rem; margin: 1rem 0; }
+.preferences-question label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.35rem; }
+.preferences-options { display: flex; gap: 0.5rem; }
+.preferences-option {
+  flex: 1; padding: 0.5rem; border: 1px solid var(--border); background: transparent;
+  color: var(--text-primary); border-radius: var(--radius); font-size: 0.8rem;
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.preferences-option:hover { border-color: var(--accent); }
+.preferences-option.active { background: var(--accent); color: white; border-color: var(--accent); }
+.preferences-actions { display: flex; justify-content: space-between; margin-top: 1rem; }

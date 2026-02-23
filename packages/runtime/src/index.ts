@@ -1411,6 +1411,53 @@ export class Auxiora {
         }
         res.json(this.jobQueue.getStats());
       });
+
+      jobsRouter.get('/list', (req: Request, res: Response) => {
+        if (!this.jobQueue) {
+          res.json({ data: [] });
+          return;
+        }
+        const status = req.query.status as string | undefined;
+        const type = req.query.type as string | undefined;
+        const limit = req.query.limit ? Number(req.query.limit) : 50;
+        const filter: Record<string, unknown> = { limit };
+        if (status) filter.status = status;
+        if (type) filter.type = type;
+        const jobs = this.jobQueue.listJobs(filter as import('@auxiora/job-queue').JobFilter);
+        res.json({ data: jobs });
+      });
+
+      jobsRouter.get('/:id', (req: Request, res: Response) => {
+        if (!this.jobQueue) {
+          res.status(404).json({ error: 'Job queue not available' });
+          return;
+        }
+        const job = this.jobQueue.getJob(String(req.params.id));
+        if (!job) {
+          res.status(404).json({ error: 'Job not found' });
+          return;
+        }
+        res.json({ data: job });
+      });
+
+      jobsRouter.post('/:id/retry', (req: Request, res: Response) => {
+        if (!this.jobQueue) {
+          res.status(503).json({ error: 'Job queue not available' });
+          return;
+        }
+        const job = this.jobQueue.getJob(String(req.params.id));
+        if (!job) {
+          res.status(404).json({ error: 'Job not found' });
+          return;
+        }
+        if (job.status !== 'dead' && job.status !== 'failed') {
+          res.status(400).json({ error: 'Only dead or failed jobs can be retried' });
+          return;
+        }
+        const newId = this.jobQueue.enqueue(job.type, job.payload);
+        res.json({ data: { originalId: job.id, newJobId: newId } });
+      });
+
       return jobsRouter;
     })());
 

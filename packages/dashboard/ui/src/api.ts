@@ -339,6 +339,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ name, version }),
     }),
+
+  // Jobs
+  getJobStats: () =>
+    fetch('/api/v1/jobs/status', { credentials: 'include' }).then(r => r.json()) as Promise<{ pending: number; running: number; completed24h: number; failed24h: number; dead: number }>,
+  getJobList: (params?: { status?: string; type?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.type) qs.set('type', params.type);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const query = qs.toString();
+    return fetch(`/api/v1/jobs/list${query ? `?${query}` : ''}`, { credentials: 'include' }).then(r => r.json()) as Promise<{ data: Array<{ id: string; type: string; status: string; payload: unknown; result: unknown; attempt: number; maxAttempts: number; createdAt: number; updatedAt: number }> }>;
+  },
+  retryJob: (id: string) =>
+    fetch(`/api/v1/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', credentials: 'include' }).then(r => r.json()) as Promise<{ data: { originalId: string; newJobId: string } }>,
 };
 
 export type { PluginListing, PersonalityListing };
