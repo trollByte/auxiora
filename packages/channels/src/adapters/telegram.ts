@@ -84,6 +84,12 @@ export class TelegramAdapter implements ChannelAdapter {
         ? String(message.reply_to_message.message_id)
         : undefined,
       raw: message,
+      groupContext: message.chat.type === 'group' || message.chat.type === 'supergroup'
+        ? {
+            isGroup: true,
+            groupName: 'title' in message.chat ? (message.chat as { title?: string }).title : undefined,
+          }
+        : undefined,
     };
   }
 

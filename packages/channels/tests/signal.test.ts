@@ -290,6 +290,82 @@ describe('SignalAdapter', () => {
     await adapter.disconnect();
   });
 
+  it('should set groupContext.isGroup for group messages', async () => {
+    const receivedMessages: unknown[] = [];
+    adapter.onMessage(async (msg) => {
+      receivedMessages.push(msg);
+    });
+
+    const pollResponse = [
+      {
+        envelope: {
+          source: '+0987654321',
+          sourceName: 'Bob',
+          sourceNumber: '+0987654321',
+          timestamp: 1700000000000,
+          dataMessage: {
+            message: 'Hello group!',
+            timestamp: 1700000000000,
+            groupInfo: {
+              groupId: 'group-xyz',
+              type: 'DELIVER',
+            },
+          },
+        },
+      },
+    ];
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: [] }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: pollResponse }) } as Response)
+      .mockImplementation(() => new Promise(() => {}));
+
+    await adapter.connect();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(receivedMessages).toHaveLength(1);
+    const msg = receivedMessages[0] as { groupContext?: { isGroup: boolean } };
+    expect(msg.groupContext).toEqual({ isGroup: true });
+
+    await adapter.disconnect();
+  });
+
+  it('should leave groupContext undefined for DM messages', async () => {
+    const receivedMessages: unknown[] = [];
+    adapter.onMessage(async (msg) => {
+      receivedMessages.push(msg);
+    });
+
+    const pollResponse = [
+      {
+        envelope: {
+          source: '+0987654321',
+          sourceName: 'Alice',
+          sourceNumber: '+0987654321',
+          timestamp: 1700000000000,
+          dataMessage: {
+            message: 'Hello!',
+            timestamp: 1700000000000,
+          },
+        },
+      },
+    ];
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: [] }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: pollResponse }) } as Response)
+      .mockImplementation(() => new Promise(() => {}));
+
+    await adapter.connect();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(receivedMessages).toHaveLength(1);
+    const msg = receivedMessages[0] as { groupContext?: unknown };
+    expect(msg.groupContext).toBeUndefined();
+
+    await adapter.disconnect();
+  });
+
   it('should register error handler', () => {
     const handler = vi.fn();
     adapter.onError(handler);

@@ -121,6 +121,9 @@ export class SlackAdapter implements ChannelAdapter {
         timestamp: parseFloat(event.ts) * 1000,
         replyToId: event.thread_ts,
         raw: event,
+        groupContext: (event as Record<string, unknown>).channel_type !== 'im'
+          ? { isGroup: true, groupName: (event as Record<string, unknown>).channel_name as string | undefined }
+          : undefined,
       };
 
       audit('message.received', {
@@ -161,6 +164,9 @@ export class SlackAdapter implements ChannelAdapter {
       timestamp: parseFloat(message.ts) * 1000,
       replyToId: message.thread_ts,
       raw: message,
+      groupContext: (message as Record<string, unknown>).channel_type !== 'im'
+        ? { isGroup: true }
+        : undefined,
     };
   }
 

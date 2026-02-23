@@ -226,6 +226,9 @@ export class SignalAdapter implements ChannelAdapter {
         size: a.size,
       })),
       raw: msg,
+      groupContext: isGroup
+        ? { isGroup: true }
+        : undefined,
     };
   }
 

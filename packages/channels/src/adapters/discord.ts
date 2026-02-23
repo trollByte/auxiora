@@ -137,6 +137,15 @@ export class DiscordAdapter implements ChannelAdapter {
         filename: a.name,
         size: a.size,
       })),
+      groupContext: message.channel.isDMBased?.()
+        ? undefined
+        : {
+            isGroup: true,
+            groupName: 'name' in message.channel ? (message.channel as { name: string }).name : undefined,
+            participantCount: 'memberCount' in message.channel
+              ? (message.channel as { memberCount: number | null }).memberCount ?? undefined
+              : undefined,
+          },
       raw: message,
     };
   }

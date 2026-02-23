@@ -336,6 +336,119 @@ describe('SlackAdapter', () => {
     });
   });
 
+  describe('groupContext', () => {
+    it('should set groupContext.isGroup for channel messages', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.connect();
+
+      const handler = messageHandlers[0];
+      await handler({
+        message: {
+          ts: '1700000000.000010',
+          channel: 'C123',
+          user: 'U_ALICE',
+          text: 'Channel message',
+          channel_type: 'channel',
+        },
+        say: vi.fn(),
+        client: { auth: { test: vi.fn().mockResolvedValue({ user_id: 'U_BOT' }) } },
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext?: { isGroup: boolean } };
+      expect(msg.groupContext).toEqual({ isGroup: true });
+
+      await adapter.disconnect();
+    });
+
+    it('should leave groupContext undefined for DM messages', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.connect();
+
+      const handler = messageHandlers[0];
+      await handler({
+        message: {
+          ts: '1700000000.000011',
+          channel: 'D123',
+          user: 'U_ALICE',
+          text: 'DM message',
+          channel_type: 'im',
+        },
+        say: vi.fn(),
+        client: { auth: { test: vi.fn().mockResolvedValue({ user_id: 'U_BOT' }) } },
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext?: unknown };
+      expect(msg.groupContext).toBeUndefined();
+
+      await adapter.disconnect();
+    });
+
+    it('should set groupContext with groupName for app_mention in channels', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.connect();
+
+      const handler = mentionHandlers[0];
+      await handler({
+        event: {
+          ts: '1700000000.000012',
+          channel: 'C123',
+          user: 'U_BOB',
+          text: '<@U_BOT> hi!',
+          channel_type: 'channel',
+          channel_name: 'general',
+        },
+        client: { auth: { test: vi.fn().mockResolvedValue({ user_id: 'U_BOT' }) } },
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext?: { isGroup: boolean; groupName?: string } };
+      expect(msg.groupContext).toEqual({ isGroup: true, groupName: 'general' });
+
+      await adapter.disconnect();
+    });
+
+    it('should leave groupContext undefined for app_mention in DMs', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.connect();
+
+      const handler = mentionHandlers[0];
+      await handler({
+        event: {
+          ts: '1700000000.000013',
+          channel: 'D123',
+          user: 'U_BOB',
+          text: '<@U_BOT> hi!',
+          channel_type: 'im',
+        },
+        client: { auth: { test: vi.fn().mockResolvedValue({ user_id: 'U_BOT' }) } },
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext?: unknown };
+      expect(msg.groupContext).toBeUndefined();
+
+      await adapter.disconnect();
+    });
+  });
+
   it('should register error handler', () => {
     const handler = vi.fn();
     adapter.onError(handler);
