@@ -164,6 +164,28 @@ export function Chat() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Adjust context menu position to keep it within viewport
+  useEffect(() => {
+    if (!contextMenu || !contextMenuRef.current) return;
+    const el = contextMenuRef.current;
+    const rect = el.getBoundingClientRect();
+    let { x, y } = contextMenu;
+    let adjusted = false;
+    if (rect.bottom > window.innerHeight) {
+      y = Math.max(4, contextMenu.y - rect.height);
+      adjusted = true;
+    }
+    if (rect.right > window.innerWidth) {
+      x = Math.max(4, contextMenu.x - rect.width);
+      adjusted = true;
+    }
+    if (adjusted) {
+      el.style.top = `${y}px`;
+      el.style.left = `${x}px`;
+    }
+  }, [contextMenu]);
 
   // Per-chat personality state
   const [chatPersonality, setChatPersonality] = useState<string | undefined>(undefined);
@@ -792,6 +814,7 @@ export function Chat() {
         {/* Context Menu */}
         {contextMenu && (
           <div
+            ref={contextMenuRef}
             className="chat-context-menu"
             style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x }}
           >
