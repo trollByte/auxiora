@@ -58,6 +58,7 @@ export type AuditEventType =
   | 'browser.screenshot'
   | 'voice.transcribed'
   | 'voice.synthesized'
+  | 'voice.skipped'
   | 'webhook.received'
   | 'webhook.signature_failed'
   | 'webhook.triggered'

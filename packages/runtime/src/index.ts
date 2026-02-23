@@ -813,6 +813,7 @@ export class Auxiora {
           tts: detected.tts.provider,
         });
       } else {
+        audit('voice.skipped', { sttReason: detected.stt.reason, ttsReason: detected.tts.reason });
         this.logger.warn('Voice mode enabled but no providers available', {
           stt: detected.stt.reason,
           tts: detected.tts.reason,
