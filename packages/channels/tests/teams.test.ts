@@ -253,6 +253,98 @@ describe('TeamsAdapter', () => {
     adapter.onError(handler);
   });
 
+  describe('groupContext', () => {
+    it('should set isGroup true for group conversations', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        type: 'message',
+        id: 'activity-group-1',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-group-1', isGroup: true, name: 'Project Chat' },
+        text: 'Hello group!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext: { isGroup: boolean; groupName?: string } };
+      expect(msg.groupContext.isGroup).toBe(true);
+      expect(msg.groupContext.groupName).toBe('Project Chat');
+      await adapter.disconnect();
+    });
+
+    it('should set isGroup true for channel conversationType', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        type: 'message',
+        id: 'activity-channel-1',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-channel-1', conversationType: 'channel', name: 'General' },
+        text: 'Hello channel!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext: { isGroup: boolean; groupName?: string } };
+      expect(msg.groupContext.isGroup).toBe(true);
+      expect(msg.groupContext.groupName).toBe('General');
+      await adapter.disconnect();
+    });
+
+    it('should set isGroup false for personal conversations', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        type: 'message',
+        id: 'activity-dm-1',
+        timestamp: '2024-01-01T00:00:00Z',
+        channelId: 'msteams',
+        from: { id: 'user-1', name: 'Alice' },
+        conversation: { id: 'conv-dm-1', isGroup: false },
+        text: 'Hello direct!',
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as { groupContext: { isGroup: boolean; groupName?: string } };
+      expect(msg.groupContext.isGroup).toBe(false);
+      expect(msg.groupContext.groupName).toBeUndefined();
+      await adapter.disconnect();
+    });
+  });
+
   describe('sender filtering', () => {
     it('should allow all messages when allowlists are not set', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({

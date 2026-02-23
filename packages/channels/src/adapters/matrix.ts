@@ -194,6 +194,36 @@ export class MatrixAdapter implements ChannelAdapter {
     }
   }
 
+  private async getRoomGroupContext(roomId: string): Promise<{
+    isGroup: boolean;
+    groupName?: string;
+    participantCount?: number;
+  }> {
+    try {
+      const members = await this.matrixFetch<{ joined: Record<string, unknown> }>(
+        `/rooms/${encodeURIComponent(roomId)}/joined_members`,
+      );
+      const participantCount = Object.keys(members.joined).length;
+      const isGroup = participantCount > 2;
+
+      let groupName: string | undefined;
+      if (isGroup) {
+        try {
+          const nameEvent = await this.matrixFetch<{ name?: string }>(
+            `/rooms/${encodeURIComponent(roomId)}/state/m.room.name`,
+          );
+          groupName = nameEvent.name;
+        } catch {
+          // Room may not have a name set
+        }
+      }
+
+      return { isGroup, groupName, participantCount };
+    } catch {
+      return { isGroup: false };
+    }
+  }
+
   private async handleEvent(roomId: string, event: MatrixEvent): Promise<void> {
     // Only process m.room.message events
     if (event.type !== 'm.room.message') return;
@@ -217,7 +247,8 @@ export class MatrixAdapter implements ChannelAdapter {
       return;
     }
 
-    const inbound = this.toInboundMessage(roomId, event);
+    const groupContext = await this.getRoomGroupContext(roomId);
+    const inbound = this.toInboundMessage(roomId, event, groupContext);
 
     audit('message.received', {
       channelType: 'matrix',
@@ -234,7 +265,11 @@ export class MatrixAdapter implements ChannelAdapter {
     }
   }
 
-  private toInboundMessage(roomId: string, event: MatrixEvent): InboundMessage {
+  private toInboundMessage(
+    roomId: string,
+    event: MatrixEvent,
+    groupContext?: { isGroup: boolean; groupName?: string; participantCount?: number },
+  ): InboundMessage {
     const replyTo = event.content['m.relates_to']?.['m.in_reply_to']?.event_id;
 
     // Strip reply fallback from content if present
@@ -257,6 +292,7 @@ export class MatrixAdapter implements ChannelAdapter {
       timestamp: event.origin_server_ts,
       replyToId: replyTo,
       raw: event,
+      groupContext,
     };
   }
 

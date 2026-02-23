@@ -72,6 +72,13 @@ interface WhatsAppIncomingMessage {
     from: string;
     id: string;
   };
+  group_id?: string;
+}
+
+interface WhatsAppGroupMetadata {
+  id: string;
+  subject?: string;
+  size?: number;
 }
 
 interface WhatsAppSendResponse {
@@ -233,10 +240,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
         break;
     }
 
+    const isGroup = !!msg.group_id;
+
     return {
       id: msg.id,
       channelType: 'whatsapp',
-      channelId: msg.from,
+      channelId: isGroup ? msg.group_id! : msg.from,
       senderId: msg.from,
       senderName: contact?.profile.name,
       content,
@@ -244,6 +253,9 @@ export class WhatsAppAdapter implements ChannelAdapter {
       replyToId: msg.context?.id,
       attachments: attachments.length > 0 ? attachments : undefined,
       raw: msg,
+      groupContext: {
+        isGroup,
+      },
     };
   }
 

@@ -10,6 +10,12 @@ export interface EnrichmentContext {
   readonly userId: string;
   readonly toolsUsed: ReadonlyArray<{ name: string; success: boolean }>;
   readonly config: Config;
+  readonly senderName?: string;
+  readonly groupContext?: {
+    readonly isGroup: boolean;
+    readonly groupName?: string;
+    readonly participantCount?: number;
+  };
 }
 
 export interface StageResult {

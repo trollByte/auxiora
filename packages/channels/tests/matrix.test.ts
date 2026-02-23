@@ -151,7 +151,7 @@ describe('MatrixAdapter', () => {
       },
     };
 
-    // Connect: whoami + first sync (with messages) + second sync (abort)
+    // Connect: whoami + first sync (with messages) + joined_members + second sync (abort)
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({
         ok: true,
@@ -160,6 +160,10 @@ describe('MatrixAdapter', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => syncResponse,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ joined: { '@bot:example.com': {}, '@alice:example.com': {} } }),
       } as Response)
       .mockImplementation(() => new Promise(() => {})); // Hang on subsequent syncs
 
@@ -315,6 +319,124 @@ describe('MatrixAdapter', () => {
     // No assertion needed - just verify no error during registration
   });
 
+  describe('groupContext', () => {
+    it('should set isGroup true for rooms with more than 2 members', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!group:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$grp1',
+                    type: 'm.room.message',
+                    sender: '@alice:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Hello group!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        // joined_members response (3 members = group)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            joined: {
+              '@bot:example.com': {},
+              '@alice:example.com': {},
+              '@bob:example.com': {},
+            },
+          }),
+        } as Response)
+        // room name
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ name: 'Project Room' }),
+        } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await adapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as {
+        groupContext: { isGroup: boolean; groupName?: string; participantCount?: number };
+      };
+      expect(msg.groupContext.isGroup).toBe(true);
+      expect(msg.groupContext.groupName).toBe('Project Room');
+      expect(msg.groupContext.participantCount).toBe(3);
+      await adapter.disconnect();
+    });
+
+    it('should set isGroup false for DM rooms with 2 members', async () => {
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      const syncResponse = {
+        next_batch: 'batch2',
+        rooms: {
+          join: {
+            '!dm:example.com': {
+              timeline: {
+                events: [
+                  {
+                    event_id: '$dm1',
+                    type: 'm.room.message',
+                    sender: '@alice:example.com',
+                    origin_server_ts: 1700000000000,
+                    content: { msgtype: 'm.text', body: 'Hello DM!' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        // joined_members response (2 members = DM)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            joined: {
+              '@bot:example.com': {},
+              '@alice:example.com': {},
+            },
+          }),
+        } as Response)
+        .mockImplementation(() => new Promise(() => {}));
+
+      await adapter.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as {
+        groupContext: { isGroup: boolean; groupName?: string; participantCount?: number };
+      };
+      expect(msg.groupContext.isGroup).toBe(false);
+      expect(msg.groupContext.groupName).toBeUndefined();
+      expect(msg.groupContext.participantCount).toBe(2);
+      await adapter.disconnect();
+    });
+  });
+
   describe('sender filtering', () => {
     it('should allow all messages when allowlists are not set', async () => {
       const receivedMessages: unknown[] = [];
@@ -346,6 +468,7 @@ describe('MatrixAdapter', () => {
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
         .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ joined: { '@bot:example.com': {}, '@anyone:example.com': {} } }) } as Response)
         .mockImplementation(() => new Promise(() => {}));
 
       await adapter.connect();
@@ -392,6 +515,7 @@ describe('MatrixAdapter', () => {
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce({ ok: true, json: async () => ({ user_id: '@bot:example.com' }) } as Response)
         .mockResolvedValueOnce({ ok: true, json: async () => syncResponse } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ joined: { '@bot:example.com': {}, '@alice:example.com': {} } }) } as Response)
         .mockImplementation(() => new Promise(() => {}));
 
       await filteredAdapter.connect();
@@ -548,6 +672,10 @@ describe('MatrixAdapter', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => syncResponse,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ joined: { '@bot:example.com': {}, '@alice:example.com': {} } }),
       } as Response)
       .mockImplementation(() => new Promise(() => {}));
 

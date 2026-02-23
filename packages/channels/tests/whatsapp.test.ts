@@ -347,6 +347,97 @@ describe('WhatsAppAdapter', () => {
     await adapter.disconnect();
   });
 
+  describe('groupContext', () => {
+    it('should set isGroup true for group messages', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: '123456789' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        object: 'whatsapp_business_account',
+        entry: [{
+          id: 'entry-1',
+          changes: [{
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { display_phone_number: '+1234567890', phone_number_id: '123456789' },
+              contacts: [{ profile: { name: 'Alice' }, wa_id: '0987654321' }],
+              messages: [{
+                from: '0987654321',
+                id: 'wamid.grp1',
+                timestamp: '1700000000',
+                type: 'text',
+                text: { body: 'Hello group!' },
+                group_id: '120363001234567890@g.us',
+              }],
+            },
+            field: 'messages',
+          }],
+        }],
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as {
+        groupContext: { isGroup: boolean };
+        channelId: string;
+      };
+      expect(msg.groupContext.isGroup).toBe(true);
+      expect(msg.channelId).toBe('120363001234567890@g.us');
+      await adapter.disconnect();
+    });
+
+    it('should set isGroup false for direct messages', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: '123456789' }),
+      } as Response);
+      await adapter.connect();
+
+      const receivedMessages: unknown[] = [];
+      adapter.onMessage(async (msg) => {
+        receivedMessages.push(msg);
+      });
+
+      await adapter.handleWebhook({
+        object: 'whatsapp_business_account',
+        entry: [{
+          id: 'entry-1',
+          changes: [{
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { display_phone_number: '+1234567890', phone_number_id: '123456789' },
+              contacts: [{ profile: { name: 'Alice' }, wa_id: '0987654321' }],
+              messages: [{
+                from: '0987654321',
+                id: 'wamid.dm1',
+                timestamp: '1700000000',
+                type: 'text',
+                text: { body: 'Hello DM!' },
+              }],
+            },
+            field: 'messages',
+          }],
+        }],
+      });
+
+      expect(receivedMessages).toHaveLength(1);
+      const msg = receivedMessages[0] as {
+        groupContext: { isGroup: boolean };
+        channelId: string;
+      };
+      expect(msg.groupContext.isGroup).toBe(false);
+      expect(msg.channelId).toBe('0987654321');
+      await adapter.disconnect();
+    });
+  });
+
   describe('sender filtering', () => {
     it('should allow all messages when allowedNumbers is not set', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({

@@ -29,6 +29,7 @@ interface TeamsActivity {
     conversationType?: string;
     tenantId?: string;
     isGroup?: boolean;
+    name?: string;
   };
   recipient?: {
     id: string;
@@ -174,6 +175,10 @@ export class TeamsAdapter implements ChannelAdapter {
       ).trim();
     }
 
+    const isGroup = activity.conversation.isGroup === true
+      || activity.conversation.conversationType === 'groupChat'
+      || activity.conversation.conversationType === 'channel';
+
     return {
       id: activity.id,
       channelType: 'teams',
@@ -192,6 +197,10 @@ export class TeamsAdapter implements ChannelAdapter {
         filename: a.name,
       })),
       raw: activity,
+      groupContext: {
+        isGroup,
+        groupName: isGroup ? activity.conversation.name : undefined,
+      },
     };
   }
 
