@@ -89,11 +89,11 @@ describe('Config', () => {
       expect(config.channels.webchat).toBeDefined();
     });
 
-    it('should default channels to disabled except webchat', () => {
+    it('should default channels to disabled except webchat and telegram', () => {
       const config = ConfigSchema.parse({});
 
       expect(config.channels.discord.enabled).toBe(false);
-      expect(config.channels.telegram.enabled).toBe(false);
+      expect(config.channels.telegram.enabled).toBe(true);
       expect(config.channels.slack.enabled).toBe(false);
       expect(config.channels.twilio.enabled).toBe(false);
       expect(config.channels.webchat.enabled).toBe(true);
@@ -123,9 +123,9 @@ describe('Config', () => {
   });
 
   describe('webhook config', () => {
-    it('should default webhooks to disabled', () => {
+    it('should default webhooks to enabled', () => {
       const config = ConfigSchema.parse({});
-      expect(config.webhooks.enabled).toBe(false);
+      expect(config.webhooks.enabled).toBe(true);
       expect(config.webhooks.basePath).toBe('/api/v1/webhooks');
       expect(config.webhooks.signatureHeader).toBe('x-webhook-signature');
       expect(config.webhooks.maxPayloadSize).toBe(65536);

@@ -124,7 +124,7 @@ const ChannelConfigSchema = z.object({
     mentionOnly: z.boolean().default(true),
   }).default({}),
   telegram: z.object({
-    enabled: z.boolean().default(false),
+    enabled: z.boolean().default(true),
     webhookMode: z.boolean().default(false),
   }).default({}),
   slack: z.object({
@@ -169,7 +169,7 @@ const VoiceConfigSchema = z.object({
 });
 
 const WebhookConfigSchema = z.object({
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
   basePath: z.string().default('/api/v1/webhooks'),
   signatureHeader: z.string().default('x-webhook-signature'),
   maxPayloadSize: z.number().int().positive().default(65536),
