@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
 import type { TaskContext, TraitSource, ContextDomain, ContextRecommendation } from '@auxiora/personality/architect';
@@ -811,8 +812,8 @@ export function Chat() {
           )}
         </div>
 
-        {/* Context Menu */}
-        {contextMenu && (
+        {/* Context Menu — portaled to document.body to escape backdrop-filter containing block */}
+        {contextMenu && createPortal(
           <div
             ref={contextMenuRef}
             className="chat-context-menu"
@@ -826,7 +827,8 @@ export function Chat() {
             }}>Rename</button>
             <button onClick={() => handleArchiveChat(contextMenu.chatId)}>Archive</button>
             <button className="danger" onClick={() => handleDeleteChat(contextMenu.chatId)}>Delete</button>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {/* Chat area */}
