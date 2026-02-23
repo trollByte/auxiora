@@ -13,6 +13,12 @@ const mockFeatures = [
 
 vi.mock('../../api', () => ({
   getFeatureStatus: vi.fn(),
+  api: {
+    getModels: vi.fn().mockResolvedValue({ providers: [], routing: { enabled: false, primary: '' }, cost: { today: 0, thisMonth: 0, isOverBudget: false, warningThresholdReached: false } }),
+    getHealthState: vi.fn().mockResolvedValue({ data: { overall: 'healthy', subsystems: [], issues: [], lastCheck: new Date().toISOString() } }),
+    getJobStats: vi.fn().mockResolvedValue({ pending: 0, running: 0, completed24h: 0, failed24h: 0, dead: 0 }),
+    getJobList: vi.fn().mockResolvedValue({ data: [] }),
+  },
 }));
 
 import { getFeatureStatus } from '../../api.js';
