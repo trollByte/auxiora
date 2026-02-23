@@ -172,7 +172,17 @@ export interface AuxioraOptions {
  * Map Claude Code emulation tool calls to our actual tool names + input format.
  * The model may call CC tools (WebSearch, Bash, etc.) since they're in the request for OAuth compat.
  */
-function mapCCToolCall(name: string, input: any): { name: string; input: any } {
+/**
+ * Claude Code internal tools that have no Auxiora equivalent.
+ * When the model tries to call these, we return a helpful error message
+ * instead of letting them hit the tool executor and waste a round-trip.
+ */
+const CC_ONLY_TOOLS = new Set([
+  'EnterPlanMode', 'ExitPlanMode', 'AskUserQuestion',
+  'NotebookEdit', 'Skill', 'Task', 'TaskOutput',
+]);
+
+function mapCCToolCall(name: string, input: any): { name: string; input: any; skip?: string } {
   switch (name) {
     case 'WebSearch':
       return { name: 'web_browser', input: { url: `https://www.google.com/search?q=${encodeURIComponent(input.query || '')}` } };
@@ -184,7 +194,16 @@ function mapCCToolCall(name: string, input: any): { name: string; input: any } {
       return { name: 'file_read', input: { path: input.file_path } };
     case 'Write':
       return { name: 'file_write', input: { path: input.file_path, content: input.content } };
+    case 'Edit':
+      return { name: 'file_write', input: { path: input.file_path, content: input.new_string } };
+    case 'Glob':
+      return { name: 'file_list', input: { path: input.path || '.', pattern: input.pattern } };
+    case 'Grep':
+      return { name: 'bash', input: { command: `grep -r "${(input.pattern || '').replace(/"/g, '\\"')}" ${input.path || '.'} --include="${input.glob || '*'}" -l 2>/dev/null | head -20` } };
     default:
+      if (CC_ONLY_TOOLS.has(name)) {
+        return { name, input, skip: `Tool "${name}" is not available. Do not use Claude Code internal tools. Respond using text only or use the available tools: bash, web_browser, file_read, file_write, file_list.` };
+      }
       return { name, input };
   }
 }
@@ -3343,6 +3362,16 @@ export class Auxiora {
       for (const toolUse of toolUses) {
         // Map Claude Code emulation tool names to our actual tools
         const mapped = mapCCToolCall(toolUse.name, toolUse.input);
+
+        // Skip CC-only tools that have no Auxiora equivalent
+        if (mapped.skip) {
+          onChunk('tool_result', { tool: toolUse.name, success: false, error: mapped.skip });
+          toolResultParts.push(`[${toolUse.name}]: Error: ${mapped.skip}`);
+          recordToolCall(loopState, toolUse.id, mapped.name, mapped.input);
+          recordToolOutcome(loopState, toolUse.id, mapped.skip);
+          continue;
+        }
+
         recordToolCall(loopState, toolUse.id, mapped.name, mapped.input);
         try {
           const result = await toolExecutor.execute(mapped.name, mapped.input, context);
@@ -3767,10 +3796,11 @@ export class Auxiora {
 
     const channelAgentId = `channel:${inbound.channelType}:${inbound.channelId}:${Date.now()}`;
 
-    // 2-minute timeout for the entire LLM response cycle.
-    // If the provider stream hangs (network issue, overloaded API), this
-    // ensures the user gets an error message instead of infinite "typing…".
-    const CHANNEL_RESPONSE_TIMEOUT_MS = 120_000;
+    // 4-minute timeout for the entire LLM response cycle.
+    // Increased from 2min to accommodate auto-continuations (max_tokens → "Continue")
+    // and tool round-trips. If the provider stream hangs (network issue, overloaded API),
+    // this ensures the user gets an error message instead of infinite "typing…".
+    const CHANNEL_RESPONSE_TIMEOUT_MS = 240_000;
 
     let draftLoop: DraftStreamLoop | null = null;
     let draftMessageId: string | null = null;
@@ -3875,7 +3905,7 @@ export class Auxiora {
           { tools, fallbackCandidates },
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 2 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
+          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 4 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
         ),
       ]);
 
