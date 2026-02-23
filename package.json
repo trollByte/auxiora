@@ -11,7 +11,9 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "desktop:dev": "pnpm --filter @auxiora/desktop dev",
+    "desktop:build": "pnpm --filter @auxiora/desktop build"
   },
   "engines": {
     "node": ">=22.0.0"
