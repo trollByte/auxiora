@@ -566,6 +566,9 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+      '@auxiora/marketplace':
+        specifier: workspace:*
+        version: link:../marketplace
       '@auxiora/updater':
         specifier: workspace:*
         version: link:../updater

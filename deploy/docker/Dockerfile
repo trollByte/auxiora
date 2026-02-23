@@ -11,7 +11,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages/ packages/
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm -r build
+RUN pnpm -r --filter '!@auxiora/desktop' build
 
 # Stage 2: Extract only package.json manifests (for cacheable prod install)
 FROM builder AS manifests
