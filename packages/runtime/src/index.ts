@@ -83,6 +83,9 @@ import { linearConnector } from '@auxiora/connector-linear';
 import { notionConnector } from '@auxiora/connector-notion';
 import { homeAssistantConnector } from '@auxiora/connector-homeassistant';
 import { twitterConnector, linkedinConnector, redditConnector, instagramConnector } from '@auxiora/connector-social';
+import { spotifyConnector } from '@auxiora/connector-spotify';
+import { hueConnector } from '@auxiora/connector-hue';
+import { obsidianConnector } from '@auxiora/connector-obsidian';
 import { ConversationEngine } from '@auxiora/conversation';
 import { EmailTriageEngine, ThreadSummarizer } from '@auxiora/email-intelligence';
 import { ScheduleAnalyzer, ScheduleOptimizer, MeetingPrepGenerator } from '@auxiora/calendar-intelligence';
@@ -1634,6 +1637,9 @@ export class Auxiora {
     this.connectorRegistry.register(linkedinConnector);
     this.connectorRegistry.register(redditConnector);
     this.connectorRegistry.register(instagramConnector);
+    this.connectorRegistry.register(spotifyConnector);
+    this.connectorRegistry.register(hueConnector);
+    this.connectorRegistry.register(obsidianConnector);
     this.triggerManager = new TriggerManager(this.connectorRegistry, this.connectorAuthManager);
 
     // Restore connector tokens from vault (per-connector try-catch so one
