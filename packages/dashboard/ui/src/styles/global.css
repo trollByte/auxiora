@@ -3374,3 +3374,74 @@ body {
   font-size: 0.8rem;
   padding: 0.5rem 0;
 }
+
+/* -- Token Cost Badge ----------------------- */
+
+.token-cost-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.7rem; font-family: var(--font-mono, monospace);
+  color: var(--text-secondary); opacity: 0.8;
+}
+.badge-item { white-space: nowrap; }
+.badge-tokens { color: var(--accent); }
+.badge-cost { color: var(--warning, #f0ad4e); }
+.badge-latency { color: var(--text-secondary); }
+.chat-message-meta {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-top: 4px; font-size: 0.75rem;
+}
+
+/* -- Provider Health Panel ------------------ */
+
+.provider-health { margin-bottom: 1.5rem; }
+.provider-health-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+.provider-health-header h3 { margin: 0; font-size: 1rem; }
+.provider-health-status { font-size: 0.85rem; color: var(--text-secondary); text-transform: capitalize; }
+.provider-health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
+.provider-health-card { padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.provider-health-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.provider-health-card-models { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
+.provider-health-cost { display: flex; gap: 1.5rem; padding: 0.75rem; border-radius: var(--radius); background: var(--bg-secondary); }
+.provider-health-cost-item { display: flex; flex-direction: column; gap: 0.15rem; }
+.provider-health-cost-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.provider-health-cost-value { font-size: 1rem; font-weight: 600; font-family: var(--font-mono, monospace); }
+.cost-over { color: var(--danger, #e74c3c); }
+.cost-warning { color: var(--warning, #f0ad4e); }
+
+/* -- Dead Letter Queue Monitor -------------- */
+
+.dlq-monitor { margin-bottom: 1.5rem; }
+.dlq-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.dlq-header h3 { margin: 0; font-size: 1rem; }
+.dlq-refresh {
+  padding: 0.25rem 0.5rem; border: 1px solid var(--border); background: var(--bg-secondary);
+  color: var(--text-primary); border-radius: var(--radius); font-size: 0.75rem; cursor: pointer;
+}
+.dlq-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); }
+.dlq-stat-warn { color: var(--warning, #f0ad4e); }
+.dlq-stat-danger { color: var(--danger, #e74c3c); font-weight: 600; }
+.dlq-list h4 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.dlq-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.dlq-table th { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-weight: 500; }
+.dlq-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
+.dlq-error { color: var(--danger, #e74c3c); font-family: var(--font-mono, monospace); font-size: 0.75rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dlq-retry-btn {
+  padding: 0.2rem 0.5rem; border: 1px solid var(--accent); background: transparent;
+  color: var(--accent); border-radius: var(--radius); font-size: 0.7rem; cursor: pointer;
+}
+.dlq-retry-btn:hover { background: var(--accent); color: white; }
+.dlq-empty { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* -- Setup Preferences Questionnaire -------- */
+
+.preferences-questions { display: flex; flex-direction: column; gap: 1.25rem; margin: 1rem 0; }
+.preferences-question label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.35rem; }
+.preferences-options { display: flex; gap: 0.5rem; }
+.preferences-option {
+  flex: 1; padding: 0.5rem; border: 1px solid var(--border); background: transparent;
+  color: var(--text-primary); border-radius: var(--radius); font-size: 0.8rem;
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.preferences-option:hover { border-color: var(--accent); }
+.preferences-option.active { background: var(--accent); color: white; border-color: var(--accent); }
+.preferences-actions { display: flex; justify-content: space-between; margin-top: 1rem; }
