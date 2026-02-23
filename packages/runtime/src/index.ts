@@ -3921,8 +3921,21 @@ export class Auxiora {
         void this.extractAndLearn(messageContent, finalChannelResponse, session.id);
       }
 
-      // Send response (skip if draft streaming already delivered it)
-      if (!draftMessageId && this.channels) {
+      // Send final response. The draft stream loop edits a single message,
+      // but Discord silently truncates edits at 2000 chars. For long responses,
+      // replace the draft with a chunked send so nothing is lost.
+      const DRAFT_SAFE_LENGTH = 1900; // leave margin below Discord's 2000 char limit
+      if (draftMessageId && this.channels && finalChannelResponse.length > DRAFT_SAFE_LENGTH) {
+        // Draft only showed partial content — replace it with a pointer and send full chunked response
+        if (adapter?.editMessage) {
+          await adapter.editMessage(inbound.channelId, draftMessageId, {
+            content: '*\u2026 (full response below)*',
+          });
+        }
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: finalChannelResponse,
+        });
+      } else if (!draftMessageId && this.channels) {
         await this.channels.send(inbound.channelType, inbound.channelId, {
           content: finalChannelResponse,
           replyToId: inbound.id,
