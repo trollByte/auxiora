@@ -83,6 +83,20 @@ describe('createIntrospectTool', () => {
     expect(result.error).toContain('Unknown query type');
   });
 
+  it('extracts query type from natural language input', async () => {
+    const tool = makeTool();
+    const result = await tool.execute({ query: 'What are my current capabilities, tools, integrations, and features?' });
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('# Capabilities');
+  });
+
+  it('extracts query type case-insensitively', async () => {
+    const tool = makeTool();
+    const result = await tool.execute({ query: 'Show me my HEALTH status' });
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('healthy');
+  });
+
   it('includes active model in providers output', async () => {
     const tool = makeTool();
     const result = await tool.execute({ query: 'providers' });

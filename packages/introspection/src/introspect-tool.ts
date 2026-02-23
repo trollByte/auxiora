@@ -6,16 +6,30 @@ const TIME_RANGES: Record<string, number> = {
   '7d': 604_800_000,
 };
 
-type QueryType =
-  | 'capabilities'
-  | 'health'
-  | 'config'
-  | 'errors'
-  | 'tools'
-  | 'channels'
-  | 'providers'
-  | 'behaviors'
-  | 'plugins';
+const VALID_QUERIES = [
+  'capabilities',
+  'health',
+  'config',
+  'errors',
+  'tools',
+  'channels',
+  'providers',
+  'behaviors',
+  'plugins',
+] as const;
+
+type QueryType = (typeof VALID_QUERIES)[number];
+
+function extractQueryType(input: string): QueryType | undefined {
+  const lower = input.toLowerCase().trim();
+  // Exact match first
+  if ((VALID_QUERIES as readonly string[]).includes(lower)) return lower as QueryType;
+  // Extract from natural language: find the first valid query type keyword
+  for (const q of VALID_QUERIES) {
+    if (lower.includes(q)) return q;
+  }
+  return undefined;
+}
 
 function formatCapabilities(catalog: CapabilityCatalog): string {
   const lines: string[] = ['# Capabilities\n'];
@@ -186,17 +200,21 @@ export function createIntrospectTool(
     name: 'introspect' as const,
     description: 'Query your own capabilities, health, configuration, and error history.',
     parameters: [
-      { name: 'query', type: 'string' as const, required: true },
-      { name: 'timeRange', type: 'string' as const, required: false },
+      { name: 'query', type: 'string' as const, required: true, description: 'One of: capabilities, health, config, errors, tools, channels, providers, behaviors, plugins' },
+      { name: 'timeRange', type: 'string' as const, required: false, description: 'Time range for error queries: 1h, 24h, or 7d' },
     ],
     getPermission: () => ({ level: 'none' as const }),
     async execute(
       params: { query: string; timeRange?: string },
       _context?: unknown,
     ): Promise<{ success: boolean; output?: string; error?: string; metadata?: Record<string, unknown>; duration?: number }> {
-      const query = params.query.toLowerCase() as QueryType;
+      const query = extractQueryType(params.query);
       const catalog = getCatalog();
       const health = getHealth();
+
+      if (!query) {
+        return { success: false, error: `Unknown query type: ${params.query}. Valid queries: ${VALID_QUERIES.join(', ')}` };
+      }
 
       switch (query) {
         case 'capabilities':
@@ -217,8 +235,6 @@ export function createIntrospectTool(
           return { success: true, output: formatBehaviors(catalog) };
         case 'plugins':
           return { success: true, output: formatPlugins(catalog) };
-        default:
-          return { success: false, error: `Unknown query type: ${params.query}. Valid queries: capabilities, health, config, errors, tools, channels, providers, behaviors, plugins` };
       }
     },
   };
