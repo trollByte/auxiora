@@ -205,7 +205,6 @@ export class Gateway {
       const capabilityDefs: Array<{ id: string; name: string; enabled: boolean }> = [
         { id: 'plugins', name: 'Plugins', enabled: this.config.plugins?.enabled ?? false },
         { id: 'webhooks', name: 'Webhooks', enabled: this.config.webhooks?.enabled ?? false },
-        { id: 'voice', name: 'Voice', enabled: this.config.voice?.enabled ?? false },
         { id: 'research', name: 'Research', enabled: this.config.research?.enabled ?? false },
         { id: 'behaviors', name: 'Behaviors', enabled: true },
         { id: 'memory', name: 'Memory', enabled: this.config.memory?.enabled ?? false },
@@ -221,6 +220,18 @@ export class Gateway {
         active: cap.enabled,
         settingsPath: null,
       }));
+
+      const voiceEnabled = this.config.voice?.enabled ?? false;
+      capabilityFeatures.push({
+        id: 'voice',
+        name: 'Voice',
+        category: 'capability',
+        enabled: voiceEnabled,
+        configured: voiceEnabled,
+        active: voiceEnabled,
+        missing: voiceEnabled ? undefined : ['whisper-cli or OPENAI_API_KEY (STT)', 'piper or OPENAI_API_KEY (TTS)'],
+        settingsPath: '/settings/voice',
+      });
 
       res.json({ features: [...channelFeatures, ...capabilityFeatures] });
     });

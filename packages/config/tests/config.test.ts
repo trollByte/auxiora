@@ -106,11 +106,11 @@ describe('Config', () => {
   });
 
   describe('voice config', () => {
-    it('should default voice to disabled', () => {
+    it('should default voice to enabled with auto providers', () => {
       const config = ConfigSchema.parse({});
-      expect(config.voice.enabled).toBe(false);
-      expect(config.voice.sttProvider).toBe('openai-whisper');
-      expect(config.voice.ttsProvider).toBe('openai-tts');
+      expect(config.voice.enabled).toBe(true);
+      expect(config.voice.sttProvider).toBe('auto');
+      expect(config.voice.ttsProvider).toBe('auto');
       expect(config.voice.defaultVoice).toBe('alloy');
       expect(config.voice.language).toBe('en');
       expect(config.voice.maxAudioDuration).toBe(30);
@@ -124,6 +124,24 @@ describe('Config', () => {
       expect(config.voice.enabled).toBe(true);
       expect(config.voice.defaultVoice).toBe('nova');
       expect(config.voice.language).toBe('fr');
+    });
+
+    it('should accept all valid stt provider values', () => {
+      for (const provider of ['openai-whisper', 'whisper-local', 'auto']) {
+        const config = ConfigSchema.parse({ voice: { sttProvider: provider } });
+        expect(config.voice.sttProvider).toBe(provider);
+      }
+    });
+
+    it('should accept all valid tts provider values', () => {
+      for (const provider of ['openai-tts', 'elevenlabs-tts', 'piper-local', 'auto']) {
+        const config = ConfigSchema.parse({ voice: { ttsProvider: provider } });
+        expect(config.voice.ttsProvider).toBe(provider);
+      }
+    });
+
+    it('should reject invalid stt provider', () => {
+      expect(() => ConfigSchema.parse({ voice: { sttProvider: 'invalid' } })).toThrow();
     });
   });
 

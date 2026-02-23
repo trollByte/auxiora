@@ -52,9 +52,7 @@ import { BehaviorManager, evaluateConditions } from '@auxiora/behaviors';
 import { BrowserManager } from '@auxiora/browser';
 import { ClipboardMonitor, AppController, SystemStateMonitor } from '@auxiora/os-bridge';
 import type { Platform } from '@auxiora/os-bridge';
-import { VoiceManager } from '@auxiora/voice';
-import { WhisperSTT } from '@auxiora/stt';
-import { OpenAITTS } from '@auxiora/tts';
+import { VoiceManager, detectVoiceProviders, createSTTProvider, createTTSProvider } from '@auxiora/voice';
 import { WebhookManager } from '@auxiora/webhooks';
 import { createDashboardRouter } from '@auxiora/dashboard';
 import { PluginLoader, registerCreateSkillTool } from '@auxiora/plugins';
@@ -770,22 +768,37 @@ export class Auxiora {
     setLanguageDetector(languageDetector);
     this.logger.info('Compose system initialized');
 
-    // Initialize voice system (if enabled and OpenAI key available)
+    // Initialize voice system (if enabled — auto-detects providers)
     if (this.config.voice?.enabled) {
-      let openaiKeyForVoice: string | undefined;
-      try {
-        openaiKeyForVoice = this.vault.get('OPENAI_API_KEY');
-      } catch {
-        // Vault locked
-      }
+      const detected = await detectVoiceProviders(
+        {
+          sttProvider: this.config.voice.sttProvider ?? 'auto',
+          ttsProvider: this.config.voice.ttsProvider ?? 'auto',
+        },
+        this.vault,
+      );
 
-      if (openaiKeyForVoice) {
+      if (detected.stt.provider && detected.tts.provider) {
+        let openaiKey: string | undefined;
+        let elevenKey: string | undefined;
+        try { openaiKey = this.vault.get('OPENAI_API_KEY'); } catch { /* vault locked or key missing */ }
+        try { elevenKey = this.vault.get('ELEVENLABS_API_KEY'); } catch { /* vault locked or key missing */ }
+
+        const sttProvider = createSTTProvider(detected.stt.provider, {
+          apiKey: openaiKey,
+          binaryPath: detected.stt.binaryPath,
+          modelPath: detected.stt.modelPath,
+        });
+        const ttsProvider = createTTSProvider(detected.tts.provider, {
+          apiKey: detected.tts.provider === 'elevenlabs-tts' ? elevenKey : openaiKey,
+          binaryPath: detected.tts.binaryPath,
+          modelPath: detected.tts.modelPath,
+          defaultVoice: this.config.voice.defaultVoice,
+        });
+
         this.voiceManager = new VoiceManager({
-          sttProvider: new WhisperSTT({ apiKey: openaiKeyForVoice }),
-          ttsProvider: new OpenAITTS({
-            apiKey: openaiKeyForVoice,
-            defaultVoice: this.config.voice.defaultVoice,
-          }),
+          sttProvider,
+          ttsProvider,
           config: {
             enabled: true,
             defaultVoice: this.config.voice.defaultVoice,
@@ -795,9 +808,16 @@ export class Auxiora {
           },
         });
         this.gateway.onVoiceMessage(this.handleVoiceMessage.bind(this));
-        this.logger.info('Voice mode enabled');
+        this.logger.info('Voice mode enabled', {
+          stt: detected.stt.provider,
+          tts: detected.tts.provider,
+        });
       } else {
-        this.logger.warn('Voice mode enabled in config but no OPENAI_API_KEY found in vault');
+        audit('voice.skipped', { sttReason: detected.stt.reason, ttsReason: detected.tts.reason });
+        this.logger.warn('Voice mode enabled but no providers available', {
+          stt: detected.stt.reason,
+          tts: detected.tts.reason,
+        });
       }
     }
 
