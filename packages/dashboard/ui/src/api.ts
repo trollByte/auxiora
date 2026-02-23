@@ -20,6 +20,39 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+const MARKETPLACE_BASE = '/api/v1/marketplace';
+
+async function fetchMarketplace<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${MARKETPLACE_BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (res.status === 401) {
+    window.location.href = '/dashboard/login';
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+interface PluginListing {
+  name: string; version: string; description: string; author: string;
+  license: string; permissions: string[]; keywords: string[];
+  downloads: number; rating: number; createdAt: string; updatedAt: string;
+  homepage?: string; repository?: string;
+}
+
+interface PersonalityListing {
+  name: string; version: string; description: string; author: string;
+  preview: string; tone: { warmth: number; humor: number; formality: number };
+  keywords: string[]; downloads: number; rating: number;
+  createdAt: string; updatedAt: string;
+}
+
 export const api = {
   checkAuth: () => fetchApi<{ authenticated: boolean }>('/auth/check'),
   login: (pw: string) =>
@@ -267,4 +300,45 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(prefs),
     }),
+
+  // Marketplace
+  searchPlugins: (params: { q?: string; author?: string; keywords?: string; sort?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set('q', params.q);
+    if (params.author) qs.set('author', params.author);
+    if (params.keywords) qs.set('keywords', params.keywords);
+    if (params.sort) qs.set('sort', params.sort);
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.offset) qs.set('offset', String(params.offset));
+    const query = qs.toString();
+    return fetchMarketplace<{ plugins: PluginListing[]; total: number; limit: number; offset: number }>(
+      `/plugins/search${query ? `?${query}` : ''}`
+    );
+  },
+  getPlugin: (name: string) => fetchMarketplace<PluginListing>(`/plugins/${encodeURIComponent(name)}`),
+  installPlugin: (name: string, version?: string) =>
+    fetchMarketplace<{ success: boolean; name: string; version: string }>('/plugins/install', {
+      method: 'POST',
+      body: JSON.stringify({ name, version }),
+    }),
+  searchPersonalities: (params: { q?: string; author?: string; sort?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set('q', params.q);
+    if (params.author) qs.set('author', params.author);
+    if (params.sort) qs.set('sort', params.sort);
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.offset) qs.set('offset', String(params.offset));
+    const query = qs.toString();
+    return fetchMarketplace<{ personalities: PersonalityListing[]; total: number; limit: number; offset: number }>(
+      `/personalities/search${query ? `?${query}` : ''}`
+    );
+  },
+  getMarketplacePersonality: (name: string) => fetchMarketplace<PersonalityListing>(`/personalities/${encodeURIComponent(name)}`),
+  installPersonality: (name: string, version?: string) =>
+    fetchMarketplace<{ success: boolean; name: string; version: string }>('/personalities/install', {
+      method: 'POST',
+      body: JSON.stringify({ name, version }),
+    }),
 };
+
+export type { PluginListing, PersonalityListing };

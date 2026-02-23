@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
-import { createServer, type Server as HttpServer } from 'node:http';
+import http, { type Server as HttpServer } from 'node:http';
+const createServer = http.createServer.bind(http);
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import * as crypto from 'node:crypto';
 import * as argon2 from 'argon2';
@@ -563,6 +564,36 @@ export class Gateway {
         });
         await registryServer.listen({ port: marketplace.port ?? 18801, host: '127.0.0.1' });
         logger.info(`Marketplace registry listening on port ${marketplace.port ?? 18801}`);
+
+        // Reverse proxy: /api/v1/marketplace/* → marketplace sidecar
+        const marketplacePort = marketplace.port ?? 18801;
+        this.app.all('/api/v1/marketplace/*', (req: Request, res: Response) => {
+          const targetPath = '/api/v1' + req.url.replace('/api/v1/marketplace', '');
+          const proxyReq = http.request(
+            {
+              hostname: '127.0.0.1',
+              port: marketplacePort,
+              path: targetPath,
+              method: req.method,
+              headers: { ...req.headers, host: `127.0.0.1:${marketplacePort}` },
+            },
+            (proxyRes) => {
+              res.status(proxyRes.statusCode ?? 502);
+              for (const [key, value] of Object.entries(proxyRes.headers)) {
+                if (value) res.setHeader(key, value);
+              }
+              proxyRes.pipe(res);
+            },
+          );
+          proxyReq.on('error', (err) => {
+            logger.warn('Marketplace proxy error', { error: err instanceof Error ? err.message : String(err) });
+            res.status(502).json({ error: 'Marketplace unavailable' });
+          });
+          if (req.body && typeof req.body === 'object') {
+            proxyReq.write(JSON.stringify(req.body));
+          }
+          proxyReq.end();
+        });
       } catch (err) {
         logger.warn(`Failed to start marketplace registry sidecar: ${err instanceof Error ? err.message : String(err)}`);
       }
