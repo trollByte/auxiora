@@ -9,6 +9,7 @@ import { ContextOverrideMenu } from '../components/ContextOverrideMenu.js';
 import { ContextRecommendation as ContextRecommendationBanner } from '../components/ContextRecommendation.js';
 import { DOMAIN_META } from '../components/context-meta.js';
 import { TransparencyFooter } from '../components/TransparencyFooter.js';
+import { TokenCostBadge } from '../components/TokenCostBadge.js';
 
 interface ChatMessage {
   id: string;
@@ -961,7 +962,17 @@ export function Chat() {
                     weights={msg.traitWeights}
                   />
                 )}
-                {msg.model && (
+                {msg.role === 'assistant' && msg.transparency && (
+                  <div className="chat-message-meta">
+                    <TokenCostBadge
+                      tokens={msg.transparency.model.tokens}
+                      cost={msg.transparency.model.cost}
+                      latencyMs={msg.transparency.model.latencyMs}
+                    />
+                    {msg.model && <span className="model-label">{msg.model}</span>}
+                  </div>
+                )}
+                {msg.role === 'assistant' && !msg.transparency && msg.model && (
                   <div className="model-label">{msg.model}</div>
                 )}
                 {msg.role === 'assistant' && msg.transparency && (
