@@ -58,7 +58,6 @@ function createFeatureStatusHandler(config: {
     const capabilityDefs: Array<{ id: string; name: string; enabled: boolean }> = [
       { id: 'plugins', name: 'Plugins', enabled: config.plugins?.enabled ?? false },
       { id: 'webhooks', name: 'Webhooks', enabled: config.webhooks?.enabled ?? false },
-      { id: 'voice', name: 'Voice', enabled: config.voice?.enabled ?? false },
       { id: 'research', name: 'Research', enabled: config.research?.enabled ?? false },
       { id: 'behaviors', name: 'Behaviors', enabled: true },
       { id: 'memory', name: 'Memory', enabled: config.memory?.enabled ?? false },
@@ -74,6 +73,18 @@ function createFeatureStatusHandler(config: {
       active: cap.enabled,
       settingsPath: null,
     }));
+
+    const voiceEnabled = config.voice?.enabled ?? false;
+    capabilityFeatures.push({
+      id: 'voice',
+      name: 'Voice',
+      category: 'capability',
+      enabled: voiceEnabled,
+      configured: voiceEnabled,
+      active: voiceEnabled,
+      missing: voiceEnabled ? undefined : ['whisper-cli or OPENAI_API_KEY (STT)', 'piper or OPENAI_API_KEY (TTS)'],
+      settingsPath: '/settings/voice',
+    });
 
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ features: [...channelFeatures, ...capabilityFeatures] }));

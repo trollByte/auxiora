@@ -32,7 +32,7 @@ export interface DetectedProviders {
 
 /** Structural vault type — no cross-package import needed. */
 interface Vault {
-  get(key: string): string;
+  get(key: string): string | undefined;
 }
 
 const DEFAULT_WHISPER_MODEL = join(
@@ -72,7 +72,7 @@ async function fileExists(path: string): Promise<boolean> {
 function vaultGet(vault: Vault | undefined, key: string): string | null {
   if (!vault) return null;
   try {
-    return vault.get(key);
+    return vault.get(key) ?? null;
   } catch {
     return null;
   }
