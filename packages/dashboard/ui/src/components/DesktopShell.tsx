@@ -19,6 +19,7 @@ import { SettingsAppearance } from '../pages/settings/Appearance.js';
 import { SettingsConnections } from '../pages/SettingsConnections.js';
 import { SettingsAmbient } from '../pages/SettingsAmbient.js';
 import { SettingsArchitect } from '../pages/settings/Architect.js';
+import { UserProfile } from '../pages/UserProfile.js';
 import { SettingsNotifications } from '../pages/SettingsNotifications.js';
 import { AuditLog } from '../pages/AuditLog.js';
 import { Marketplace } from '../pages/Marketplace.js';
@@ -38,6 +39,7 @@ const APPS: AppEntry[] = [
   { id: 'status', label: 'System Status', icon: '\u{1F4CA}', component: () => <SystemStatus />, defaultWidth: 860, defaultHeight: 640 },
   { id: 'overview', label: 'Mission Control', icon: '\u{1F3AF}', component: () => <Overview />, defaultWidth: 820, defaultHeight: 600 },
   { id: 'architect', label: 'The Architect', icon: '\u{1F9E0}', component: () => <SettingsArchitect />, defaultWidth: 780, defaultHeight: 600 },
+  { id: 'profile', label: 'About Me', icon: '\u{1F464}', component: () => <UserProfile />, defaultWidth: 780, defaultHeight: 600 },
   { id: 'behaviors', label: 'Behaviors', icon: '\u{1F9E9}', component: () => <Behaviors />, defaultWidth: 780, defaultHeight: 560 },
   { id: 'webhooks', label: 'Webhooks', icon: '\u{1F517}', component: () => <Webhooks />, defaultWidth: 780, defaultHeight: 560 },
   { id: 'personality', label: 'Personality', icon: '\u{1F3AD}', component: () => <PersonalityEditor />, defaultWidth: 680, defaultHeight: 520 },

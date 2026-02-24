@@ -27,6 +27,7 @@ import { SettingsConnections } from './pages/SettingsConnections';
 import { SettingsAmbient } from './pages/SettingsAmbient';
 import { SettingsArchitect } from './pages/settings/Architect';
 import { SettingsNotifications } from './pages/SettingsNotifications';
+import { UserProfile } from './pages/UserProfile';
 
 export function App() {
   return (
@@ -60,6 +61,7 @@ export function App() {
         <Route path="settings/notifications" element={<SettingsNotifications />} />
         <Route path="settings/security" element={<SettingsSecurity />} />
         <Route path="settings/audit" element={<AuditLog />} />
+        <Route path="profile" element={<UserProfile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

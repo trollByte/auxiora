@@ -301,6 +301,16 @@ export const api = {
       body: JSON.stringify(prefs),
     }),
 
+  // User Model
+  getUserModel: () =>
+    fetch('/api/v1/user-model', { credentials: 'include' }).then(async r => {
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${r.status}`);
+      }
+      return r.json() as Promise<any>;
+    }),
+
   // Marketplace
   searchPlugins: (params: { q?: string; author?: string; keywords?: string; sort?: string; limit?: number; offset?: number } = {}) => {
     const qs = new URLSearchParams();
