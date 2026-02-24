@@ -8,6 +8,8 @@ import type {
   AgentResult,
   OrchestrationResult,
   OrchestrationPattern,
+  WorkflowCheckpoint,
+  WorkflowCheckpointHandler,
 } from './types.js';
 
 interface CostTrackerLike {
@@ -58,6 +60,7 @@ export class OrchestrationEngine {
     private providerFactory: ProviderFactory,
     private config: OrchestrationConfig,
     private costTracker?: CostTrackerLike,
+    private checkpointHandler?: WorkflowCheckpointHandler,
   ) {
     this.semaphore = new Semaphore(config.maxConcurrentAgents);
   }
@@ -242,8 +245,9 @@ export class OrchestrationEngine {
   ): AsyncGenerator<AgentEvent, { agentResults: AgentResult[]; synthesis: string }, unknown> {
     const results: AgentResult[] = [];
     let previousOutput = '';
+    const startTime = Date.now();
 
-    for (const task of workflow.tasks) {
+    for (const [index, task] of workflow.tasks.entries()) {
       const augmentedPrompt = previousOutput
         ? `Previous agent output:\n${previousOutput}\n\n${task.userPrompt}`
         : task.userPrompt;
@@ -255,6 +259,35 @@ export class OrchestrationEngine {
 
       results.push(result);
       previousOutput = result.content;
+
+      // Emit progress
+      yield {
+        type: 'task_progress',
+        workflowId: workflow.id,
+        taskId: task.id,
+        name: task.name,
+        completedTasks: index + 1,
+        totalTasks: workflow.tasks.length,
+        elapsedMs: Date.now() - startTime,
+      };
+
+      // Save checkpoint
+      if (this.checkpointHandler) {
+        const checkpoint: WorkflowCheckpoint = {
+          workflowId: workflow.id,
+          pattern: workflow.pattern,
+          completedTaskIds: results.map(r => r.taskId),
+          completedResults: results,
+          savedAt: Date.now(),
+        };
+        await this.checkpointHandler.save(checkpoint);
+        yield {
+          type: 'checkpoint_saved',
+          workflowId: workflow.id,
+          completedTaskIds: checkpoint.completedTaskIds,
+          savedAt: checkpoint.savedAt,
+        };
+      }
     }
 
     const synthesis = results[results.length - 1]?.content ?? '';
@@ -397,12 +430,22 @@ export class OrchestrationEngine {
 
     let completedCount = 0;
     const totalTasks = tasks.length;
+    const concurrentStartTime = Date.now();
 
     const taskPromises = tasks.map(async (task) => {
       await this.semaphore.acquire();
       try {
         const result = await this.executeTaskInternal(workflowId, task, pushEvent);
         results.push(result);
+        pushEvent({
+          type: 'task_progress',
+          workflowId,
+          taskId: task.id,
+          name: task.name,
+          completedTasks: completedCount,
+          totalTasks,
+          elapsedMs: Date.now() - concurrentStartTime,
+        });
       } finally {
         completedCount++;
         this.semaphore.release();

@@ -5,6 +5,8 @@ export type {
   AgentEvent,
   AgentResult,
   OrchestrationResult,
+  WorkflowCheckpoint,
+  WorkflowCheckpointHandler,
 } from './types.js';
 
 export { OrchestrationEngine } from './engine.js';
