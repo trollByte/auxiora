@@ -11,6 +11,30 @@ export interface ReActStep {
   durationMs?: number;
 }
 
+/** Checkpoint data saved after each step for crash recovery */
+export interface ReActCheckpoint {
+  sessionId: string;
+  goal: string;
+  steps: ReActStep[];
+  totalTokens: number;
+  status: LoopStatus;
+  savedAt: number;
+}
+
+/** Handler for persisting and loading checkpoints */
+export interface CheckpointHandler {
+  save(checkpoint: ReActCheckpoint): Promise<void>;
+  load(sessionId: string): Promise<ReActCheckpoint | undefined>;
+}
+
+/** Result of validating a step */
+export interface StepValidation {
+  valid: boolean;
+  message?: string;
+  /** If true, abort the loop on validation failure */
+  abort?: boolean;
+}
+
 export interface ReActConfig {
   maxSteps?: number;
   maxTokenBudget?: number;
@@ -18,6 +42,9 @@ export interface ReActConfig {
   allowedTools?: string[];
   deniedTools?: string[];
   timeoutMs?: number;
+  sessionId?: string;
+  checkpointHandler?: CheckpointHandler;
+  validateStep?: (step: ReActStep, allSteps: ReActStep[]) => Promise<StepValidation>;
 }
 
 export interface ReActResult {

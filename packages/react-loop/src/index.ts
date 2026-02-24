@@ -7,4 +7,7 @@ export type {
   ReActConfig,
   ReActResult,
   ReActCallbacks,
+  ReActCheckpoint,
+  CheckpointHandler,
+  StepValidation,
 } from './types.js';

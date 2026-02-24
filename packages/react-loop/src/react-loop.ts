@@ -1,5 +1,5 @@
 import { getLogger } from '@auxiora/logger';
-import type { ReActCallbacks, ReActConfig, ReActResult, ReActStep, LoopStatus } from './types.js';
+import type { ReActCallbacks, ReActCheckpoint, ReActConfig, ReActResult, ReActStep, LoopStatus } from './types.js';
 import { StepTracker } from './step-tracker.js';
 
 const log = getLogger('react-loop');
@@ -44,11 +44,29 @@ export class ReActLoop {
     this.status = 'failed';
   }
 
-  async run(goal: string): Promise<ReActResult> {
+  async run(goal: string, resumeFrom?: ReActCheckpoint): Promise<ReActResult> {
+    const sessionId = this.config?.sessionId ?? crypto.randomUUID();
     const maxSteps = this.config?.maxSteps ?? DEFAULT_MAX_STEPS;
     const maxTokenBudget = this.config?.maxTokenBudget ?? DEFAULT_MAX_TOKEN_BUDGET;
     const timeoutMs = this.config?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const startTime = Date.now();
+
+    // Resume from explicit checkpoint
+    if (resumeFrom) {
+      for (const step of resumeFrom.steps) {
+        this.tracker.addStep(step);
+      }
+      this.totalTokens = resumeFrom.totalTokens;
+    } else if (this.config?.checkpointHandler && this.config.sessionId) {
+      // Auto-load from handler
+      const saved = await this.config.checkpointHandler.load(sessionId);
+      if (saved) {
+        for (const step of saved.steps) {
+          this.tracker.addStep(step);
+        }
+        this.totalTokens = saved.totalTokens;
+      }
+    }
 
     this.status = 'running';
     log.info(`Starting ReAct loop for goal: ${goal}`);
@@ -100,6 +118,10 @@ export class ReActLoop {
         this.estimateAndTrack(thinkResult.thought);
         stepCount++;
 
+        if (!(await this.checkpointAndValidate(thoughtStep, sessionId, goal))) {
+          return this.buildResult(startTime, this.abortReason);
+        }
+
         // Answer provided — done
         if (thinkResult.answer) {
           const answerStep: ReActStep = {
@@ -109,6 +131,7 @@ export class ReActLoop {
           };
           this.tracker.addStep(answerStep);
           this.callbacks.onStep?.(answerStep);
+          await this.checkpointAndValidate(answerStep, sessionId, goal);
           this.status = 'completed';
           return this.buildResult(startTime, undefined, thinkResult.answer);
         }
@@ -128,6 +151,9 @@ export class ReActLoop {
             this.tracker.addStep(deniedStep);
             this.callbacks.onStep?.(deniedStep);
             stepCount++;
+            if (!(await this.checkpointAndValidate(deniedStep, sessionId, goal))) {
+              return this.buildResult(startTime, this.abortReason);
+            }
             continue;
           }
 
@@ -143,6 +169,10 @@ export class ReActLoop {
           this.callbacks.onStep?.(actionStep);
           stepCount++;
 
+          if (!(await this.checkpointAndValidate(actionStep, sessionId, goal))) {
+            return this.buildResult(startTime, this.abortReason);
+          }
+
           // Check approval
           if (this.config?.requireApproval && this.callbacks.onApprovalNeeded) {
             const approved = await this.callbacks.onApprovalNeeded(actionStep);
@@ -156,6 +186,9 @@ export class ReActLoop {
               this.tracker.addStep(deniedStep);
               this.callbacks.onStep?.(deniedStep);
               stepCount++;
+              if (!(await this.checkpointAndValidate(deniedStep, sessionId, goal))) {
+                return this.buildResult(startTime, this.abortReason);
+              }
               continue;
             }
           }
@@ -177,6 +210,10 @@ export class ReActLoop {
           this.callbacks.onStep?.(observationStep);
           this.estimateAndTrack(toolResult);
           stepCount++;
+
+          if (!(await this.checkpointAndValidate(observationStep, sessionId, goal))) {
+            return this.buildResult(startTime, this.abortReason);
+          }
         }
       }
     } catch (err: unknown) {
@@ -192,6 +229,42 @@ export class ReActLoop {
     }
 
     return this.buildResult(startTime);
+  }
+
+  private async checkpointAndValidate(
+    step: ReActStep,
+    sessionId: string,
+    goal: string,
+  ): Promise<boolean> {
+    // Save checkpoint
+    if (this.config?.checkpointHandler) {
+      await this.config.checkpointHandler.save({
+        sessionId,
+        goal,
+        steps: this.tracker.getSteps(),
+        totalTokens: this.totalTokens,
+        status: this.status,
+        savedAt: Date.now(),
+      });
+    }
+
+    // Validate step
+    if (this.config?.validateStep) {
+      const validation = await this.config.validateStep(step, this.tracker.getSteps());
+      if (!validation.valid) {
+        if (validation.abort) {
+          this.abort(validation.message ?? 'Step validation failed');
+          return false;
+        }
+        // Log warning but continue
+        this.callbacks.onStep?.({
+          type: 'observation',
+          content: `Validation warning: ${validation.message ?? 'step invalid'}`,
+          timestamp: Date.now(),
+        });
+      }
+    }
+    return true;
   }
 
   private isToolAllowed(tool: string): boolean {
