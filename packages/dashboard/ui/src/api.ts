@@ -311,6 +311,28 @@ export const api = {
       return r.json() as Promise<any>;
     }),
 
+  // Memory management
+  getMemories: (category?: string) => {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    return fetchApi<{ data: any[] }>(`/memories${qs}`);
+  },
+  searchMemories: (q: string) =>
+    fetchApi<{ data: any[] }>(`/memories/search?q=${encodeURIComponent(q)}`),
+  deleteMemory: (id: string) =>
+    fetchApi<{ success: boolean }>(`/memories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  updateMemory: (id: string, updates: { content?: string; importance?: number; tags?: string[] }) =>
+    fetchApi<{ data: any }>(`/memories/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+  exportMemories: () => fetchApi<any>('/memories/export'),
+  forgetTopic: (topic: string) =>
+    fetchApi<{ removed: { memories: number; decisions: number } }>('/forget', {
+      method: 'POST',
+      body: JSON.stringify({ topic }),
+    }),
+  exportPersonalization: () => fetchApi<any>('/export/personalization'),
+
   // Marketplace
   searchPlugins: (params: { q?: string; author?: string; keywords?: string; sort?: string; limit?: number; offset?: number } = {}) => {
     const qs = new URLSearchParams();
