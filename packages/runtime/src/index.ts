@@ -4693,8 +4693,8 @@ export class Auxiora {
     router.patch('/memories/:id', async (req: any, res: any) => {
       if (!guard(req, res)) return;
       if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
-      const { content, importance, tags } = req.body ?? {};
-      const updated = await this.memoryStore.update(req.params.id, { content, importance, tags });
+      const { content, importance } = req.body ?? {};
+      const updated = await this.memoryStore.update(req.params.id, { content, importance });
       if (!updated) { res.status(404).json({ error: 'Memory not found' }); return; }
       res.json({ data: updated });
     });
