@@ -9,6 +9,7 @@ import { ContextOverrideMenu } from '../components/ContextOverrideMenu.js';
 import { ContextRecommendation as ContextRecommendationBanner } from '../components/ContextRecommendation.js';
 import { DOMAIN_META } from '../components/context-meta.js';
 import { TransparencyFooter } from '../components/TransparencyFooter.js';
+import { ProvenancePanel } from '../components/ProvenancePanel.js';
 import { TokenCostBadge } from '../components/TokenCostBadge.js';
 
 interface ChatMessage {
@@ -163,6 +164,7 @@ export function Chat() {
   const [chats, setChats] = useState<ChatThread[]>([]);
   const [chatId, setChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [provenanceMsg, setProvenanceMsg] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -978,6 +980,11 @@ export function Chat() {
                 {msg.role === 'assistant' && msg.transparency && (
                   <TransparencyFooter meta={msg.transparency} />
                 )}
+                {msg.role === 'assistant' && msg.transparency && (
+                  <button className="pp-trigger-btn" onClick={() => setProvenanceMsg(msg.id)}>
+                    Why?
+                  </button>
+                )}
               </div>
             ))}
             {(streaming && toolStatus) && (
@@ -988,6 +995,12 @@ export function Chat() {
             )}
             <div ref={messagesEndRef} />
           </div>
+          {provenanceMsg && (() => {
+            const target = messages.find(m => m.id === provenanceMsg);
+            return target?.transparency ? (
+              <ProvenancePanel meta={target.transparency} onClose={() => setProvenanceMsg(null)} />
+            ) : null;
+          })()}
           <div className="chat-input-area">
             <div className="chat-input-wrapper">
               {acOpen && acMatches.length > 0 && (
