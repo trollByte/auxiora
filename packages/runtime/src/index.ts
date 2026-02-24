@@ -94,6 +94,7 @@ import { CapabilityCatalogImpl, HealthMonitorImpl, createIntrospectTool, generat
 import { JobQueue, NonRetryableError } from '@auxiora/job-queue';
 import { Consciousness } from '@auxiora/consciousness';
 import { McpClientManager } from '@auxiora/mcp';
+// import { createMcpServer, StdioServerTransport } from '@auxiora/mcp-server';
 import { GuardrailPipeline } from '@auxiora/guardrails';
 import { collectTransparencyMeta } from './transparency/index.js';
 import type { TransparencyMeta } from './transparency/index.js';
@@ -380,6 +381,13 @@ export class Auxiora {
         });
       }
     }
+
+    // MCP server (expose Auxiora as MCP tools) - enabled via config
+    // if (config.mcpServer?.enabled) {
+    //   const mcpServer = createMcpServer({ memoryStore: this.memoryStore, ... });
+    //   const transport = new StdioServerTransport();
+    //   await mcpServer.connect(transport);
+    // }
 
     // Initialize sessions
     this.sessions = new SessionManager({

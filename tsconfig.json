@@ -26,6 +26,7 @@
     { "path": "packages/connector-notion" },
     { "path": "packages/connector-linear" },
     { "path": "packages/ssrf-guard" },
-    { "path": "packages/media" }
+    { "path": "packages/media" },
+    { "path": "packages/mcp-server" }
   ]
 }
