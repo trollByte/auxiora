@@ -4654,6 +4654,102 @@ export class Auxiora {
       res.json(model);
     });
 
+    // --- Memory management ---
+
+    router.get('/memories', async (_req: any, res: any) => {
+      if (!guard(_req, res)) return;
+      if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
+      const category = _req.query?.category as string | undefined;
+      const data = category
+        ? await this.memoryStore.getByCategory(category as any)
+        : await this.memoryStore.getAll();
+      res.json({ data });
+    });
+
+    router.get('/memories/search', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
+      const q = req.query?.q as string;
+      if (!q) { res.status(400).json({ error: 'Missing query parameter q' }); return; }
+      const data = await this.memoryStore.search(q);
+      res.json({ data });
+    });
+
+    router.get('/memories/export', async (_req: any, res: any) => {
+      if (!guard(_req, res)) return;
+      if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
+      const data = await this.memoryStore.exportAll();
+      res.json(data);
+    });
+
+    router.patch('/memories/:id', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
+      const { content, importance, tags } = req.body ?? {};
+      const updated = await this.memoryStore.update(req.params.id, { content, importance, tags });
+      if (!updated) { res.status(404).json({ error: 'Memory not found' }); return; }
+      res.json({ data: updated });
+    });
+
+    router.delete('/memories/:id', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      if (!this.memoryStore) { res.status(404).json({ error: 'Memory store not available' }); return; }
+      const removed = await this.memoryStore.remove(req.params.id);
+      if (!removed) { res.status(404).json({ error: 'Memory not found' }); return; }
+      res.json({ success: true });
+    });
+
+    // --- Selective forgetting ---
+
+    router.post('/forget', async (req: any, res: any) => {
+      if (!guard(req, res)) return;
+      const { topic } = req.body ?? {};
+      if (!topic || typeof topic !== 'string') {
+        res.status(400).json({ error: 'Missing required field: topic' });
+        return;
+      }
+      const removed = { memories: 0, decisions: 0 };
+      if (this.memoryStore) {
+        const matches = await this.memoryStore.search(topic);
+        for (const m of matches) {
+          if (await this.memoryStore.remove(m.id)) removed.memories++;
+        }
+      }
+      if (this.architect) {
+        try {
+          const dl = (this.architect as any).decisionLog;
+          if (dl) {
+            const decisions = dl.query({ search: topic });
+            for (const d of decisions) {
+              dl.updateDecision(d.id, { status: 'abandoned' });
+              removed.decisions++;
+            }
+          }
+        } catch {}
+      }
+      res.json({ removed });
+    });
+
+    // --- Full personalization export ---
+
+    router.get('/export/personalization', async (_req: any, res: any) => {
+      if (!guard(_req, res)) return;
+      const exportData: Record<string, unknown> = {
+        version: 1,
+        exportedAt: Date.now(),
+      };
+      if (this.memoryStore) {
+        exportData.memories = await this.memoryStore.exportAll();
+      }
+      if (this.architect) {
+        try {
+          exportData.architect = JSON.parse(await this.architect.exportData());
+        } catch {}
+        exportData.userModel = this.getCachedUserModel();
+      }
+      res.json(exportData);
+    });
+
     // --- Corrections (Gap 8) ---
 
     router.post('/corrections', async (req: any, res: any) => {
