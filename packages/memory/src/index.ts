@@ -2,6 +2,7 @@ export type {
   MemoryEntry,
   MemoryCategory,
   MemorySource,
+  MemoryProvenance,
   MemoryPartition,
   RelationshipMemory,
   PatternMemory,

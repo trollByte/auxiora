@@ -8,6 +8,22 @@ export type MemoryCategory =
 
 export type MemorySource = 'extracted' | 'explicit' | 'observed';
 
+/** Tracks the origin and derivation of a memory. */
+export interface MemoryProvenance {
+  /** How this memory was created: 'user_stated', 'extracted', 'inferred', 'merged' */
+  origin: 'user_stated' | 'extracted' | 'inferred' | 'merged';
+  /** ID of the conversation/session where this memory was created */
+  sessionId?: string;
+  /** Agent or system that created this memory */
+  createdBy?: string;
+  /** Source message or context excerpt (truncated to 200 chars) */
+  sourceExcerpt?: string;
+  /** IDs of memories this was derived from (for merged/inferred) */
+  derivedFrom?: string[];
+  /** Confidence score at time of creation (0-1) */
+  extractionConfidence?: number;
+}
+
 export interface MemoryEntry {
   id: string;
   content: string;
@@ -23,6 +39,8 @@ export interface MemoryEntry {
   relatedMemories?: string[];
   sentiment?: 'positive' | 'negative' | 'neutral';
   encrypted?: boolean;
+  /** Provenance tracking for this memory. */
+  provenance?: MemoryProvenance;
   /** Partition this memory belongs to. Defaults to 'global'. */
   partitionId?: string;
   /** User ID that created this memory. */

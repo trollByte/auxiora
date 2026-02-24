@@ -4,7 +4,7 @@ import * as crypto from 'node:crypto';
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { getMemoryDir } from '@auxiora/core';
-import type { MemoryEntry, MemoryCategory, LivingMemoryState, MemoryPartition } from './types.js';
+import type { MemoryEntry, MemoryCategory, MemoryProvenance, LivingMemoryState, MemoryPartition } from './types.js';
 
 const logger = getLogger('memory:store');
 
@@ -22,7 +22,7 @@ export class MemoryStore {
     content: string,
     category: MemoryCategory,
     source: MemoryEntry['source'],
-    extra?: Partial<Pick<MemoryEntry, 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted' | 'relatedMemories' | 'partitionId' | 'sourceUserId'>>,
+    extra?: Partial<Pick<MemoryEntry, 'importance' | 'confidence' | 'sentiment' | 'expiresAt' | 'encrypted' | 'relatedMemories' | 'partitionId' | 'sourceUserId'>> & { provenance?: MemoryProvenance },
   ): Promise<MemoryEntry> {
     const memories = await this.readFile();
     const tags = this.extractTags(content);
@@ -58,6 +58,7 @@ export class MemoryStore {
       ...(extra?.sourceUserId !== undefined ? { sourceUserId: extra.sourceUserId } : {}),
       ...(extra?.expiresAt !== undefined ? { expiresAt: extra.expiresAt } : {}),
       ...(extra?.relatedMemories !== undefined ? { relatedMemories: extra.relatedMemories } : {}),
+      ...(extra?.provenance !== undefined ? { provenance: extra.provenance } : {}),
     };
 
     memories.push(entry);
@@ -201,6 +202,10 @@ export class MemoryStore {
           ...(entry2.relatedMemories ?? []),
         ]),
       ],
+      provenance: {
+        origin: 'merged',
+        derivedFrom: [id1, id2],
+      },
     };
 
     // Remove both originals and add merged
