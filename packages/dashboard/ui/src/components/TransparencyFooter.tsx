@@ -58,45 +58,44 @@ export function TransparencyFooter({ meta }: { meta: TransparencyMeta | undefine
   const kb = meta.personality.knowledgeBoundary;
 
   return (
-    <div className={`transparency-footer confidence-${meta.confidence.level}`} style={{ marginTop: 4, fontSize: '0.75rem', opacity: 0.7 }}>
+    <div className={`transparency-footer confidence-${meta.confidence.level}`}>
       <button
         className="transparency-toggle"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 'inherit', padding: '2px 0', textAlign: 'left', width: '100%', display: 'flex', justifyContent: 'space-between' }}
       >
         <span className="transparency-summary">
           {dot}{' '}
           <span>{meta.confidence.level.charAt(0).toUpperCase() + meta.confidence.level.slice(1)}</span>
           {' '}({meta.confidence.score})
-          {kb && <span className="kb-warning" style={{ color: '#e74c3c' }}> {'\u26A0'} Topic previously corrected ({kb.corrections}x)</span>}
+          {kb && <span className="kb-warning"> {'\u26A0'} Topic previously corrected ({kb.corrections}x)</span>}
           {' \u00B7 '}{meta.model.model}
           {' \u00B7 '}{totalTokens} tokens
           {' \u00B7 '}${meta.model.cost.total.toFixed(3)}
           {meta.personality.domain !== 'general' && <>{' \u00B7 '}{meta.personality.domain.replace(/_/g, ' ')}</>}
         </span>
-        <span>{expanded ? '\u25B2' : '\u25BC'}</span>
+        <span className="tf-expand-icon">{expanded ? '\u25B2' : '\u25BC'}</span>
       </button>
 
       {expanded && (
-        <div className="transparency-details" style={{ fontFamily: 'monospace', fontSize: '0.7rem', marginTop: 4, padding: '8px', borderRadius: 4, background: 'var(--bg-secondary, rgba(0,0,0,0.05))' }}>
-          <div style={{ marginBottom: 8 }}>
-            <strong>Confidence</strong>
+        <div className="transparency-details">
+          <div className="tf-section">
+            <strong className="tf-section-title">Confidence</strong>
             <div>Score: {meta.confidence.score} ({meta.confidence.level.charAt(0).toUpperCase() + meta.confidence.level.slice(1)})</div>
             {meta.confidence.factors.map((f, i) => (
-              <div key={i}>{f.impact === 'positive' ? '  + ' : '  - '}{f.signal}: {f.detail}</div>
+              <div key={i} className={f.impact === 'positive' ? 'tf-factor-positive' : 'tf-factor-negative'}>{f.impact === 'positive' ? '  + ' : '  - '}{f.signal}: {f.detail}</div>
             ))}
           </div>
 
-          <div style={{ marginBottom: 8 }}>
-            <strong>Sources</strong>
+          <div className="tf-section">
+            <strong className="tf-section-title">Sources</strong>
             {meta.sources.map((s, i) => (
-              <div key={i}>{SOURCE_ICONS[s.type] ?? '\u2753'} {s.label} ({s.confidence.toFixed(2)})</div>
+              <div key={i} className="tf-source-line">{SOURCE_ICONS[s.type] ?? '\u2753'} {s.label} ({s.confidence.toFixed(2)})</div>
             ))}
           </div>
 
-          <div>
-            <strong>Processing</strong>
+          <div className="tf-section tf-section-last">
+            <strong className="tf-section-title">Processing</strong>
             <div>Model: {meta.model.provider} / {meta.model.model}</div>
             <div>Tokens: {meta.model.tokens.input} in / {meta.model.tokens.output} out</div>
             <div>Cost: ${meta.model.cost.input.toFixed(4)} in / ${meta.model.cost.output.toFixed(4)} out = ${meta.model.cost.total.toFixed(4)} total</div>
