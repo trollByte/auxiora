@@ -148,6 +148,10 @@ export { UserModelSynthesizer } from './user-model-synthesizer.js';
 export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary }
   from './user-model-synthesizer.js';
 
+// Phase 6: personalization intensity
+export { PersonalizationIntensity } from './personalization-intensity.js';
+export type { IntensityLevel, IntensityConfig } from './personalization-intensity.js';
+
 // ────────────────────────────────────────────────────────────────────────────
 // Message type
 // ────────────────────────────────────────────────────────────────────────────

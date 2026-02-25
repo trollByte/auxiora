@@ -60,3 +60,7 @@ export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './the-archi
 export { UserModelSynthesizer } from './the-architect/user-model-synthesizer.js';
 export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary }
   from './the-architect/user-model-synthesizer.js';
+
+// Phase 6: personalization intensity
+export { PersonalizationIntensity } from './the-architect/personalization-intensity.js';
+export type { IntensityLevel, IntensityConfig } from './the-architect/personalization-intensity.js';
