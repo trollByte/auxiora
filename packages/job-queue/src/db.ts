@@ -96,7 +96,7 @@ export class JobDatabase {
     const now = Date.now();
     this.db.prepare(
       `UPDATE jobs SET status = 'completed', result = ?, completed_at = ?, updated_at = ? WHERE id = ?`,
-    ).run(JSON.stringify(result), now, now, id);
+    ).run(JSON.stringify(result ?? null), now, now, id);
   }
 
   failJob(id: string, errorMsg: string): void {
@@ -226,6 +226,14 @@ export class JobDatabase {
     const result = this.db.prepare(
       `DELETE FROM jobs WHERE status IN ('completed', 'dead') AND completed_at < ?`,
     ).run(cutoff);
+    return Number(result.changes);
+  }
+
+  /** Purge all jobs of a given type and status. Returns count deleted. */
+  purgeByType(type: string, status: JobStatus): number {
+    const result = this.db.prepare(
+      `DELETE FROM jobs WHERE type = ? AND status = ?`,
+    ).run(type, status);
     return Number(result.changes);
   }
 

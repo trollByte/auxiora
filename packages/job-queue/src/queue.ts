@@ -79,6 +79,10 @@ export class JobQueue {
     return this.db.getStats();
   }
 
+  purgeByType(type: string, status: 'pending' | 'dead'): number {
+    return this.db.purgeByType(type, status);
+  }
+
   on(event: JobEvent | 'recovery', listener: (data: unknown) => void): void {
     this.emitter.on(event, listener);
   }

@@ -609,17 +609,32 @@ export class Auxiora {
       }
     });
 
-    // Register ambient pattern flush handler (re-enqueues itself)
+    // Register ambient pattern flush handler (re-enqueues itself on success only)
     this.jobQueue.register<Record<string, never>, void>('ambient-flush', async (_payload, ctx) => {
       if (this.ambientEngine) {
         const serialized = this.ambientEngine.serialize();
         ctx.checkpoint(serialized);
       }
-      // Re-enqueue next flush in 5 minutes
-      if (this.jobQueue) {
-        this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+    });
+
+    // Listen for completion to schedule the next flush (avoids runaway re-enqueue on failure)
+    this.jobQueue.on('job:completed', (data: unknown) => {
+      const { job } = data as { job: { type: string } };
+      if (job.type === 'ambient-flush' && this.jobQueue) {
+        // Check for existing pending ambient-flush before enqueueing
+        const pending = this.jobQueue.listJobs({ type: 'ambient-flush', status: 'pending' });
+        if (pending.length === 0) {
+          this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+        }
       }
     });
+
+    // Purge stale ambient-flush jobs that accumulated from the re-enqueue bug
+    const purgedPending = this.jobQueue.purgeByType('ambient-flush', 'pending');
+    const purgedDead = this.jobQueue.purgeByType('ambient-flush', 'dead');
+    if (purgedPending > 0 || purgedDead > 0) {
+      this.logger.info(`Purged stale ambient-flush jobs: ${purgedPending} pending, ${purgedDead} dead`);
+    }
 
     this.jobQueue.start();
     this.logger.info('Durable job queue initialized');
@@ -1630,7 +1645,11 @@ export class Auxiora {
     this.anticipationEngine = new AnticipationEngine();
     this.ambientAwarenessCollector = new AmbientAwarenessCollector();
     if (this.jobQueue) {
-      this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+      // Only enqueue if no ambient-flush jobs already exist (prevents buildup on restart)
+      const existing = this.jobQueue.listJobs({ type: 'ambient-flush', status: 'pending' });
+      if (existing.length === 0) {
+        this.jobQueue.enqueue('ambient-flush', {}, { scheduledAt: Date.now() + 5 * 60 * 1000 });
+      }
     }
     this.logger.info('Ambient intelligence initialized');
 
