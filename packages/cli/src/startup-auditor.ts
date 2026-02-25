@@ -105,7 +105,7 @@ export class StartupAuditor {
           fixCount++;
           logger.info(`Auto-fixed: ${result.name}`);
         } catch (err) {
-          logger.warn(`Auto-fix failed: ${result.name}`, { error: err instanceof Error ? err.message : String(err) });
+          logger.warn(`Auto-fix failed: ${result.name}`, { error: err instanceof Error ? err : new Error(String(err)) });
         }
       }
     }
