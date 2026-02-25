@@ -6777,6 +6777,9 @@ export type { ProvenanceEntry, ProvenanceSummary, ContextSignalRecord, ToolCallR
 export { UserModelExporter } from './user-model-export.js';
 export type { UserModelView, DomainProfile, PreferenceItem, DecisionItem } from './user-model-export.js';
 
+export { createReActJobHandler, createWorkflowJobHandler } from './queue-wiring.js';
+export type { QueuedReActPayload, QueuedWorkflowPayload } from './queue-wiring.js';
+
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();
   await auxiora.initialize(options);
