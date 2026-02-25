@@ -25,3 +25,5 @@ export { MemoryGuard } from './memory-guard.js';
 export type { MemoryAnomaly, MemoryGuardOptions } from './memory-guard.js';
 export { SelectiveForgetting } from './selective-forgetting.js';
 export type { ForgetResult, ForgetOptions } from './selective-forgetting.js';
+export { PersonalizationExporter } from './personalization-export.js';
+export type { PersonalizationExport, ExportSummary, ExportOptions } from './personalization-export.js';
