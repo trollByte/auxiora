@@ -53,8 +53,8 @@ auxiora/
 │   └── ...                 # 60+ packages total
 │
 ├── deploy/
-│   ├── apt/                # Apt repository update script
-│   └── homebrew/           # Homebrew tap formula
+│   ├── docker/             # Docker build and compose files
+│   └── k8s/                # Kubernetes manifests
 │
 ├── src/
 │   └── personalities/      # The Architect personality engine source
@@ -62,7 +62,6 @@ auxiora/
 │       └── the-architect/  # 17 source modules + 12 test files
 │
 ├── scripts/
-│   ├── install.sh          # Universal install script
 │   └── test-architect.ts   # Full Phase 1–4 pipeline verification
 │
 ├── docs/                   # Documentation

@@ -16,33 +16,6 @@ Auxiora is a security-first, self-hosted AI assistant that runs on your own devi
 
 Pick the method that fits your environment.
 
-### npm (all platforms)
-
-```bash
-npm install -g auxiora
-```
-
-### Homebrew (macOS / Linux)
-
-```bash
-brew install auxiora/tap/auxiora
-```
-
-### apt (Debian / Ubuntu)
-
-```bash
-curl -fsSL https://auxiora.dev/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/auxiora.gpg
-echo "deb [signed-by=/usr/share/keyrings/auxiora.gpg] https://auxiora.dev/apt stable main" \
-  | sudo tee /etc/apt/sources.list.d/auxiora.list
-sudo apt update && sudo apt install auxiora
-```
-
-### Shell script (one-liner)
-
-```bash
-curl -fsSL https://auxiora.dev/install.sh | bash
-```
-
 ### Docker
 
 ```bash
@@ -51,6 +24,15 @@ docker run -d \
   -p 18800:18800 \
   -v auxiora-data:/data \
   ghcr.io/trollbyte/auxiora
+```
+
+### From source
+
+```bash
+git clone https://github.com/trollByte/auxiora.git
+cd auxiora
+pnpm install && pnpm build
+node packages/cli/dist/index.js start
 ```
 
 ## First Run
