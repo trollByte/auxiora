@@ -6771,6 +6771,9 @@ export type { Attribution, AttributedSegment, ResponseAttribution, AttributionSo
 export { ConfidenceAssessor } from './confidence.js';
 export type { ConfidenceLevel, KnowledgeSource, ConfidenceSignal, ConfidenceAssessment, UncertaintyMarker } from './confidence.js';
 
+export { ResponseProvenanceTracker } from './response-provenance.js';
+export type { ProvenanceEntry, ProvenanceSummary, ContextSignalRecord, ToolCallRecord } from './response-provenance.js';
+
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();
   await auxiora.initialize(options);
