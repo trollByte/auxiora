@@ -16,7 +16,7 @@
 - `@auxiora/providers` — Multi-provider abstraction (OpenAI, Anthropic, Google)
 
 **Work items:**
-- [ ] **Local model support** — Add Ollama/llama.cpp provider adapter to `@auxiora/providers` for fully air-gapped operation
+- [x] **Local model support** — Add Ollama/llama.cpp provider adapter to `@auxiora/providers` for fully air-gapped operation
 - [ ] **Provider health dashboard** — Surface which provider is active, latency, cost-per-request in the dashboard
 
 ---
@@ -70,7 +70,7 @@
 
 **Work items:**
 - [ ] **Confidence indicators** — Surface per-response confidence scores in the chat UI (low/medium/high with explanation)
-- [ ] **Source attribution** — Tag response segments with their source: user data, web search, knowledge graph, model generation
+- [x] **Source attribution** — Tag response segments with their source: user data, web search, knowledge graph, model generation
 - [ ] **Uncertainty markers** — Distinguish "I know this from your data" vs "I'm inferring this" vs "I'm generating this" in response formatting
 - [ ] **Cost transparency** — Show token count, model used, and estimated cost per interaction in the dashboard
 - [ ] **"Why did you say that?" button** — Let users drill into the provenance of any response: which memories, which context signals, which tools contributed
@@ -110,7 +110,7 @@
 **Work items:**
 - [ ] **MCP server implementation** — Expose Auxiora's tools (vault, sessions, behaviors, knowledge graph) as MCP resources/tools so external agents can use them
 - [ ] **MCP client support** — Connect to external MCP servers to gain access to third-party tool ecosystems (design doc exists: `2026-02-19-mcp-client-support-design.md`)
-- [ ] **Plugin manifest discovery** — Replace code-based plugin registration with declarative JSON manifests (pattern from OpenClaw)
+- [x] **Plugin manifest discovery** — Replace code-based plugin registration with declarative JSON manifests (pattern from OpenClaw)
 - [ ] **Webhook listeners** — Inbound webhook support for external service integration (design doc exists: `2026-02-05-webhook-listeners-design.md`)
 - [x] **Channel message deduplication** — Cross-channel dedup to prevent double-processing (design doc exists: `2026-02-17-inbound-dedup-design.md`)
 
@@ -130,9 +130,9 @@
 - All shell commands use `safeExecFile` (no command injection)
 
 **Work items:**
-- [ ] **Security audit automation** — Doctor command that validates config, API keys, schema migrations, vault health on startup (pattern from OpenClaw)
-- [ ] **Sender identity & DM pairing** — Normalized sender identity across channels with short-code pairing for unknown senders (pattern from OpenClaw)
-- [ ] **Tool call sandboxing** — Extend sandbox isolation to all tool calls, not just code execution
+- [x] **Security audit automation** — Doctor command that validates config, API keys, schema migrations, vault health on startup (pattern from OpenClaw)
+- [x] **Sender identity & DM pairing** — Normalized sender identity across channels with short-code pairing for unknown senders (pattern from OpenClaw)
+- [x] **Tool call sandboxing** — Extend sandbox isolation to all tool calls, not just code execution
 - [x] **Guardrail metrics** — Track PII/injection/toxicity detection rates in Prometheus for security posture monitoring
 
 ---
@@ -150,7 +150,7 @@
 
 **Work items:**
 - [ ] **"What do you know about me?" page** — Dashboard view exposing the full UserModel: domain profiles, communication style preferences, active decisions, satisfaction metrics
-- [ ] **Memory editing** — Let users view, edit, and delete individual preferences, decisions, and feedback entries
+- [x] **Memory editing** — Let users view, edit, and delete individual preferences, decisions, and feedback entries
 - [x] **Selective forgetting** — "Forget everything about [topic]" command that removes related entries from all stores
 - [x] **Personalization intensity slider** — User control over how aggressively The Architect adapts (from "generic" to "deeply personalized")
 - [x] **Data export** — Full export of all personalization data in machine-readable format (JSON) for portability
