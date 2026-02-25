@@ -12,32 +12,6 @@ Auxiora is a security-first personal AI assistant that runs on your own devices,
 
 Pick whichever method you prefer — they all give you the same `auxiora` command.
 
-### npm (all platforms)
-
-```bash
-npm install -g auxiora
-```
-
-### Homebrew (macOS)
-
-```bash
-brew install auxiora/tap/auxiora
-```
-
-### apt (Debian / Ubuntu)
-
-```bash
-curl -fsSL https://apt.auxiora.dev/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/auxiora.gpg
-echo "deb [signed-by=/usr/share/keyrings/auxiora.gpg] https://apt.auxiora.dev stable main" | sudo tee /etc/apt/sources.list.d/auxiora.list
-sudo apt update && sudo apt install auxiora
-```
-
-### Shell script (Linux / macOS)
-
-```bash
-curl -fsSL https://auxiora.dev/install.sh | bash
-```
-
 ### Docker
 
 ```bash
@@ -46,7 +20,14 @@ docker run -d --name auxiora -p 18800:18800 -v auxiora-data:/data ghcr.io/trollb
 
 Open `http://localhost:18800/dashboard` to complete setup. See [`deploy/docker/docker-compose.yml`](deploy/docker/docker-compose.yml) for a full production setup with environment variables.
 
-After installation, Auxiora starts automatically and opens the setup wizard in your browser.
+### From source
+
+```bash
+git clone https://github.com/trollByte/auxiora.git
+cd auxiora
+pnpm install && pnpm build
+node packages/cli/dist/index.js start
+```
 
 ---
 
@@ -306,7 +287,7 @@ pnpm test
 pnpm typecheck
 ```
 
-The monorepo uses pnpm workspaces with 60+ packages under `packages/`.
+The monorepo uses pnpm workspaces with 87 packages under `packages/`.
 
 ---
 
@@ -330,7 +311,7 @@ The monorepo uses pnpm workspaces with 60+ packages under `packages/`.
 - [x] Trust/autonomy system
 - [x] Desktop app (Tauri)
 - [x] Multi-chat system
-- [x] Easy cross-platform installation (npm, Homebrew, apt)
+- [ ] Easy cross-platform installation (npm, Homebrew, apt)
 - [x] The Architect personality engine (29 traits, 17 domains, provenance)
 - [ ] Plugin marketplace
 - [ ] Mobile app
