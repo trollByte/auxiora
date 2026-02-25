@@ -11,3 +11,5 @@ export type {
 
 export { OrchestrationEngine } from './engine.js';
 export { WorkflowBuilder } from './workflow-builder.js';
+export { CircuitBreaker } from './circuit-breaker.js';
+export type { CircuitState, CircuitBreakerOptions } from './circuit-breaker.js';

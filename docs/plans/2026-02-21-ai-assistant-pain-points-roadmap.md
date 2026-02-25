@@ -33,9 +33,9 @@
 - `@auxiora/guardrails` — Input validation at system boundaries
 
 **Work items:**
-- [ ] **Per-step validation framework** — Lightweight evals between orchestrator/ReAct steps: schema validation on tool outputs, sanity checks on intermediate results, automatic retry on format errors
-- [ ] **Step-level observability** — Emit structured events per step (input hash, output hash, duration, tool calls, error count) for post-mortem analysis
-- [ ] **Circuit breaker** — After N consecutive step failures in a workflow, pause and escalate to human rather than continuing to compound errors
+- [x] **Per-step validation framework** — Lightweight evals between orchestrator/ReAct steps: schema validation on tool outputs, sanity checks on intermediate results, automatic retry on format errors
+- [x] **Step-level observability** — Emit structured events per step (input hash, output hash, duration, tool calls, error count) for post-mortem analysis
+- [x] **Circuit breaker** — After N consecutive step failures in a workflow, pause and escalate to human rather than continuing to compound errors
 
 ---
 
@@ -51,9 +51,9 @@
 - `@auxiora/sessions` — SQLite-backed session persistence
 
 **Work items:**
-- [ ] **sqlite-vec migration** — Replace in-memory vector store with sqlite-vec for persistent ANN search (referenced in OpenClaw patterns)
-- [ ] **Memory provenance tracking** — Tag each stored memory with source (user-stated, inferred, tool-output) and confidence score
-- [ ] **Memory poisoning defense** — Anomaly detection on injected memories: flag sudden bulk insertions, content that contradicts established user model, or injections from untrusted channels
+- [x] **sqlite-vec migration** — Replace in-memory vector store with sqlite-vec for persistent ANN search (referenced in OpenClaw patterns)
+- [x] **Memory provenance tracking** — Tag each stored memory with source (user-stated, inferred, tool-output) and confidence score
+- [x] **Memory poisoning defense** — Anomaly detection on injected memories: flag sudden bulk insertions, content that contradicts established user model, or injections from untrusted channels
 - [ ] **Cold-start acceleration** — Guided onboarding flow that asks 5-10 preference questions to bootstrap the Architect's user model
 
 ---
@@ -92,7 +92,7 @@
 - [ ] **ReAct loop queue wiring** — Enqueue ReAct loops as job-queue jobs with per-step checkpoints (requires redesigning the status/pause/resume API)
 - [ ] **Orchestration queue wiring** — Same for orchestrator workflows (checkpoint after each agent completion)
 - [ ] **Dead letter monitoring** — Dashboard panel showing failed/dead jobs with retry controls
-- [ ] **Job queue metrics** — Prometheus counters for enqueued/completed/failed/dead jobs, histogram for job duration
+- [x] **Job queue metrics** — Prometheus counters for enqueued/completed/failed/dead jobs, histogram for job duration
 
 ---
 
@@ -112,7 +112,7 @@
 - [ ] **MCP client support** — Connect to external MCP servers to gain access to third-party tool ecosystems (design doc exists: `2026-02-19-mcp-client-support-design.md`)
 - [ ] **Plugin manifest discovery** — Replace code-based plugin registration with declarative JSON manifests (pattern from OpenClaw)
 - [ ] **Webhook listeners** — Inbound webhook support for external service integration (design doc exists: `2026-02-05-webhook-listeners-design.md`)
-- [ ] **Channel message deduplication** — Cross-channel dedup to prevent double-processing (design doc exists: `2026-02-17-inbound-dedup-design.md`)
+- [x] **Channel message deduplication** — Cross-channel dedup to prevent double-processing (design doc exists: `2026-02-17-inbound-dedup-design.md`)
 
 ---
 
@@ -133,7 +133,7 @@
 - [ ] **Security audit automation** — Doctor command that validates config, API keys, schema migrations, vault health on startup (pattern from OpenClaw)
 - [ ] **Sender identity & DM pairing** — Normalized sender identity across channels with short-code pairing for unknown senders (pattern from OpenClaw)
 - [ ] **Tool call sandboxing** — Extend sandbox isolation to all tool calls, not just code execution
-- [ ] **Guardrail metrics** — Track PII/injection/toxicity detection rates in Prometheus for security posture monitoring
+- [x] **Guardrail metrics** — Track PII/injection/toxicity detection rates in Prometheus for security posture monitoring
 
 ---
 
@@ -152,7 +152,7 @@
 - [ ] **"What do you know about me?" page** — Dashboard view exposing the full UserModel: domain profiles, communication style preferences, active decisions, satisfaction metrics
 - [ ] **Memory editing** — Let users view, edit, and delete individual preferences, decisions, and feedback entries
 - [ ] **Selective forgetting** — "Forget everything about [topic]" command that removes related entries from all stores
-- [ ] **Personalization intensity slider** — User control over how aggressively The Architect adapts (from "generic" to "deeply personalized")
+- [x] **Personalization intensity slider** — User control over how aggressively The Architect adapts (from "generic" to "deeply personalized")
 - [ ] **Data export** — Full export of all personalization data in machine-readable format (JSON) for portability
 
 ---
