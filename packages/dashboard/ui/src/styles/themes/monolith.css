@@ -1,0 +1,125 @@
+/* monolith.css — Cinematic Ultra-Minimal */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap');
+
+[data-theme="monolith"] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-card: #0a0a0a;
+  --bg-hover: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #404040;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.08);
+  --accent-subtle: rgba(124, 58, 237, 0.04);
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --success: #ffffff;
+  --warning: #a3a3a3;
+  --border: #1a1a1a;
+  --border-strong: #222222;
+  --radius: 4px;
+  --radius-lg: 6px;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Inter', sans-serif;
+}
+
+/* Monolith-specific: pure black body */
+[data-theme="monolith"] body {
+  background: #000000;
+}
+
+/* Monolith-specific: ultra-light stat numbers */
+[data-theme="monolith"] .stat-value,
+[data-theme="monolith"] .overview-stat {
+  font-weight: 200;
+}
+
+/* Monolith-specific: minimal nav — no sidebar border */
+[data-theme="monolith"] .sidebar {
+  border-right: none;
+  background: #000000;
+}
+
+/* Monolith-specific: no card backgrounds, hairline border-bottom */
+[data-theme="monolith"] .status-card {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #111111;
+  border-radius: 0;
+}
+
+/* Monolith-specific: card hover */
+[data-theme="monolith"] .card {
+  background: #0a0a0a;
+  border: 1px solid #111111;
+}
+
+/* Monolith-specific: hairline nav group labels */
+[data-theme="monolith"] .nav-group-label {
+  color: #333333;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+}
+
+/* Monolith-specific: nav items */
+[data-theme="monolith"] .nav-link {
+  color: #444444;
+  font-weight: 400;
+}
+[data-theme="monolith"] .nav-link:hover {
+  color: #888888;
+}
+[data-theme="monolith"] .nav-link.active {
+  color: #ffffff;
+  border-left-color: #7c3aed;
+}
+
+/* Monolith-specific: page headings */
+[data-theme="monolith"] .page h2 {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+/* Monolith-specific: chat messages */
+[data-theme="monolith"] .chat-message.user .chat-message-bubble {
+  background: #0a0a0a;
+  border-radius: 2px;
+}
+
+[data-theme="monolith"] .chat-message.assistant .chat-message-bubble {
+  background: transparent;
+  border-left: 2px solid #7c3aed;
+  border-radius: 0;
+  font-weight: 300;
+  color: #d4d4d4;
+}
+
+/* Monolith-specific: data tables — minimal */
+[data-theme="monolith"] .data-table th {
+  color: #555555;
+  border-bottom-color: #111111;
+}
+[data-theme="monolith"] .data-table td {
+  border-bottom-color: #111111;
+}
+
+/* Monolith-specific: badges */
+[data-theme="monolith"] .badge {
+  border-radius: 2px;
+}
+
+/* Monolith-specific: selection */
+[data-theme="monolith"] ::selection {
+  background: rgba(124, 58, 237, 0.3);
+  color: #ffffff;
+}
+
+/* Monolith-specific: scrollbar */
+[data-theme="monolith"] ::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+}
+[data-theme="monolith"] ::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}

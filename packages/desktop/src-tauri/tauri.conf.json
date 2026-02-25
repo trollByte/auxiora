@@ -1,0 +1,24 @@
+{
+  "productName": "Auxiora",
+  "version": "1.0.0",
+  "identifier": "dev.auxiora.desktop",
+  "build": {
+    "frontendDist": "../../dashboard/ui/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm --filter @auxiora/dashboard-ui build",
+    "beforeDevCommand": "pnpm --filter @auxiora/dashboard-ui dev"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "trayIcon": {
+      "iconPath": "icons/tray-icon.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "nsis", "appimage"],
+    "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

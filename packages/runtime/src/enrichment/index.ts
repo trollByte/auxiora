@@ -1,0 +1,8 @@
+export type { EnrichmentContext, EnrichmentStage, StageResult, EnrichmentResult, ArchitectMeta } from './types.js';
+export { EnrichmentPipeline } from './pipeline.js';
+export { MemoryStage } from './stages/memory-stage.js';
+export { ModeStage } from './stages/mode-stage.js';
+export { ArchitectStage } from './stages/architect-stage.js';
+export { SelfAwarenessStage } from './stages/self-awareness-stage.js';
+export { ModelIdentityStage } from './stages/model-identity-stage.js';
+export { GroupContextStage } from './stages/group-context-stage.js';

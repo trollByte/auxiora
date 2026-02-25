@@ -1,0 +1,151 @@
+/* polar.css — Premium Light Mode */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+[data-theme="polar"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fb;
+  --bg-card: #ffffff;
+  --bg-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.1);
+  --accent-subtle: rgba(59, 130, 246, 0.05);
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --success: #059669;
+  --warning: #d97706;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Polar-specific: light body */
+[data-theme="polar"] body {
+  background: #eef0f4;
+  color: #374151;
+}
+
+/* Polar-specific: sidebar light background */
+[data-theme="polar"] .sidebar {
+  background: #f8f9fb;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Polar-specific: sidebar header text */
+[data-theme="polar"] .sidebar-header h1 {
+  color: #111827;
+}
+
+/* Polar-specific: card shadows instead of borders */
+[data-theme="polar"] .card,
+[data-theme="polar"] .status-card,
+[data-theme="polar"] .create-form {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+[data-theme="polar"] .card:hover,
+[data-theme="polar"] .status-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Polar-specific: setup card */
+[data-theme="polar"] .setup-card {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+/* Polar-specific: nav items */
+[data-theme="polar"] .nav-link {
+  color: #6b7280;
+}
+[data-theme="polar"] .nav-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+[data-theme="polar"] .nav-link.active {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+/* Polar-specific: nav group labels */
+[data-theme="polar"] .nav-group-label {
+  color: #9ca3af;
+}
+
+/* Polar-specific: page headings */
+[data-theme="polar"] .page h2 {
+  color: #111827;
+}
+
+/* Polar-specific: data tables */
+[data-theme="polar"] .data-table th {
+  color: #9ca3af;
+  border-bottom-color: #e5e7eb;
+}
+[data-theme="polar"] .data-table td {
+  border-bottom-color: #f3f4f6;
+}
+[data-theme="polar"] .data-table tr:hover {
+  background: #f9fafb;
+}
+
+/* Polar-specific: chat messages */
+[data-theme="polar"] .chat-message.user .chat-message-bubble {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+[data-theme="polar"] .chat-message.assistant .chat-message-bubble {
+  background: #f8f9fb;
+  color: #111827;
+  border-left: 3px solid #3b82f6;
+}
+
+/* Polar-specific: chat input */
+[data-theme="polar"] .chat-input {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+[data-theme="polar"] .chat-input::placeholder {
+  color: #9ca3af;
+}
+[data-theme="polar"] .chat-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Polar-specific: badges */
+[data-theme="polar"] .badge {
+  border-radius: 100px;
+}
+
+/* Polar-specific: light scrollbar */
+[data-theme="polar"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+[data-theme="polar"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Polar-specific: selection color */
+[data-theme="polar"] ::selection {
+  background: rgba(59, 130, 246, 0.2);
+  color: #111827;
+}
+
+/* Polar-specific: buttons */
+[data-theme="polar"] .btn-primary {
+  background: #3b82f6;
+  color: #ffffff;
+}
+[data-theme="polar"] .btn-primary:hover {
+  background: #2563eb;
+}

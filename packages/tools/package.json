@@ -1,0 +1,41 @@
+{
+  "name": "@auxiora/tools",
+  "version": "1.3.1",
+  "description": "Tool system for Auxiora AI assistant",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auxiora/audit": "workspace:*",
+    "@auxiora/personality": "workspace:*",
+    "@auxiora/core": "workspace:*",
+    "@auxiora/errors": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/browser": "workspace:*",
+    "@auxiora/metrics": "workspace:*",
+    "@auxiora/orchestrator": "workspace:*",
+    "@auxiora/providers": "workspace:*",
+    "@auxiora/ssrf-guard": "workspace:*",
+    "@auxiora/webhooks": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/"
+  ]
+}

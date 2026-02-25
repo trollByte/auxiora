@@ -1,0 +1,78 @@
+{
+  "name": "auxiora",
+  "version": "1.3.1",
+  "description": "Self-hosted AI assistant — install and run with a single command",
+  "keywords": [
+    "ai",
+    "assistant",
+    "self-hosted",
+    "chatbot",
+    "llm"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/auxiora/auxiora.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://auxiora.dev",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "auxiora": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "bin/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@auxiora/agent-protocol": "workspace:*",
+    "@auxiora/updater": "workspace:*",
+    "@auxiora/ambient": "workspace:*",
+    "@auxiora/audit": "workspace:*",
+    "@auxiora/autonomy": "workspace:*",
+    "@auxiora/config": "workspace:*",
+    "@auxiora/connector-github": "workspace:*",
+    "@auxiora/connector-google-workspace": "workspace:*",
+    "@auxiora/connector-homeassistant": "workspace:*",
+    "@auxiora/connector-linear": "workspace:*",
+    "@auxiora/connector-notion": "workspace:*",
+    "@auxiora/connectors": "workspace:*",
+    "@auxiora/core": "workspace:*",
+    "@auxiora/daemon": "workspace:*",
+    "@auxiora/gateway": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/marketplace": "workspace:*",
+    "@auxiora/memory": "workspace:*",
+    "@auxiora/onboarding": "workspace:*",
+    "@auxiora/personality": "workspace:*",
+    "@auxiora/plugins": "workspace:*",
+    "@auxiora/providers": "workspace:*",
+    "@auxiora/router": "workspace:*",
+    "@auxiora/runtime": "workspace:*",
+    "@auxiora/social": "workspace:*",
+    "@auxiora/vault": "workspace:*",
+    "@auxiora/workflows": "workspace:*",
+    "@inquirer/prompts": "^8.2.0",
+    "argon2": "^0.44.0",
+    "commander": "^14.0.3",
+    "jsonwebtoken": "^9.0.2",
+    "open": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

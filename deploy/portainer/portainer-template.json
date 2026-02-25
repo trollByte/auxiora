@@ -1,0 +1,44 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "Auxiora",
+      "description": "Security-first self-hosted AI assistant platform",
+      "categories": ["AI", "Self-hosted"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/auxiora/auxiora/main/docs/logo.png",
+      "repository": {
+        "url": "https://github.com/auxiora/auxiora",
+        "stackfile": "deploy/portainer/docker-compose.yml"
+      },
+      "env": [
+        {
+          "name": "POSTGRES_PASSWORD",
+          "label": "PostgreSQL Password",
+          "default": "auxiora",
+          "description": "Password for the PostgreSQL database"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "label": "Anthropic API Key",
+          "default": "",
+          "description": "API key for Claude models (optional)"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "label": "OpenAI API Key",
+          "default": "",
+          "description": "API key for OpenAI models (optional)"
+        }
+      ],
+      "ports": ["18800:18800/tcp"],
+      "volumes": [
+        {
+          "container": "/data",
+          "bind": "auxiora-data"
+        }
+      ]
+    }
+  ]
+}

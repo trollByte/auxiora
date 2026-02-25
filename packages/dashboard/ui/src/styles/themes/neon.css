@@ -1,0 +1,149 @@
+/* neon.css — Cyberpunk Vivid */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+[data-theme="neon"] {
+  --bg-primary: #09090b;
+  --bg-secondary: #09090b;
+  --bg-card: #111113;
+  --bg-hover: #18181b;
+  --text-primary: #e4e4e7;
+  --text-secondary: #71717a;
+  --accent: #06b6d4;
+  --accent-hover: #0891b2;
+  --accent-glow: rgba(6, 182, 212, 0.15);
+  --accent-subtle: rgba(6, 182, 212, 0.06);
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --success: #22c55e;
+  --warning: #f97316;
+  --border: rgba(228, 228, 231, 0.08);
+  --border-strong: rgba(228, 228, 231, 0.12);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  /* Neon extra accents */
+  --neon-cyan: #06b6d4;
+  --neon-magenta: #ec4899;
+  --neon-green: #22c55e;
+  --neon-orange: #f97316;
+}
+
+/* Neon-specific: subtle color wash background */
+[data-theme="neon"] body {
+  background: #09090b;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(236, 72, 153, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(34, 197, 94, 0.02) 0%, transparent 50%);
+}
+
+/* Neon-specific: multi-color sidebar border */
+[data-theme="neon"] .sidebar {
+  border-right: 1px solid;
+  border-image: linear-gradient(180deg, #06b6d4, #ec4899, #22c55e, #f97316, #06b6d4) 1;
+}
+
+/* Neon-specific: brand heading */
+[data-theme="neon"] .sidebar-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+/* Neon-specific: gradient heading */
+[data-theme="neon"] .page h2 {
+  background: linear-gradient(90deg, #06b6d4, #ec4899, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon-specific: colored card top borders */
+[data-theme="neon"] .status-card:nth-child(1) {
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-top: 2px solid #06b6d4;
+}
+[data-theme="neon"] .status-card:nth-child(2) {
+  border: 1px solid rgba(236, 72, 153, 0.15);
+  border-top: 2px solid #ec4899;
+}
+[data-theme="neon"] .status-card:nth-child(3) {
+  border: 1px solid rgba(34, 197, 94, 0.15);
+  border-top: 2px solid #22c55e;
+}
+[data-theme="neon"] .status-card:nth-child(4) {
+  border: 1px solid rgba(249, 115, 22, 0.15);
+  border-top: 2px solid #f97316;
+}
+
+/* Neon-specific: sidebar nav group colored accents */
+[data-theme="neon"] .nav-group:nth-child(1) .nav-group-label {
+  color: #e4e4e7;
+}
+[data-theme="neon"] .nav-group:nth-child(2) .nav-group-label {
+  color: #06b6d4;
+}
+[data-theme="neon"] .nav-group:nth-child(3) .nav-group-label {
+  color: #22c55e;
+}
+[data-theme="neon"] .nav-group:nth-child(4) .nav-group-label {
+  color: #ec4899;
+}
+
+/* Neon-specific: nav items */
+[data-theme="neon"] .nav-link {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+}
+[data-theme="neon"] .nav-link.active {
+  color: #e4e4e7;
+  border-left-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.05);
+}
+
+/* Neon-specific: chat messages */
+[data-theme="neon"] .chat-message.user .chat-message-bubble {
+  background: #141416;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+[data-theme="neon"] .chat-message.assistant .chat-message-bubble {
+  background: var(--bg-card);
+  border: 1px solid rgba(228, 228, 231, 0.06);
+  border-left: 3px solid;
+  border-image: linear-gradient(180deg, #06b6d4, #ec4899, #22c55e) 1;
+  border-image-slice: 0 0 0 1;
+}
+
+/* Neon-specific: send button gradient */
+[data-theme="neon"] .btn-primary {
+  background: linear-gradient(135deg, #06b6d4, #ec4899);
+  border: none;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), 0 0 20px rgba(236, 72, 153, 0.15);
+}
+[data-theme="neon"] .btn-primary:hover {
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.3), 0 0 30px rgba(236, 72, 153, 0.3);
+}
+
+/* Neon-specific: badges */
+[data-theme="neon"] .badge {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Neon-specific: selection */
+[data-theme="neon"] ::selection {
+  background: rgba(6, 182, 212, 0.3);
+  color: #e4e4e7;
+}
+
+/* Neon-specific: scrollbar */
+[data-theme="neon"] ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+[data-theme="neon"] ::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auxiora — Your Secure AI Assistant</title>
+  <meta name="description" content="Self-hosted AI assistant with end-to-end encryption, multi-channel support, and full data ownership.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="logo">Auxiora</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#self-host">Self-Host</a>
+        <a href="#" class="btn btn-sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <h1>Your AI Assistant,<br>Your Rules</h1>
+    <p class="hero-sub">Security-first AI assistant with end-to-end encryption, multi-channel support, and complete data ownership. Self-host or use our cloud.</p>
+    <div class="hero-actions">
+      <a href="#pricing" class="btn btn-primary">Start Free</a>
+      <a href="#self-host" class="btn btn-outline">Self-Host</a>
+    </div>
+  </header>
+
+  <section id="features" class="section">
+    <h2>Built for Privacy</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>End-to-End Encryption</h3>
+        <p>Client-side AES-256-GCM encryption. Your data is encrypted before it leaves your device. We never see your secrets.</p>
+      </div>
+      <div class="card">
+        <h3>Multi-Channel</h3>
+        <p>Connect via Discord, Telegram, Slack, Twilio, or webchat. One assistant, every platform.</p>
+      </div>
+      <div class="card">
+        <h3>Plugin Ecosystem</h3>
+        <p>Extend with plugins from the marketplace. Tools, behaviors, and custom providers — all sandboxed.</p>
+      </div>
+      <div class="card">
+        <h3>Smart Routing</h3>
+        <p>Route tasks to the best model automatically. Use Claude, GPT, Gemini, or local models via Ollama.</p>
+      </div>
+      <div class="card">
+        <h3>Living Memory</h3>
+        <p>Remembers your preferences, learns your patterns, and adapts its personality over time.</p>
+      </div>
+      <div class="card">
+        <h3>Full Audit Trail</h3>
+        <p>Tamper-proof, hash-chained audit logs. Know exactly what happened, when, and why.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="section section-alt">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <h3>Sign Up</h3>
+        <p>Create an account and choose your plan. Free tier available with no credit card required.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <h3>Configure</h3>
+        <p>Name your assistant, choose a personality, and connect your preferred AI provider.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <h3>Connect</h3>
+        <p>Link your channels — Discord, Telegram, Slack, or the built-in webchat.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">4</span>
+        <h3>Use</h3>
+        <p>Chat with your assistant anywhere. It remembers context, runs tasks, and grows with you.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="section">
+    <h2>Simple Pricing</h2>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Free</h3>
+        <div class="price">$0<span>/mo</span></div>
+        <ul>
+          <li>100 messages/month</li>
+          <li>1 channel</li>
+          <li>50 MB storage</li>
+          <li>Community support</li>
+        </ul>
+        <a href="#" class="btn btn-outline">Get Started</a>
+      </div>
+      <div class="price-card featured">
+        <h3>Pro</h3>
+        <div class="price">$19<span>/mo</span></div>
+        <ul>
+          <li>5,000 messages/month</li>
+          <li>5 channels</li>
+          <li>1 GB storage</li>
+          <li>Custom behaviors</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="#" class="btn btn-primary">Start Free Trial</a>
+      </div>
+      <div class="price-card">
+        <h3>Team</h3>
+        <div class="price">$49<span>/mo</span></div>
+        <ul>
+          <li>25,000 messages/month</li>
+          <li>20 channels</li>
+          <li>5 GB storage</li>
+          <li>Orchestration</li>
+          <li>Audit logs</li>
+        </ul>
+        <a href="#" class="btn btn-outline">Contact Sales</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="self-host" class="section section-alt">
+    <h2>Prefer Self-Hosting?</h2>
+    <p class="section-desc">Auxiora is fully open source. Run it on your own infrastructure with Docker, Kubernetes, or bare metal. Zero vendor lock-in.</p>
+    <div class="code-block">
+      <code>docker compose -f deploy/docker/docker-compose.cloud.yaml up -d</code>
+    </div>
+    <p class="section-desc">All features. No cloud dependency. Export your data anytime with <code>auxiora cloud eject</code>.</p>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <p>Auxiora &mdash; Secure AI Assistant Platform</p>
+      <div class="footer-links">
+        <a href="#">Docs</a>
+        <a href="#">GitHub</a>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

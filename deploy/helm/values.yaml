@@ -1,0 +1,68 @@
+replicaCount: 2
+
+image:
+  repository: auxiora/auxiora
+  pullPolicy: IfNotPresent
+  tag: latest
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: cloud.auxiora.dev
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: auxiora-tls
+      hosts:
+        - cloud.auxiora.dev
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+cloud:
+  enabled: true
+  domain: cloud.auxiora.dev
+  baseDataDir: /data/tenants
+  jwtSecret: ""
+  stripeSecretKey: ""
+  stripeWebhookSecret: ""
+
+redis:
+  enabled: true
+  url: redis://redis:6379
+
+postgres:
+  enabled: true
+  url: postgresql://auxiora:changeme@postgres:5432/auxiora
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""

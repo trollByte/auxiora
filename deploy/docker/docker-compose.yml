@@ -1,0 +1,102 @@
+services:
+  auxiora:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "${AUXIORA_PORT:-18800}:18800"
+    environment:
+      NODE_ENV: production
+      AUXIORA_GATEWAY_HOST: "0.0.0.0"
+      AUXIORA_GATEWAY_PORT: "18800"
+      AUXIORA_VAULT_PASSWORD: "${AUXIORA_VAULT_PASSWORD:-}"
+      AUXIORA_DASHBOARD_ENABLED: "${AUXIORA_DASHBOARD_ENABLED:-true}"
+      AUXIORA_METRICS_ENABLED: "${AUXIORA_METRICS_ENABLED:-true}"
+      REDIS_URL: "${REDIS_URL:-}"
+      DATABASE_URL: "${DATABASE_URL:-}"
+    # Match host UID/GID so bind-mounted files are accessible
+    user: "${AUXIORA_UID:-1000}:${AUXIORA_GID:-1000}"
+    volumes:
+      - auxiora-data:/data
+      # Bind-mount host vault data so the container sees your existing setup.
+      # Config: vault.enc, config.json
+      - ${AUXIORA_HOST_CONFIG:-~/.config/auxiora}:/data/config/auxiora:rw
+      # Data: sessions, behaviors, plugins
+      - ${AUXIORA_HOST_DATA:-~/.local/share/auxiora}:/data/data/auxiora:rw
+      # Workspace: SOUL.md, IDENTITY.md, memory
+      - ${AUXIORA_HOST_WORKSPACE:-~/.auxiora/workspace}:/data/.auxiora/workspace:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:18800/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional services enabled via Docker Compose profiles
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres", "full"]
+    environment:
+      POSTGRES_DB: auxiora
+      POSTGRES_USER: auxiora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auxiora}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auxiora"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis", "full"]
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    profiles: ["monitoring", "full"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    profiles: ["monitoring", "full"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-auxiora}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  auxiora-data:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:

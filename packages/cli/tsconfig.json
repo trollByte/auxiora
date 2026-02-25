@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../autonomy" },
+    { "path": "../config" },
+    { "path": "../vault" },
+    { "path": "../audit" },
+    { "path": "../gateway" },
+    { "path": "../logger" },
+    { "path": "../onboarding" },
+    { "path": "../personality" },
+    { "path": "../memory" },
+    { "path": "../plugins" },
+    { "path": "../marketplace" },
+    { "path": "../connectors" },
+    { "path": "../connector-google-workspace" },
+    { "path": "../connector-github" },
+    { "path": "../connector-homeassistant" },
+    { "path": "../connector-notion" },
+    { "path": "../connector-linear" },
+    { "path": "../social" },
+    { "path": "../workflows" },
+    { "path": "../agent-protocol" },
+    { "path": "../ambient" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Default capability for Auxiora desktop app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "global-shortcut:default",
+    "notification:default",
+    "autostart:default"
+  ]
+}

@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+# Stop the service if it is running
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-active --quiet auxiora; then
+        systemctl stop auxiora
+        echo "Stopped auxiora service."
+    fi
+    if systemctl is-enabled --quiet auxiora 2>/dev/null; then
+        systemctl disable auxiora
+        echo "Disabled auxiora service."
+    fi
+fi
+
+# Remove the symlink in /usr/bin (dpkg handles files it installed, but
+# the symlink is created by the package so this is a safety fallback)
+if [ -L /usr/bin/auxiora ]; then
+    rm -f /usr/bin/auxiora
+fi
+
+exit 0

@@ -1,0 +1,30 @@
+# Auxiora configuration
+# See https://auxiora.dev/docs/configuration for full reference.
+
+# Server settings
+server:
+  # Address to bind the HTTP gateway to.
+  host: "127.0.0.1"
+  # Port for the HTTP gateway.
+  port: 3000
+
+# Vault settings — encrypted credential storage
+vault:
+  # Directory where the encrypted vault database is stored.
+  path: "/var/lib/auxiora/vault"
+
+# Provider configuration — add your LLM provider credentials here.
+# providers:
+#   - name: openai
+#     api_key: "sk-..."
+#   - name: anthropic
+#     api_key: "sk-ant-..."
+
+# Logging
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+# Plugin ecosystem
+# plugins:
+#   directory: "/var/lib/auxiora/plugins"

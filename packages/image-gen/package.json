@@ -1,0 +1,15 @@
+{
+  "name": "@auxiora/image-gen",
+  "version": "1.0.0",
+  "description": "Image generation with multi-provider support",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": { "build": "tsc", "clean": "rm -rf dist", "typecheck": "tsc --noEmit" },
+  "dependencies": { "@auxiora/logger": "workspace:*" },
+  "devDependencies": {},
+  "engines": { "node": ">=22.0.0" },
+  "publishConfig": { "access": "public" },
+  "files": ["dist/"]
+}

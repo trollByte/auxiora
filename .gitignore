@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Screenshots
+*.png
+
+# Temporary files
+*.tmp
+*.temp
+auxiora.txt
+auxiora_origin.txt
+test-token.js
+.npmrc
+.worktrees/
+.claude/worktrees/
+docs/reference/

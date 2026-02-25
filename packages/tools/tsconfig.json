@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../audit" },
+    { "path": "../core" },
+    { "path": "../errors" },
+    { "path": "../logger" },
+    { "path": "../metrics" },
+    { "path": "../browser" },
+    { "path": "../webhooks" },
+    { "path": "../orchestrator" },
+    { "path": "../personality" }
+  ]
+}

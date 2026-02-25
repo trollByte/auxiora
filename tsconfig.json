@@ -1,0 +1,32 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/errors" },
+    { "path": "packages/logger" },
+    { "path": "packages/metrics" },
+    { "path": "packages/tools" },
+    { "path": "packages/config" },
+    { "path": "packages/vault" },
+    { "path": "packages/audit" },
+    { "path": "packages/daemon" },
+    { "path": "packages/sessions" },
+    { "path": "packages/providers" },
+    { "path": "packages/gateway" },
+    { "path": "packages/channels" },
+    { "path": "packages/runtime" },
+    { "path": "packages/cli" },
+    { "path": "packages/orchestrator" },
+    { "path": "packages/autonomy" },
+    { "path": "packages/intent" },
+    { "path": "packages/connectors" },
+    { "path": "packages/connector-google-workspace" },
+    { "path": "packages/connector-github" },
+    { "path": "packages/connector-homeassistant" },
+    { "path": "packages/connector-notion" },
+    { "path": "packages/connector-linear" },
+    { "path": "packages/ssrf-guard" },
+    { "path": "packages/media" },
+    { "path": "packages/mcp-server" }
+  ]
+}

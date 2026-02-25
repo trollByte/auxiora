@@ -1,0 +1,20 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  base: '/dashboard/',
+  build: {
+    outDir: '../dist-ui',
+    emptyOutDir: true,
+  },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:18800',
+      '/ws': {
+        target: 'ws://localhost:18800',
+        ws: true,
+      },
+    },
+  },
+});

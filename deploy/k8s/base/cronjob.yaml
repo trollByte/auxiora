@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: usage-aggregation
+  namespace: auxiora
+  labels:
+    app.kubernetes.io/name: auxiora
+    app.kubernetes.io/component: usage-aggregation
+spec:
+  schedule: "0 * * * *" # Every hour
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: usage-aggregation
+              image: auxiora/auxiora:latest
+              command: [node, dist/index.js, cloud, aggregate-usage]
+              envFrom:
+                - configMapRef:
+                    name: auxiora-config
+                - secretRef:
+                    name: auxiora-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup
+  namespace: auxiora
+  labels:
+    app.kubernetes.io/name: auxiora
+    app.kubernetes.io/component: cleanup
+spec:
+  schedule: "0 3 * * *" # Daily at 3 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: cleanup
+              image: auxiora/auxiora:latest
+              command: [node, dist/index.js, cloud, cleanup]
+              envFrom:
+                - configMapRef:
+                    name: auxiora-config
+                - secretRef:
+                    name: auxiora-secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi

@@ -1,0 +1,12 @@
+Package: auxiora
+Version: 2.0.0
+Architecture: amd64
+Depends: nodejs (>= 22.0.0)
+Maintainer: Auxiora Team <team@auxiora.dev>
+Section: utils
+Priority: optional
+Homepage: https://auxiora.dev
+Description: Self-hosted AI assistant with encrypted vault, multi-provider support, and plugin ecosystem
+ Auxiora is a security-first personal AI assistant that runs entirely on
+ your own infrastructure. It features an encrypted credential vault,
+ multi-provider LLM support, a plugin ecosystem, and workflow automation.

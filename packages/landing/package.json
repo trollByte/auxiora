@@ -1,0 +1,13 @@
+{
+  "name": "@auxiora/landing",
+  "version": "1.0.0",
+  "description": "Marketing landing page for Auxiora Cloud",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Static site — no build step'",
+    "typecheck": "echo 'No TypeScript in landing page'"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
