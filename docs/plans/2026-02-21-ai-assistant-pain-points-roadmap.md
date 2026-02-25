@@ -17,7 +17,7 @@
 
 **Work items:**
 - [x] **Local model support** — Add Ollama/llama.cpp provider adapter to `@auxiora/providers` for fully air-gapped operation
-- [ ] **Provider health dashboard** — Surface which provider is active, latency, cost-per-request in the dashboard
+- [x] **Provider health dashboard** — Surface which provider is active, latency, cost-per-request in the dashboard
 
 ---
 
@@ -69,11 +69,11 @@
 - The Architect's KnowledgeBoundary collector — Models what the AI doesn't know
 
 **Work items:**
-- [ ] **Confidence indicators** — Surface per-response confidence scores in the chat UI (low/medium/high with explanation)
+- [x] **Confidence indicators** — Surface per-response confidence scores in the chat UI (low/medium/high with explanation)
 - [x] **Source attribution** — Tag response segments with their source: user data, web search, knowledge graph, model generation
-- [ ] **Uncertainty markers** — Distinguish "I know this from your data" vs "I'm inferring this" vs "I'm generating this" in response formatting
-- [ ] **Cost transparency** — Show token count, model used, and estimated cost per interaction in the dashboard
-- [ ] **"Why did you say that?" button** — Let users drill into the provenance of any response: which memories, which context signals, which tools contributed
+- [x] **Uncertainty markers** — Distinguish "I know this from your data" vs "I'm inferring this" vs "I'm generating this" in response formatting
+- [x] **Cost transparency** — Show token count, model used, and estimated cost per interaction in the dashboard
+- [x] **"Why did you say that?" button** — Let users drill into the provenance of any response: which memories, which context signals, which tools contributed
 
 ---
 
@@ -89,8 +89,8 @@
 - `@auxiora/behaviors` — Now wired to job queue for durable execution
 
 **Work items:**
-- [ ] **ReAct loop queue wiring** — Enqueue ReAct loops as job-queue jobs with per-step checkpoints (requires redesigning the status/pause/resume API)
-- [ ] **Orchestration queue wiring** — Same for orchestrator workflows (checkpoint after each agent completion)
+- [x] **ReAct loop queue wiring** — Enqueue ReAct loops as job-queue jobs with per-step checkpoints (requires redesigning the status/pause/resume API)
+- [x] **Orchestration queue wiring** — Same for orchestrator workflows (checkpoint after each agent completion)
 - [x] **Dead letter monitoring** — Dashboard panel showing failed/dead jobs with retry controls
 - [x] **Job queue metrics** — Prometheus counters for enqueued/completed/failed/dead jobs, histogram for job duration
 
@@ -108,10 +108,10 @@
 - `@auxiora/gateway` — API gateway
 
 **Work items:**
-- [ ] **MCP server implementation** — Expose Auxiora's tools (vault, sessions, behaviors, knowledge graph) as MCP resources/tools so external agents can use them
-- [ ] **MCP client support** — Connect to external MCP servers to gain access to third-party tool ecosystems (design doc exists: `2026-02-19-mcp-client-support-design.md`)
+- [x] **MCP server implementation** — Expose Auxiora's tools (vault, sessions, behaviors, knowledge graph) as MCP resources/tools so external agents can use them
+- [x] **MCP client support** — Connect to external MCP servers to gain access to third-party tool ecosystems (design doc exists: `2026-02-19-mcp-client-support-design.md`)
 - [x] **Plugin manifest discovery** — Replace code-based plugin registration with declarative JSON manifests (pattern from OpenClaw)
-- [ ] **Webhook listeners** — Inbound webhook support for external service integration (design doc exists: `2026-02-05-webhook-listeners-design.md`)
+- [x] **Webhook listeners** — Inbound webhook support for external service integration (design doc exists: `2026-02-05-webhook-listeners-design.md`)
 - [x] **Channel message deduplication** — Cross-channel dedup to prevent double-processing (design doc exists: `2026-02-17-inbound-dedup-design.md`)
 
 ---
@@ -149,7 +149,7 @@
 - Per-message signal collectors (not permanent storage)
 
 **Work items:**
-- [ ] **"What do you know about me?" page** — Dashboard view exposing the full UserModel: domain profiles, communication style preferences, active decisions, satisfaction metrics
+- [x] **"What do you know about me?" page** — Dashboard view exposing the full UserModel: domain profiles, communication style preferences, active decisions, satisfaction metrics
 - [x] **Memory editing** — Let users view, edit, and delete individual preferences, decisions, and feedback entries
 - [x] **Selective forgetting** — "Forget everything about [topic]" command that removes related entries from all stores
 - [x] **Personalization intensity slider** — User control over how aggressively The Architect adapts (from "generic" to "deeply personalized")
