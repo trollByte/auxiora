@@ -1,12 +1,15 @@
 /**
  * BashTool - Execute shell commands with sandboxing
  *
- * Security features:
- * - Dangerous command detection
+ * NOTE: This tool intentionally uses child_process.exec (not execFile)
+ * because it is a shell executor by design — users provide shell commands
+ * that require shell interpretation (pipes, redirects, globs, etc.).
+ * Security relies on:
+ * - Dangerous command pattern detection (rm -rf, sudo, etc.)
  * - Timeout enforcement
  * - Output truncation
  * - Working directory restrictions
- * - No shell injection (uses execFile)
+ * - Trust level gating (only available at appropriate trust levels)
  */
 
 import { exec } from 'node:child_process';

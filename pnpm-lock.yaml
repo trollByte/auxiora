@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  axios@>=1.0.0 <1.13.5: '>=1.13.5'
+  undici@<6.23.0: '>=6.23.0'
+  qs@>=6.7.0 <6.14.2: '>=6.14.2'
+
 importers:
 
   .:
@@ -2540,8 +2545,8 @@ packages:
   avvio@9.2.0:
     resolution: {integrity: sha512-2t/sy01ArdHHE0vRH5Hsay+RtCZt3dLPji7W7/MMOCEgze5b7SNDC4j5H6FnVgPkI1MTNFGzHdHrVXDDl7QSSQ==}
 
-  axios@1.13.4:
-    resolution: {integrity: sha512-1wVkUaAO6WyaYtCkcYCOx12ZgpGf9Zif+qXa4n+oYzK558YryKqiL6UWwd5DqiH3VRW0GYhTZQ/vlgJrCoNQlg==}
+  axios@1.13.5:
+    resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -3530,8 +3535,8 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  qs@6.14.1:
-    resolution: {integrity: sha512-4EK3+xJl8Ts67nLYNwqw/dsFVnCf+qR7RgXSK9jEEm9unao3njwMDdmsdvoKBKHzxd7tCYz5e5M+SnMjdtXGQQ==}
+  qs@6.15.0:
+    resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
     engines: {node: '>=0.6'}
 
   quick-format-unescaped@4.0.4:
@@ -3879,10 +3884,6 @@ packages:
 
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
-
-  undici@6.21.3:
-    resolution: {integrity: sha512-gBLkYIlEnSp8pFbT64yFgGE6UIB9tAkhukC23PmMDCe5Nd+cRqKxSjw5y54MK2AZMgZfJWMaNE4nYUHgi1XEOw==}
-    engines: {node: '>=18.17'}
 
   undici@7.22.0:
     resolution: {integrity: sha512-RqslV2Us5BrllB+JeiZnK4peryVTndy9Dnqq62S3yYRRTj0tFQCwEniUy2167skdGOy3vqRzEvl1Dm4sV2ReDg==}
@@ -4344,7 +4345,7 @@ snapshots:
       discord-api-types: 0.38.38
       magic-bytes.js: 1.13.0
       tslib: 2.8.1
-      undici: 6.21.3
+      undici: 7.22.0
 
   '@discordjs/util@1.2.0':
     dependencies:
@@ -4822,7 +4823,7 @@ snapshots:
       '@slack/types': 2.19.0
       '@slack/web-api': 7.13.0
       '@types/express': 5.0.6
-      axios: 1.13.4
+      axios: 1.13.5
       express: 5.2.1
       path-to-regexp: 8.3.0
       raw-body: 3.0.2
@@ -4868,7 +4869,7 @@ snapshots:
       '@slack/types': 2.19.0
       '@types/node': 25.1.0
       '@types/retry': 0.12.0
-      axios: 1.13.4
+      axios: 1.13.5
       eventemitter3: 5.0.4
       form-data: 4.0.5
       is-electron: 2.2.2
@@ -5284,7 +5285,7 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
 
-  axios@1.13.4:
+  axios@1.13.5:
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5
@@ -5325,7 +5326,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.2
       on-finished: 2.4.1
-      qs: 6.14.1
+      qs: 6.15.0
       raw-body: 3.0.2
       type-is: 2.0.1
     transitivePeerDependencies:
@@ -5503,7 +5504,7 @@ snapshots:
       lodash.snakecase: 4.1.1
       magic-bytes.js: 1.13.0
       tslib: 2.8.1
-      undici: 6.21.3
+      undici: 7.22.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -5664,7 +5665,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.7
-      qs: 6.14.1
+      qs: 6.15.0
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -5845,7 +5846,7 @@ snapshots:
       extend: 3.0.2
       gaxios: 6.7.1
       google-auth-library: 9.15.1
-      qs: 6.14.1
+      qs: 6.15.0
       url-template: 2.0.8
       uuid: 9.0.1
     transitivePeerDependencies:
@@ -6365,7 +6366,7 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  qs@6.14.1:
+  qs@6.15.0:
     dependencies:
       side-channel: 1.1.0
 
@@ -6627,7 +6628,7 @@ snapshots:
       formidable: 3.5.4
       methods: 1.1.2
       mime: 2.6.0
-      qs: 6.14.1
+      qs: 6.15.0
     transitivePeerDependencies:
       - supports-color
 
@@ -6721,11 +6722,11 @@ snapshots:
 
   twilio@5.12.0:
     dependencies:
-      axios: 1.13.4
+      axios: 1.13.5
       dayjs: 1.11.19
       https-proxy-agent: 5.0.1
       jsonwebtoken: 9.0.3
-      qs: 6.14.1
+      qs: 6.15.0
       scmp: 2.1.0
       xmlbuilder: 13.0.2
     transitivePeerDependencies:
@@ -6743,8 +6744,6 @@ snapshots:
   undici-types@5.26.5: {}
 
   undici-types@7.16.0: {}
-
-  undici@6.21.3: {}
 
   undici@7.22.0: {}
 

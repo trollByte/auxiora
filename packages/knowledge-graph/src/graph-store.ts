@@ -292,7 +292,17 @@ export class GraphStore {
   }
 
   static fromJSON(json: string): GraphStore {
-    const data = JSON.parse(json) as { nodes: GraphNode[]; edges: GraphEdge[] };
+    let data: { nodes: GraphNode[]; edges: GraphEdge[] };
+    try {
+      data = JSON.parse(json) as { nodes: GraphNode[]; edges: GraphEdge[] };
+    } catch {
+      throw new Error('Invalid JSON input for GraphStore');
+    }
+
+    if (!Array.isArray(data?.nodes) || !Array.isArray(data?.edges)) {
+      throw new Error('Invalid GraphStore data: expected { nodes: [], edges: [] }');
+    }
+
     const store = new GraphStore();
 
     for (const node of data.nodes) {

@@ -1,8 +1,18 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { isWindows, isMacOS, isLinux } from '@auxiora/core';
+
+// Strict pattern: only alphanumeric, hyphens, underscores, dots
+const SAFE_SERVICE_NAME = /^[a-zA-Z0-9._-]+$/;
+
+function validateServiceName(name: string): string {
+  if (!SAFE_SERVICE_NAME.test(name)) {
+    throw new Error(`Invalid service name: "${name}" — only alphanumeric, hyphens, underscores, and dots allowed`);
+  }
+  return name;
+}
 
 export interface DaemonConfig {
   serviceName: string;
@@ -21,7 +31,9 @@ export interface DaemonStatus {
 }
 
 export abstract class DaemonManager {
-  constructor(protected config: DaemonConfig) {}
+  constructor(protected config: DaemonConfig) {
+    validateServiceName(config.serviceName);
+  }
 
   abstract install(): Promise<void>;
   abstract uninstall(): Promise<void>;
@@ -122,12 +134,11 @@ class LaunchdManager extends DaemonManager {
   }
 
   async start(): Promise<void> {
-    // NOTE: Using execSync with static strings only - no user input, safe from injection
-    execSync(`launchctl load ${this.plistPath}`, { stdio: 'inherit' });
+    execFileSync('launchctl', ['load', this.plistPath], { stdio: 'inherit' });
   }
 
   async stop(): Promise<void> {
-    execSync(`launchctl unload ${this.plistPath}`, { stdio: 'inherit' });
+    execFileSync('launchctl', ['unload', this.plistPath], { stdio: 'inherit' });
   }
 
   async restart(): Promise<void> {
@@ -144,8 +155,8 @@ class LaunchdManager extends DaemonManager {
 
     let running = false;
     try {
-      const output = execSync(`launchctl list | grep com.${this.config.serviceName}`, { encoding: 'utf-8' });
-      running = output.trim().length > 0;
+      const output = execFileSync('launchctl', ['list'], { encoding: 'utf-8' });
+      running = output.includes(`com.${this.config.serviceName}`);
     } catch {
       running = false;
     }
@@ -203,7 +214,7 @@ WantedBy=default.target`;
     await fs.mkdir(serviceDir, { recursive: true });
     await fs.writeFile(this.servicePath, service, 'utf-8');
 
-    execSync('systemctl --user daemon-reload', { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
     console.log(`Installed systemd service at ${this.servicePath}`);
   }
 
@@ -217,7 +228,7 @@ WantedBy=default.target`;
 
     try {
       await fs.unlink(this.servicePath);
-      execSync('systemctl --user daemon-reload', { stdio: 'inherit' });
+      execFileSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
       console.log('Uninstalled systemd service');
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -227,15 +238,15 @@ WantedBy=default.target`;
   }
 
   async start(): Promise<void> {
-    execSync(`systemctl --user start ${this.config.serviceName}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'start', this.config.serviceName], { stdio: 'inherit' });
   }
 
   async stop(): Promise<void> {
-    execSync(`systemctl --user stop ${this.config.serviceName}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'stop', this.config.serviceName], { stdio: 'inherit' });
   }
 
   async restart(): Promise<void> {
-    execSync(`systemctl --user restart ${this.config.serviceName}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'restart', this.config.serviceName], { stdio: 'inherit' });
   }
 
   async status(): Promise<DaemonStatus> {
@@ -250,14 +261,14 @@ WantedBy=default.target`;
     let pid: number | undefined;
 
     try {
-      const output = execSync(`systemctl --user is-active ${this.config.serviceName}`, { encoding: 'utf-8' });
+      const output = execFileSync('systemctl', ['--user', 'is-active', this.config.serviceName], { encoding: 'utf-8' });
       running = output.trim() === 'active';
     } catch {
       running = false;
     }
 
     try {
-      const output = execSync(`systemctl --user is-enabled ${this.config.serviceName}`, { encoding: 'utf-8' });
+      const output = execFileSync('systemctl', ['--user', 'is-enabled', this.config.serviceName], { encoding: 'utf-8' });
       enabled = output.trim() === 'enabled';
     } catch {
       enabled = false;
@@ -265,7 +276,7 @@ WantedBy=default.target`;
 
     if (running) {
       try {
-        const output = execSync(`systemctl --user show ${this.config.serviceName} --property=MainPID`, { encoding: 'utf-8' });
+        const output = execFileSync('systemctl', ['--user', 'show', this.config.serviceName, '--property=MainPID'], { encoding: 'utf-8' });
         const match = output.match(/MainPID=(\d+)/);
         if (match) {
           pid = parseInt(match[1], 10);
@@ -279,11 +290,11 @@ WantedBy=default.target`;
   }
 
   async enable(): Promise<void> {
-    execSync(`systemctl --user enable ${this.config.serviceName}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'enable', this.config.serviceName], { stdio: 'inherit' });
   }
 
   async disable(): Promise<void> {
-    execSync(`systemctl --user disable ${this.config.serviceName}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['--user', 'disable', this.config.serviceName], { stdio: 'inherit' });
   }
 }
 
@@ -351,7 +362,7 @@ class WindowsTaskSchedulerManager extends DaemonManager {
 
     await fs.writeFile(tempFile, xml, 'utf-16le');
 
-    execSync(`schtasks /Create /TN "${this.taskName}" /XML "${tempFile}" /F`, { stdio: 'inherit' });
+    execFileSync('schtasks', ['/Create', '/TN', this.taskName, '/XML', tempFile, '/F'], { stdio: 'inherit' });
     await fs.unlink(tempFile);
 
     console.log(`Installed Windows scheduled task: ${this.taskName}`);
@@ -365,7 +376,7 @@ class WindowsTaskSchedulerManager extends DaemonManager {
     }
 
     try {
-      execSync(`schtasks /Delete /TN "${this.taskName}" /F`, { stdio: 'inherit' });
+      execFileSync('schtasks', ['/Delete', '/TN', this.taskName, '/F'], { stdio: 'inherit' });
       console.log('Uninstalled Windows scheduled task');
     } catch {
       // Ignore if doesn't exist
@@ -373,11 +384,11 @@ class WindowsTaskSchedulerManager extends DaemonManager {
   }
 
   async start(): Promise<void> {
-    execSync(`schtasks /Run /TN "${this.taskName}"`, { stdio: 'inherit' });
+    execFileSync('schtasks', ['/Run', '/TN', this.taskName], { stdio: 'inherit' });
   }
 
   async stop(): Promise<void> {
-    execSync(`schtasks /End /TN "${this.taskName}"`, { stdio: 'inherit' });
+    execFileSync('schtasks', ['/End', '/TN', this.taskName], { stdio: 'inherit' });
   }
 
   async restart(): Promise<void> {
@@ -391,7 +402,7 @@ class WindowsTaskSchedulerManager extends DaemonManager {
     let enabled = false;
 
     try {
-      const output = execSync(`schtasks /Query /TN "${this.taskName}" /FO CSV /NH`, { encoding: 'utf-8' });
+      const output = execFileSync('schtasks', ['/Query', '/TN', this.taskName, '/FO', 'CSV', '/NH'], { encoding: 'utf-8' });
       installed = true;
 
       const lines = output.trim().split('\n');
@@ -409,10 +420,10 @@ class WindowsTaskSchedulerManager extends DaemonManager {
   }
 
   async enable(): Promise<void> {
-    execSync(`schtasks /Change /TN "${this.taskName}" /ENABLE`, { stdio: 'inherit' });
+    execFileSync('schtasks', ['/Change', '/TN', this.taskName, '/ENABLE'], { stdio: 'inherit' });
   }
 
   async disable(): Promise<void> {
-    execSync(`schtasks /Change /TN "${this.taskName}" /DISABLE`, { stdio: 'inherit' });
+    execFileSync('schtasks', ['/Change', '/TN', this.taskName, '/DISABLE'], { stdio: 'inherit' });
   }
 }
