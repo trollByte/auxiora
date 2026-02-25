@@ -157,14 +157,14 @@ Multi-provider LLM adapter supporting 10+ providers:
 
 | Provider | Models |
 |----------|--------|
-| Anthropic | Claude Opus, Sonnet, Haiku |
-| OpenAI | GPT-4o, GPT-4, etc. |
-| Google | Gemini Pro, Flash |
+| Anthropic | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5 |
+| OpenAI | GPT-5.3, 5.2, 5, 4.1 |
+| Google | Gemini 3.1, 2.5 (Pro, Flash) |
 | Groq | LLaMA, Mixtral (fast inference) |
 | Ollama | Any local model |
-| DeepSeek | DeepSeek Chat, Coder |
+| DeepSeek | DeepSeek Chat, Reasoner |
 | Cohere | Command R+ |
-| X AI | Grok |
+| xAI | Grok 3, 2 |
 | Replicate | Open-source models |
 | OpenAI-compatible | vLLM, LocalAI, etc. |
 

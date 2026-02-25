@@ -6,14 +6,14 @@
 
 | Provider | Models | Streaming | Tool Use | Thinking |
 |----------|--------|-----------|----------|----------|
-| Anthropic | Claude 4.x, 3.5 | Yes | Yes | Yes |
-| OpenAI | GPT-4o, o1, o3 | Yes | Yes | Yes |
-| Google | Gemini 2.x | Yes | Yes | Yes |
+| Anthropic | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5 | Yes | Yes | Yes |
+| OpenAI | GPT-5.3, 5.2, 5, 4.1 | Yes | Yes | Yes |
+| Google | Gemini 3.1, 2.5 (Pro, Flash) | Yes | Yes | Yes |
 | Groq | Llama, Mixtral | Yes | Yes | No |
 | Ollama | Any local model | Yes | Yes | No |
 | DeepSeek | DeepSeek V3/R1 | Yes | Yes | Yes |
 | Cohere | Command R+ | Yes | Yes | No |
-| xAI | Grok | Yes | Yes | No |
+| xAI | Grok 3, 2 | Yes | Yes | No |
 | Replicate | Any hosted model | Yes | Varies | No |
 | OpenAI-compatible | vLLM, LiteLLM, etc. | Yes | Varies | No |
 
@@ -55,7 +55,7 @@ Then configure providers in `~/.auxiora/config.json`:
       "maxTokens": 4096
     },
     "openai": {
-      "model": "gpt-4o",
+      "model": "gpt-5.2",
       "maxTokens": 4096
     }
   }
@@ -137,13 +137,13 @@ The routing pipeline:
       {
         "task": "creative",
         "provider": "openai",
-        "model": "gpt-4o",
+        "model": "gpt-5.2",
         "priority": 1
       },
       {
         "task": "simple",
         "provider": "groq",
-        "model": "llama-3.1-70b",
+        "model": "llama-3.3-70b-versatile",
         "priority": 1
       }
     ]
