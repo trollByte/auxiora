@@ -27,3 +27,5 @@ export { SelectiveForgetting } from './selective-forgetting.js';
 export type { ForgetResult, ForgetOptions } from './selective-forgetting.js';
 export { PersonalizationExporter } from './personalization-export.js';
 export type { PersonalizationExport, ExportSummary, ExportOptions } from './personalization-export.js';
+export { MemoryEditor } from './memory-editor.js';
+export type { MemoryView, EditOperation, EditResult, MemoryStoreLike } from './memory-editor.js';
