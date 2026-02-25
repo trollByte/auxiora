@@ -54,7 +54,7 @@
 - [x] **sqlite-vec migration** — Replace in-memory vector store with sqlite-vec for persistent ANN search (referenced in OpenClaw patterns)
 - [x] **Memory provenance tracking** — Tag each stored memory with source (user-stated, inferred, tool-output) and confidence score
 - [x] **Memory poisoning defense** — Anomaly detection on injected memories: flag sudden bulk insertions, content that contradicts established user model, or injections from untrusted channels
-- [ ] **Cold-start acceleration** — Guided onboarding flow that asks 5-10 preference questions to bootstrap the Architect's user model
+- [x] **Cold-start acceleration** — Guided onboarding flow that asks 5-10 preference questions to bootstrap the Architect's user model
 
 ---
 
@@ -91,7 +91,7 @@
 **Work items:**
 - [ ] **ReAct loop queue wiring** — Enqueue ReAct loops as job-queue jobs with per-step checkpoints (requires redesigning the status/pause/resume API)
 - [ ] **Orchestration queue wiring** — Same for orchestrator workflows (checkpoint after each agent completion)
-- [ ] **Dead letter monitoring** — Dashboard panel showing failed/dead jobs with retry controls
+- [x] **Dead letter monitoring** — Dashboard panel showing failed/dead jobs with retry controls
 - [x] **Job queue metrics** — Prometheus counters for enqueued/completed/failed/dead jobs, histogram for job duration
 
 ---
@@ -151,9 +151,9 @@
 **Work items:**
 - [ ] **"What do you know about me?" page** — Dashboard view exposing the full UserModel: domain profiles, communication style preferences, active decisions, satisfaction metrics
 - [ ] **Memory editing** — Let users view, edit, and delete individual preferences, decisions, and feedback entries
-- [ ] **Selective forgetting** — "Forget everything about [topic]" command that removes related entries from all stores
+- [x] **Selective forgetting** — "Forget everything about [topic]" command that removes related entries from all stores
 - [x] **Personalization intensity slider** — User control over how aggressively The Architect adapts (from "generic" to "deeply personalized")
-- [ ] **Data export** — Full export of all personalization data in machine-readable format (JSON) for portability
+- [x] **Data export** — Full export of all personalization data in machine-readable format (JSON) for portability
 
 ---
 
