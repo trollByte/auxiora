@@ -6774,6 +6774,9 @@ export type { ConfidenceLevel, KnowledgeSource, ConfidenceSignal, ConfidenceAsse
 export { ResponseProvenanceTracker } from './response-provenance.js';
 export type { ProvenanceEntry, ProvenanceSummary, ContextSignalRecord, ToolCallRecord } from './response-provenance.js';
 
+export { UserModelExporter } from './user-model-export.js';
+export type { UserModelView, DomainProfile, PreferenceItem, DecisionItem } from './user-model-export.js';
+
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();
   await auxiora.initialize(options);
