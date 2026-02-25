@@ -10,8 +10,12 @@
  */
 
 import type { Tool, ToolParameter, ExecutionContext, ToolResult } from './index.js';
-import { ToolPermission } from './index.js';
 import { getLogger } from '@auxiora/logger';
+
+// Use string constants matching ToolPermission enum values to avoid circular
+// dependency with index.ts (which imports and registers these tools at module level).
+const AUTO_APPROVE = 'auto_approve' as any;
+const USER_APPROVAL = 'user_approval' as any;
 import { validateUrl } from '@auxiora/ssrf-guard';
 
 const logger = getLogger('tools:web');
@@ -153,16 +157,16 @@ export const WebBrowserTool: Tool = {
     return null;
   },
 
-  getPermission(params: any, context: ExecutionContext): ToolPermission {
+  getPermission(params: any, context: ExecutionContext) {
     const method = (params.method || 'GET').toUpperCase();
 
     // POST requests need approval
     if (method === 'POST') {
-      return ToolPermission.USER_APPROVAL;
+      return USER_APPROVAL;
     }
 
     // GET requests are auto-approved
-    return ToolPermission.AUTO_APPROVE;
+    return AUTO_APPROVE;
   },
 
   async execute(params: any, context: ExecutionContext): Promise<ToolResult> {
@@ -241,6 +245,23 @@ export const WebBrowserTool: Tool = {
         let output = text;
         if (contentType.includes('text/html')) {
           output = htmlToMarkdown(text);
+        }
+
+        // Detect JavaScript-rendered SPAs: large HTML but tiny extracted text
+        // means the page needs a real browser to render
+        if (contentType.includes('text/html') && text.length > 512 && output.length < 100) {
+          return {
+            success: true,
+            output: `This page appears to be a JavaScript-rendered application (SPA). The server returned ${text.length} bytes of HTML but almost no readable text content. To read this page, use the browser_navigate tool instead, which can execute JavaScript and render the full page.`,
+            metadata: {
+              url,
+              contentType,
+              contentLength: text.length,
+              extractedLength: output.length,
+              status: response.status,
+              spaDetected: true,
+            },
+          };
         }
 
         logger.info('URL fetched successfully', {

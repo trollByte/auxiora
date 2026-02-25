@@ -70,19 +70,27 @@ export class BraveSearchClient {
       });
 
       if (!response.ok) {
-        return '';
+        return `[Failed to fetch: HTTP ${response.status} ${response.statusText}]`;
       }
 
       const contentType = response.headers.get('content-type') ?? '';
       if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
-        return '';
+        return `[Unsupported content type: ${contentType}]`;
       }
 
       const html = await response.text();
       const maxLength = 15_000;
-      return htmlToMarkdown(html).slice(0, maxLength);
-    } catch {
-      return '';
+      const markdown = htmlToMarkdown(html).slice(0, maxLength);
+
+      // Detect JavaScript SPAs that return shell HTML with no readable content
+      if (html.length > 512 && markdown.length < 100) {
+        return `[Page appears to be a JavaScript SPA — no readable content without browser rendering]`;
+      }
+
+      return markdown;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return `[Fetch error: ${msg}]`;
     } finally {
       clearTimeout(timer);
     }
