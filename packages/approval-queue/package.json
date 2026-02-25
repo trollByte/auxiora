@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/approval-queue",
-  "version": "1.0.0",
+  "version": "1.10.0",
   "description": "Human-in-the-loop approval queue for autonomous agent actions",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,13 @@
     "@auxiora/errors": "workspace:*"
   },
   "devDependencies": {},
-  "engines": { "node": ">=22.0.0" },
-  "publishConfig": { "access": "public" },
-  "files": ["dist/"]
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/"
+  ]
 }

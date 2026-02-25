@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/code-interpreter",
-  "version": "1.0.0",
+  "version": "1.10.0",
   "description": "Sandboxed code execution REPL with multi-language support",
   "type": "module",
   "main": "dist/index.js",
