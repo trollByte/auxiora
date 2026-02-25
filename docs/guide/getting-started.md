@@ -16,6 +16,14 @@ Auxiora is a security-first, self-hosted AI assistant that runs on your own devi
 
 Pick the method that fits your environment.
 
+### One-liner (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/trollByte/auxiora/main/scripts/install.sh | bash
+```
+
+The installer checks for Node.js 22+ and pnpm 9+, clones the repo, builds, and creates a launcher in `~/.local/bin/auxiora`. Run `install.sh --non-interactive` to skip the setup prompts.
+
 ### Docker
 
 ```bash
@@ -26,7 +34,7 @@ docker run -d \
   ghcr.io/trollbyte/auxiora
 ```
 
-### From source
+### From source (manual)
 
 ```bash
 git clone https://github.com/trollByte/auxiora.git
