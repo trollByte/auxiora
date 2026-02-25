@@ -890,6 +890,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers

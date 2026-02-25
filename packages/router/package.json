@@ -19,6 +19,7 @@
   "dependencies": {
     "@auxiora/core": "workspace:*",
     "@auxiora/config": "workspace:*",
+    "@auxiora/logger": "workspace:*",
     "@auxiora/providers": "workspace:*"
   },
   "engines": {
