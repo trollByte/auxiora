@@ -487,3 +487,7 @@ toolRegistry.register(DetectLanguageTool);
 // Export compose tools
 export { ComposeTool, GrammarCheckTool, DetectLanguageTool } from './compose.js';
 export { setComposeEngine, setGrammarChecker, setLanguageDetector } from './compose.js';
+
+// Export sandbox
+export { ToolSandbox } from './sandbox.js';
+export type { SandboxPolicy, SandboxedResult } from './sandbox.js';
