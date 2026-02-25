@@ -6,7 +6,7 @@ export interface GuardrailStats {
   outputScans: number;
   totalThreats: number;
   threatsByType: Record<string, number>;
-  threatsByLevel: Record<ThreatLevel, number>;
+  threatsByLevel: Partial<Record<ThreatLevel, number>>;
   actionCounts: Record<string, number>;
   blockedCount: number;
   redactedCount: number;
