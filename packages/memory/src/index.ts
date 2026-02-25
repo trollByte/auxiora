@@ -21,3 +21,5 @@ export { PatternDetector } from './pattern-detector.js';
 export type { PatternSignal } from './pattern-detector.js';
 export { PersonalityAdapter } from './personality-adapter.js';
 export { SentimentAnalyzer } from './sentiment.js';
+export { MemoryGuard } from './memory-guard.js';
+export type { MemoryAnomaly, MemoryGuardOptions } from './memory-guard.js';
