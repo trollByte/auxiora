@@ -6768,6 +6768,9 @@ export {
 export { SourceAttributor } from './source-attribution.js';
 export type { Attribution, AttributedSegment, ResponseAttribution, AttributionSource, SourceType } from './source-attribution.js';
 
+export { ConfidenceAssessor } from './confidence.js';
+export type { ConfidenceLevel, KnowledgeSource, ConfidenceSignal, ConfidenceAssessment, UncertaintyMarker } from './confidence.js';
+
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();
   await auxiora.initialize(options);
