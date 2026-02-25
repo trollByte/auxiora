@@ -12,3 +12,5 @@ export type {
 export { NonRetryableError } from './errors.js';
 export { JobDatabase } from './db.js';
 export { JobQueue } from './queue.js';
+export { JobQueueMetrics } from './metrics.js';
+export type { JobMetricsSnapshot } from './metrics.js';
