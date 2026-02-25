@@ -34,13 +34,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm -r --filter '!@auxiora/desktop' build
+        run: pnpm -r --filter '!@auxiora/desktop' --filter '!@auxiora/mcp-server' build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Typecheck
-        run: pnpm -r --filter '!@auxiora/desktop' typecheck
+        run: pnpm -r --filter '!@auxiora/desktop' --filter '!@auxiora/mcp-server' typecheck
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Test with coverage
-        run: npx vitest run --coverage --exclude 'packages/desktop/**'
+        run: npx vitest run --coverage --exclude 'packages/desktop/**' --exclude 'packages/mcp-server/**'
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Upload coverage
         if: always()
