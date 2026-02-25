@@ -78,8 +78,8 @@ export class Gateway {
   }
 
   private setupMiddleware(): void {
-    // Parse JSON bodies
-    this.app.use(express.json());
+    // Parse JSON bodies (limit to 1MB; marketplace handles large uploads separately)
+    this.app.use(express.json({ limit: '1mb' }));
 
     // CORS
     this.app.use((req: Request, res: Response, next: NextFunction) => {
@@ -102,6 +102,10 @@ export class Gateway {
       res.header('X-Content-Type-Options', 'nosniff');
       res.header('X-Frame-Options', 'DENY');
       res.header('X-XSS-Protection', '1; mode=block');
+      res.header('X-Permitted-Cross-Domain-Policies', 'none');
+      res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+      res.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:");
+      res.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
       next();
     });
 

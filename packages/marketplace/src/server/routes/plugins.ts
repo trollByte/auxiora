@@ -1,6 +1,27 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { RegistryDatabase } from '../db.js';
 import type { PackageStorage } from '../storage.js';
+
+const MAX_CONTENT_SIZE = 10 * 1024 * 1024; // 10MB base64
+
+function timingSafeTokenMatch(token: string, keys: string[]): boolean {
+  const tokenBuf = Buffer.from(token);
+  for (const key of keys) {
+    const keyBuf = Buffer.from(key);
+    if (tokenBuf.length === keyBuf.length && timingSafeEqual(tokenBuf, keyBuf)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function clampInt(value: string | undefined, defaultVal: number, min: number, max: number): number {
+  if (value === undefined) return defaultVal;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return defaultVal;
+  return Math.min(Math.max(Math.round(n), min), max);
+}
 
 export interface PluginRoutesOptions extends FastifyPluginOptions {
   db: RegistryDatabase;
@@ -22,8 +43,8 @@ export async function pluginRoutes(
       author,
       keywords: keywords ? keywords.split(',') : undefined,
       sort: sort as 'name' | 'downloads' | 'rating' | 'updated' | undefined,
-      limit: limit ? Number(limit) : undefined,
-      offset: offset ? Number(offset) : undefined,
+      limit: clampInt(limit, 20, 1, 100),
+      offset: clampInt(offset, 0, 0, 10000),
     });
     return result;
   });
@@ -42,7 +63,7 @@ export async function pluginRoutes(
   app.post('/api/v1/plugins/publish', async (request, reply) => {
     const auth = request.headers.authorization;
     const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token || !apiKeys.includes(token)) {
+    if (!token || !timingSafeTokenMatch(token, apiKeys)) {
       return reply.status(401).send({ error: 'Invalid API key' });
     }
 
@@ -73,6 +94,9 @@ export async function pluginRoutes(
 
     // Store package if content provided
     if (content) {
+      if (content.length > MAX_CONTENT_SIZE) {
+        return reply.status(413).send({ error: 'Package content too large (max 10MB)' });
+      }
       const buffer = Buffer.from(content, 'base64');
       await storage.store('plugins', name, version, buffer);
     }
