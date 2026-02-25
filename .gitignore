@@ -40,3 +40,4 @@ test-token.js
 .npmrc
 .worktrees/
 .claude/worktrees/
+docs/reference/

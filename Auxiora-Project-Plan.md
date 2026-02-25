@@ -7,9 +7,7 @@
 
 ## Executive Summary
 
-**What we're building:** A fully autonomous personal AI assistant that runs on your own devices, connects to the messaging platforms you already use, encrypts all credentials, works natively across macOS/Linux/Windows 11, and has a distinct personality. Think OpenClaw, rebuilt from scratch with security as the foundation and a threat manager's paranoia baked into every layer.
-
-**What OpenClaw is (and isn't):** OpenClaw has ~8,400 commits, 100+ contributors, and a massive feature surface that grew organically over months. A lot of that is platform-specific polish (macOS menu bar app, iOS/Android nodes, Swift UI, etc.) and edge-case handling. The core architecture — gateway, agent loop, channels, sessions — is what matters. We're building that core right, with stronger security defaults, then expanding.
+**What we're building:** A fully autonomous personal AI assistant that runs on your own devices, connects to the messaging platforms you already use, encrypts all credentials, works natively across macOS/Linux/Windows 11, and has a distinct personality. Security as the foundation with a threat manager's paranoia baked into every layer.
 
 **Realistic timeline with Claude Code:** 4–6 weeks for a production-capable v1.0, working 4–6 hours/day. Claude Code accelerates the mechanical coding (probably 3–5x faster than hand-typing), but the design decisions, testing on real platforms, debugging OS-specific issues, and integration testing with real APIs still take human time.
 
@@ -574,7 +572,7 @@ These are opinionated choices based on a threat manager's perspective:
 
 ## Stretch Goals (Post v1.0)
 
-These are features OpenClaw has that are nice-to-have but not essential for a powerful v1.0:
+These are nice-to-have features but not essential for a powerful v1.0:
 
 | Feature | Complexity | Value | Phase |
 |---------|:----------:|:-----:|:-----:|
