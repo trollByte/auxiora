@@ -16,6 +16,14 @@ Auxiora is a security-first, self-hosted AI assistant that runs on your own devi
 
 Pick the method that fits your environment.
 
+### npm (recommended)
+
+```bash
+npm install -g auxiora
+```
+
+Requires Node.js 22 or later.
+
 ### One-liner (Linux / macOS)
 
 ```bash

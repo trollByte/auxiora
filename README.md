@@ -12,6 +12,18 @@ Auxiora is a security-first personal AI assistant that runs on your own devices,
 
 Pick whichever method you prefer — they all give you the same `auxiora` command.
 
+### npm (recommended)
+
+```bash
+npm install -g auxiora
+```
+
+### One-liner (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/trollByte/auxiora/main/scripts/install.sh | bash
+```
+
 ### Docker
 
 ```bash
