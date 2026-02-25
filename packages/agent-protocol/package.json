@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/agent-protocol",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Agent-to-agent communication protocol with Ed25519 signing and discovery",
   "type": "module",
   "main": "dist/index.js",

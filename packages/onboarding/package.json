@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/onboarding",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Onboarding wizard and setup logic for Auxiora",
   "type": "module",
   "main": "dist/index.js",

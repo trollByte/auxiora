@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/router",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Model routing engine for Auxiora - task classification, model selection, and cost tracking",
   "type": "module",
   "main": "dist/index.js",

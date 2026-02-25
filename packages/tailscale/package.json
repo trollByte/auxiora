@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/tailscale",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Tailscale Serve/Funnel integration for exposing Auxiora without manual port forwarding",
   "type": "module",
   "main": "dist/index.js",

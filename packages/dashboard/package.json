@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/dashboard",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,6 +33,7 @@
     "access": "public"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "dist-ui/"
   ]
 }
