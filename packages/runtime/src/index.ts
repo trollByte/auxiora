@@ -6765,6 +6765,9 @@ export {
   type BlockStreamSender,
 } from './block-stream.js';
 
+export { SourceAttributor } from './source-attribution.js';
+export type { Attribution, AttributedSegment, ResponseAttribution, AttributionSource, SourceType } from './source-attribution.js';
+
 export async function startAuxiora(options: AuxioraOptions = {}): Promise<Auxiora> {
   const auxiora = new Auxiora();
   await auxiora.initialize(options);
