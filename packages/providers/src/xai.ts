@@ -58,6 +58,28 @@ export class XAIProvider implements Provider {
     name: 'xai',
     displayName: 'xAI Grok',
     models: {
+      'grok-3': {
+        maxContextTokens: 131072,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.003,
+        costPer1kOutput: 0.015,
+        strengths: ['reasoning', 'code', 'creative', 'vision'],
+        isLocal: false,
+      },
+      'grok-3-mini': {
+        maxContextTokens: 131072,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.0003,
+        costPer1kOutput: 0.0015,
+        strengths: ['fast', 'reasoning', 'cost-efficient'],
+        isLocal: false,
+      },
       'grok-2': {
         maxContextTokens: 131072,
         supportsVision: false,

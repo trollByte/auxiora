@@ -26,6 +26,28 @@ export class OpenAIProvider implements Provider {
     name: 'openai',
     displayName: 'OpenAI GPT',
     models: {
+      'gpt-5.3': {
+        maxContextTokens: 1048576,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.004,
+        costPer1kOutput: 0.016,
+        strengths: ['reasoning', 'code', 'vision', 'creative', 'agentic', 'multilingual'],
+        isLocal: false,
+      },
+      'gpt-5.3-mini': {
+        maxContextTokens: 1048576,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.0005,
+        costPer1kOutput: 0.002,
+        strengths: ['fast', 'reasoning', 'code', 'cost-efficient'],
+        isLocal: false,
+      },
       'gpt-5.2': {
         maxContextTokens: 1048576,
         supportsVision: true,

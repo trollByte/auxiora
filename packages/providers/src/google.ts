@@ -23,6 +23,28 @@ export class GoogleProvider implements Provider {
     name: 'google',
     displayName: 'Google Gemini',
     models: {
+      'gemini-3.1-pro': {
+        maxContextTokens: 2097152,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.0015,
+        costPer1kOutput: 0.012,
+        strengths: ['reasoning', 'code', 'long-context', 'creative', 'multilingual'],
+        isLocal: false,
+      },
+      'gemini-3.1-flash': {
+        maxContextTokens: 2097152,
+        supportsVision: true,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsImageGen: false,
+        costPer1kInput: 0.0002,
+        costPer1kOutput: 0.0008,
+        strengths: ['fast', 'code', 'reasoning', 'cost-efficient'],
+        isLocal: false,
+      },
       'gemini-2.5-flash': {
         maxContextTokens: 1048576,
         supportsVision: true,
