@@ -82,3 +82,7 @@ export { isDuplicate, resetInboundDedup } from './inbound-dedup.js';
 
 // Draft streaming
 export { DraftStreamLoop } from './draft-stream-loop.js';
+
+// Sender identity
+export { SenderIdentityManager } from './sender-identity.js';
+export type { NormalizedSender, ChannelIdentity, PairingRequest } from './sender-identity.js';
