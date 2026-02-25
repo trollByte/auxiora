@@ -121,7 +121,7 @@ export class UserModelExporter {
           newestMemoryAt: stats.newestMemory,
         };
       } catch (err) {
-        logger.warn('Failed to load memory stats', { error: err instanceof Error ? err.message : String(err) });
+        logger.warn('Failed to load memory stats', { error: err instanceof Error ? err : new Error(String(err)) });
       }
     }
 
