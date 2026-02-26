@@ -1118,6 +1118,9 @@ importers:
         specifier: ^5.1.0
         version: 5.2.1
     devDependencies:
+      '@auxiora/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
@@ -1267,6 +1270,8 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+
+  packages/verification: {}
 
   packages/voice:
     dependencies:

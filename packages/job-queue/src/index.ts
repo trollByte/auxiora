@@ -20,3 +20,5 @@ export type { TestBaseline, QualityGateResult } from './quality-gates.js';
 export { QualityGateChecker } from './quality-gates.js';
 export type { ResourceGuardOptions, ResourceCheckResult } from './resource-guard.js';
 export { ResourceGuard } from './resource-guard.js';
+export { StaleJobDetector } from './stale-detector.js';
+export type { StaleJobInfo, StaleDetectorOptions } from './stale-detector.js';

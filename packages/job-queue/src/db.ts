@@ -127,6 +127,17 @@ export class JobDatabase {
     ).run(now, now, id);
   }
 
+  getRunningJobs(): Array<{ id: string; type: string; startedAt: number }> {
+    const rows = this.db.prepare(
+      `SELECT id, type, started_at FROM jobs WHERE status = 'running'`,
+    ).all() as Record<string, unknown>[];
+    return rows.map(r => ({
+      id: r.id as string,
+      type: r.type as string,
+      startedAt: r.started_at as number,
+    }));
+  }
+
   recoverCrashed(): number {
     const rows = this.db.prepare(
       `SELECT * FROM jobs WHERE status = 'running'`,

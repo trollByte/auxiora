@@ -8,3 +8,5 @@ export { ModelIdentityStage } from './stages/model-identity-stage.js';
 export { GroupContextStage } from './stages/group-context-stage.js';
 export { TelemetryStage } from './stages/telemetry-stage.js';
 export type { TelemetryStatsLike } from './stages/telemetry-stage.js';
+export { LearningStage } from './stages/learning-stage.js';
+export type { LearningLike } from './stages/learning-stage.js';

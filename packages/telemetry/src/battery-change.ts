@@ -1,6 +1,11 @@
 import type { TelemetryTracker } from './tracker.js';
 import { SessionReflector } from './reflection.js';
 
+/** Structural type for optional change log dependency */
+export interface ChangeLogLike {
+  record(entry: { component: string; description: string; reason: string }): number;
+}
+
 /**
  * Battery Change reviewer — periodic deep self-review.
  *
@@ -9,9 +14,14 @@ import { SessionReflector } from './reflection.js';
  */
 export class BatteryChangeReviewer {
   private readonly reflector: SessionReflector;
+  private readonly changeLog?: ChangeLogLike;
 
-  constructor(private readonly tracker: TelemetryTracker) {
+  constructor(
+    private readonly tracker: TelemetryTracker,
+    changeLog?: ChangeLogLike,
+  ) {
     this.reflector = new SessionReflector(tracker);
+    this.changeLog = changeLog;
   }
 
   generateReport(): string {
@@ -53,7 +63,13 @@ export class BatteryChangeReviewer {
     const flagged = allStats.filter(s => s.successRate < 0.7 && s.totalCalls >= 5);
     if (flagged.length > 0) {
       for (const s of flagged) {
-        lines.push(`- Investigate ${s.tool} failures (${Math.round(s.successRate * 100)}% success, last: ${s.lastError || 'unknown'})`);
+        const suggestion = `Investigate ${s.tool} failures (${Math.round(s.successRate * 100)}% success, last: ${s.lastError || 'unknown'})`;
+        lines.push(`- ${suggestion}`);
+        this.changeLog?.record({
+          component: 'battery-review',
+          description: suggestion,
+          reason: `Tool ${s.tool} below 70% success rate`,
+        });
       }
     }
 
@@ -65,6 +81,11 @@ export class BatteryChangeReviewer {
     }
     for (const issue of [...allIssues].slice(0, 5)) {
       lines.push(`- ${issue}`);
+      this.changeLog?.record({
+        component: 'battery-review',
+        description: issue,
+        reason: 'Identified in session reflection',
+      });
     }
 
     if (flagged.length === 0 && allIssues.size === 0) {

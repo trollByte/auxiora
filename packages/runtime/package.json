@@ -90,6 +90,7 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@auxiora/telemetry": "workspace:*",
     "@types/express": "^5.0.0",
     "@types/supertest": "^6.0.0",
     "supertest": "^7.1.0"
