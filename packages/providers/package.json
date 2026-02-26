@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/providers",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "description": "AI provider adapters for Auxiora",
   "type": "module",
   "main": "dist/index.js",

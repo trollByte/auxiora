@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/conversation",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "description": "Real-time voice conversation engine with state machine, turn-taking, and voice personality",
   "type": "module",
   "main": "dist/index.js",

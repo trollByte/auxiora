@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/verification",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
