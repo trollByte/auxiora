@@ -4,3 +4,5 @@ export { RateLimiter, type RateLimiterConfig } from './rate-limiter.js';
 export { PairingManager, type PairingConfig } from './pairing.js';
 export { mountSelfImprovingRoutes } from './self-improving-routes.js';
 export type { SelfImprovingRoutesDeps } from './self-improving-routes.js';
+export { mountPhase3Routes } from './phase3-routes.js';
+export type { Phase3Deps } from './phase3-routes.js';

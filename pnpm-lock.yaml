@@ -126,6 +126,8 @@ importers:
         specifier: ^3.0.11
         version: 3.0.11
 
+  packages/benchmark: {}
+
   packages/bridge:
     dependencies:
       '@auxiora/logger':
@@ -797,6 +799,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.6
 
+  packages/overseer: {}
+
   packages/personality:
     dependencies:
       '@auxiora/config':
@@ -872,6 +876,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/reasoning: {}
+
   packages/research:
     dependencies:
       '@auxiora/audit':
@@ -886,6 +892,8 @@ importers:
       nanoid:
         specifier: ^5.1.2
         version: 5.1.6
+
+  packages/review-committee: {}
 
   packages/router:
     dependencies:
@@ -1118,6 +1126,9 @@ importers:
         specifier: ^5.1.0
         version: 5.2.1
     devDependencies:
+      '@auxiora/overseer':
+        specifier: workspace:*
+        version: link:../overseer
       '@auxiora/telemetry':
         specifier: workspace:*
         version: link:../telemetry
