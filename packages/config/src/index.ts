@@ -100,6 +100,18 @@ const ProviderConfigSchema = z.object({
   replicate: z.object({
     model: z.string().default('meta/meta-llama-3-70b-instruct'),
   }).default({}),
+  openrouter: z.object({
+    model: z.string().default('anthropic/claude-sonnet-4-6'),
+    maxTokens: z.number().int().positive().default(16384),
+    appName: z.string().default('Auxiora'),
+    refreshIntervalHours: z.number().positive().default(4),
+  }).default({}),
+  huggingface: z.object({
+    model: z.string().default('Qwen/Qwen2.5-72B-Instruct'),
+    maxTokens: z.number().int().positive().default(16384),
+    preferredInferenceProvider: z.string().optional(),
+    refreshIntervalHours: z.number().positive().default(4),
+  }).default({}),
 });
 
 const SessionConfigSchema = z.object({

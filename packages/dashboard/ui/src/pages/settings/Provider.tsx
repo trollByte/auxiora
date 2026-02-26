@@ -40,6 +40,8 @@ const KNOWN_PROVIDERS: Array<{
   { id: 'cohere', label: 'Cohere', needsKey: true },
   { id: 'xai', label: 'xAI (Grok)', needsKey: true },
   { id: 'openaiCompatible', label: 'OpenAI-Compatible', needsKey: true, needsEndpoint: true },
+  { id: 'openrouter', label: 'OpenRouter', needsKey: true },
+  { id: 'huggingface', label: 'HuggingFace', needsKey: true },
 ];
 
 /** Turn a raw model ID into a friendly display name */

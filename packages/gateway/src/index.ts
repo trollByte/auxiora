@@ -8,3 +8,5 @@ export { mountPhase3Routes } from './phase3-routes.js';
 export type { Phase3Deps } from './phase3-routes.js';
 export { mountPhase4Routes } from './phase4-routes.js';
 export type { Phase4Deps } from './phase4-routes.js';
+export { createModelRegistryRouter } from './model-registry-routes.js';
+export type { ModelRegistryRoutesDeps } from './model-registry-routes.js';

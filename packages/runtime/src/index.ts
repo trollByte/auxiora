@@ -1,4 +1,4 @@
-import { Gateway, type ClientConnection, type WsMessage } from '@auxiora/gateway';
+import { Gateway, createModelRegistryRouter, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { MediaProcessor, detectProviders } from '@auxiora/media';
 import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
@@ -248,6 +248,8 @@ export class Auxiora {
   private actionPlanner?: ActionPlanner;
   private orchestrationEngine?: OrchestrationEngine;
   private jobQueue?: JobQueue;
+  private modelRegistry?: import('@auxiora/model-registry').ModelRegistry;
+  private modelRefreshTimer?: ReturnType<typeof setInterval>;
   // Self-improvement telemetry (structural types — no direct @auxiora/telemetry import)
   private telemetryTracker?: { getFlaggedTools(threshold: number, minCalls: number): Array<{ tool: string; totalCalls: number; successRate: number; lastError: string }> };
   private sessionReflector?: { reflect(sessionId: string): { sessionId: string; toolsUsed: number; overallSuccessRate: number; issues: string[]; summary: string }; save(reflection: unknown): void };
@@ -639,8 +641,91 @@ export class Auxiora {
       this.logger.info(`Purged stale ambient-flush jobs: ${purgedPending} pending, ${purgedDead} dead`);
     }
 
+    // Register model registry refresh job
+    this.jobQueue.register<Record<string, never>, string>('model-registry-refresh', async () => {
+      const results: string[] = [];
+      if (!this.modelRegistry) return 'No model registry';
+
+      try {
+        const orKey = this.vault.get('OPENROUTER_API_KEY');
+        if (orKey) {
+          const { fetchOpenRouterModels, mapToDiscoveredModels } = await import('@auxiora/provider-openrouter');
+          const orModels = await fetchOpenRouterModels(orKey);
+          const discovered = mapToDiscoveredModels(orModels);
+          this.modelRegistry.upsertModels(discovered as import('@auxiora/model-registry').DiscoveredModel[]);
+
+          try {
+            const orProvider = this.providers.getProvider('openrouter');
+            if (orProvider && 'updateModels' in orProvider) {
+              const caps = this.modelRegistry.toModelCapabilities('openrouter');
+              (orProvider as { updateModels(m: Record<string, unknown>): void }).updateModels(caps);
+            }
+          } catch { /* provider may not be registered */ }
+          results.push(`OpenRouter: ${discovered.length} models`);
+        }
+      } catch (err) {
+        results.push(`OpenRouter: failed - ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      try {
+        const hfToken = this.vault.get('HUGGINGFACE_API_TOKEN');
+        if (hfToken) {
+          const { fetchHFModels, mapToDiscoveredModels } = await import('@auxiora/provider-huggingface');
+          const hfModels = await fetchHFModels(hfToken);
+          const discovered = mapToDiscoveredModels(hfModels);
+          this.modelRegistry.upsertModels(discovered as import('@auxiora/model-registry').DiscoveredModel[]);
+
+          try {
+            const hfProvider = this.providers.getProvider('huggingface');
+            if (hfProvider && 'updateModels' in hfProvider) {
+              const caps = this.modelRegistry.toModelCapabilities('huggingface');
+              (hfProvider as { updateModels(m: Record<string, unknown>): void }).updateModels(caps);
+            }
+          } catch { /* provider may not be registered */ }
+          results.push(`HuggingFace: ${discovered.length} models`);
+        }
+      } catch (err) {
+        results.push(`HuggingFace: failed - ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      const pruned = this.modelRegistry.pruneStale(7 * 24 * 60 * 60 * 1000);
+      if (pruned > 0) results.push(`Pruned ${pruned} stale models`);
+
+      return results.join(', ');
+    });
+
     this.jobQueue.start();
     this.logger.info('Durable job queue initialized');
+
+    // Initialize model registry and schedule refresh
+    try {
+      const { ModelRegistry } = await import('@auxiora/model-registry');
+      const registryDbPath = path.join(path.dirname(getBehaviorsPath()), 'model-registry.db');
+      this.modelRegistry = new ModelRegistry(registryDbPath);
+
+      // Enqueue initial refresh if any dynamic provider keys exist
+      const hasOpenRouter = !!this.vault.get('OPENROUTER_API_KEY');
+      const hasHuggingFace = !!this.vault.get('HUGGINGFACE_API_TOKEN');
+      if (hasOpenRouter || hasHuggingFace) {
+        this.jobQueue.enqueue('model-registry-refresh', {});
+
+        // Schedule periodic refresh
+        const refreshMs = Math.min(
+          this.config.provider.openrouter?.refreshIntervalHours ?? 4,
+          this.config.provider.huggingface?.refreshIntervalHours ?? 4,
+        ) * 60 * 60 * 1000;
+
+        this.modelRefreshTimer = setInterval(() => {
+          if (this.jobQueue) {
+            this.jobQueue.enqueue('model-registry-refresh', {});
+          }
+        }, refreshMs);
+
+        this.logger.info(`Model registry initialized, refresh every ${refreshMs / 3600000}h`);
+      }
+    } catch (err) {
+      this.logger.warn('Failed to initialize model registry', { error: err instanceof Error ? err : new Error(String(err)) });
+    }
 
     // Initialize behavior system
     if (this.providers) {
@@ -1427,6 +1512,12 @@ export class Auxiora {
     // Sandbox API routes
     this.gateway.mountRouter('/api/v1/sandbox', this.createSandboxRouter());
 
+    // Model registry API routes
+    this.gateway.mountRouter('/api/v1/models', createModelRegistryRouter(Router(), {
+      modelRegistry: this.modelRegistry,
+      jobQueue: this.jobQueue,
+    }));
+
     // Job queue status endpoint
     this.gateway.mountRouter('/api/v1/jobs', (() => {
       const jobsRouter = Router();
@@ -1979,6 +2070,8 @@ export class Auxiora {
     let cohereKey: string | undefined;
     let xaiKey: string | undefined;
     let replicateToken: string | undefined;
+    let openrouterKey: string | undefined;
+    let huggingfaceToken: string | undefined;
     let vaultLocked = false;
 
     try {
@@ -1991,6 +2084,8 @@ export class Auxiora {
       cohereKey = this.vault.get('COHERE_API_KEY');
       xaiKey = this.vault.get('XAI_API_KEY');
       replicateToken = this.vault.get('REPLICATE_API_TOKEN');
+      openrouterKey = this.vault.get('OPENROUTER_API_KEY');
+      huggingfaceToken = this.vault.get('HUGGINGFACE_API_TOKEN');
 
       // Check if ANTHROPIC_API_KEY is actually an OAuth token (sk-ant-oat01-*)
       // This handles users who stored their OAuth token in the wrong vault key
@@ -2016,7 +2111,7 @@ export class Auxiora {
 
     const hasAnthropic = anthropicKey || anthropicOAuthToken || hasCliCredentials;
     const hasOllama = this.config.provider.ollama?.model;
-    const hasAnyKey = hasAnthropic || openaiKey || googleKey || groqKey || deepseekKey || cohereKey || xaiKey || replicateToken || hasOllama;
+    const hasAnyKey = hasAnthropic || openaiKey || googleKey || groqKey || deepseekKey || cohereKey || xaiKey || replicateToken || hasOllama || openrouterKey || huggingfaceToken;
     if (!hasAnyKey) {
       if (vaultLocked) {
         this.logger.warn('Vault is locked. AI providers not initialized.');
@@ -2167,6 +2262,39 @@ export class Auxiora {
           : undefined,
       },
     });
+
+    // Register dynamic providers (OpenRouter, HuggingFace) after factory construction
+    if (openrouterKey) {
+      try {
+        const { OpenRouterProvider } = await import('@auxiora/provider-openrouter');
+        const openrouter = new OpenRouterProvider({
+          apiKey: openrouterKey,
+          model: this.config.provider.openrouter?.model,
+          maxTokens: this.config.provider.openrouter?.maxTokens,
+          appName: this.config.provider.openrouter?.appName,
+        });
+        this.providers.register('openrouter', openrouter);
+        this.logger.info('OpenRouter provider registered');
+      } catch (err) {
+        this.logger.warn('Failed to load OpenRouter provider', { error: err instanceof Error ? err : new Error(String(err)) });
+      }
+    }
+
+    if (huggingfaceToken) {
+      try {
+        const { HuggingFaceProvider } = await import('@auxiora/provider-huggingface');
+        const hf = new HuggingFaceProvider({
+          apiKey: huggingfaceToken,
+          model: this.config.provider.huggingface?.model,
+          maxTokens: this.config.provider.huggingface?.maxTokens,
+          preferredInferenceProvider: this.config.provider.huggingface?.preferredInferenceProvider,
+        });
+        this.providers.register('huggingface', hf);
+        this.logger.info('HuggingFace provider registered');
+      } catch (err) {
+        this.logger.warn('Failed to load HuggingFace provider', { error: err instanceof Error ? err : new Error(String(err)) });
+      }
+    }
   }
 
   private initializeRouter(): void {
@@ -2190,6 +2318,10 @@ export class Auxiora {
 
   getRouter(): ModelRouter | undefined {
     return this.modelRouter;
+  }
+
+  getModelRegistry(): import('@auxiora/model-registry').ModelRegistry | undefined {
+    return this.modelRegistry;
   }
 
   getOrchestrationEngine(): OrchestrationEngine | undefined {
@@ -4488,6 +4620,10 @@ export class Auxiora {
     }
     if (this.mcpClientManager) {
       await this.mcpClientManager.disconnectAll();
+    }
+    if (this.modelRefreshTimer) {
+      clearInterval(this.modelRefreshTimer);
+      this.modelRefreshTimer = undefined;
     }
     if (this.jobQueue) {
       await this.jobQueue.stop(30000);

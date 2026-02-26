@@ -25,6 +25,7 @@ import { AuditLog } from '../pages/AuditLog.js';
 import { Marketplace } from '../pages/Marketplace.js';
 import { SystemStatus } from '../pages/SystemStatus.js';
 import { MemoryManager } from '../pages/MemoryManager.js';
+import { ModelExplorer } from '../pages/ModelExplorer.js';
 
 interface AppEntry {
   id: string;
@@ -53,6 +54,7 @@ const APPS: AppEntry[] = [
   { id: 'notifications', label: 'Notifications', icon: '\u{1F514}', component: () => <SettingsNotifications />, defaultWidth: 680, defaultHeight: 520 },
   { id: 'security', label: 'Security', icon: '\u{1F6E1}\uFE0F', component: () => <SettingsSecurity />, defaultWidth: 680, defaultHeight: 520 },
   { id: 'marketplace', label: 'Marketplace', icon: '\u{1F3EA}', component: () => <Marketplace />, defaultWidth: 900, defaultHeight: 640 },
+  { id: 'models', label: 'Models', icon: '\u{1F916}', component: () => <ModelExplorer />, defaultWidth: 900, defaultHeight: 650 },
   { id: 'audit', label: 'Audit Log', icon: '\u{1F4CB}', component: () => <AuditLog />, defaultWidth: 820, defaultHeight: 600 },
 ];
 

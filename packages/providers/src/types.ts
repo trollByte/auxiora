@@ -178,4 +178,16 @@ export interface ProviderConfig {
     model?: string;
     maxTokens?: number;
   };
+  openrouter?: {
+    apiKey?: string;
+    model?: string;
+    maxTokens?: number;
+    appName?: string;
+  };
+  huggingface?: {
+    apiKey?: string;
+    model?: string;
+    maxTokens?: number;
+    preferredInferenceProvider?: string;
+  };
 }

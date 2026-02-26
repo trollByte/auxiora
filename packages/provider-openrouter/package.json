@@ -1,0 +1,12 @@
+{
+  "name": "@auxiora/provider-openrouter",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "openai": "^4.103.0"
+  },
+  "devDependencies": {}
+}

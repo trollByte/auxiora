@@ -737,6 +737,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/model-registry: {}
+
   packages/nl-automation:
     dependencies:
       '@auxiora/errors':
@@ -837,6 +839,18 @@ importers:
       zod:
         specifier: ^3.23.0
         version: 3.25.76
+
+  packages/provider-huggingface:
+    dependencies:
+      openai:
+        specifier: ^4.103.0
+        version: 4.104.0(ws@8.19.0)(zod@3.25.76)
+
+  packages/provider-openrouter:
+    dependencies:
+      openai:
+        specifier: ^4.103.0
+        version: 4.104.0(ws@8.19.0)(zod@3.25.76)
 
   packages/providers:
     dependencies:
@@ -1051,6 +1065,9 @@ importers:
       '@auxiora/memory':
         specifier: workspace:*
         version: link:../memory
+      '@auxiora/model-registry':
+        specifier: workspace:*
+        version: link:../model-registry
       '@auxiora/nl-automation':
         specifier: workspace:^
         version: link:../nl-automation
@@ -1069,6 +1086,12 @@ importers:
       '@auxiora/plugins':
         specifier: workspace:*
         version: link:../plugins
+      '@auxiora/provider-huggingface':
+        specifier: workspace:*
+        version: link:../provider-huggingface
+      '@auxiora/provider-openrouter':
+        specifier: workspace:*
+        version: link:../provider-openrouter
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers

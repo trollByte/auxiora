@@ -166,6 +166,13 @@ export class ProviderFactory {
     }
   }
 
+  /**
+   * Register an external provider at runtime (e.g., OpenRouter, HuggingFace).
+   */
+  register(name: ProviderName, provider: Provider): void {
+    this.providers.set(name, provider);
+  }
+
   getProvider(name?: ProviderName): Provider {
     const providerName = name || this.primary;
     const provider = this.providers.get(providerName);
