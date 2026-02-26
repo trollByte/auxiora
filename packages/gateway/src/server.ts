@@ -104,7 +104,7 @@ export class Gateway {
       res.header('X-XSS-Protection', '1; mode=block');
       res.header('X-Permitted-Cross-Domain-Policies', 'none');
       res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-      res.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:");
+      res.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws: wss:");
       res.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
       next();
     });
