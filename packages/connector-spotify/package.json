@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-spotify",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Spotify connector: playback control, search, playlists",
   "type": "module",
   "main": "dist/index.js",

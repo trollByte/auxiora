@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/vector-store",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Embedding generation and vector similarity search",
   "type": "module",
   "main": "dist/index.js",

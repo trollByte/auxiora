@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/calendar-intelligence",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Calendar intelligence: schedule analysis, meeting prep, optimization",
   "type": "module",
   "main": "dist/index.js",

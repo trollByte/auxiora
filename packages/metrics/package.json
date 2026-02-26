@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/metrics",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Performance monitoring and metrics for Auxiora",
   "type": "module",
   "main": "dist/index.js",

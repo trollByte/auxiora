@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/channels",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Channel adapters for Discord, Telegram, Slack, and Twilio",
   "type": "module",
   "main": "dist/index.js",

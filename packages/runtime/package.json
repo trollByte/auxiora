@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/runtime",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Runtime that connects all Auxiora components",
   "type": "module",
   "main": "dist/index.js",

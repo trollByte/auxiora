@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/updater",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Self-update system with installation detection, version checking, and strategy-based updates",
   "type": "module",
   "main": "dist/index.js",
