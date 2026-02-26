@@ -27,3 +27,25 @@ export interface OverseerAlert {
   severity: 'warning' | 'critical';
   detectedAt: number;
 }
+
+export type OverseerAction = 'none' | 'alert' | 'notify' | 'cancel';
+
+export interface LLMAssessment {
+  severity: 'warning' | 'critical';
+  reasoning: string;
+  suggestedAction: OverseerAction;
+  notification?: string;
+}
+
+export interface AssessmentResult {
+  agentId: string;
+  heuristicAlerts: OverseerAlert[];
+  llmAssessment?: LLMAssessment;
+  action: OverseerAction;
+  notification?: string;
+  assessedAt: number;
+}
+
+export interface LLMCallerLike {
+  assessWithLLM(alerts: OverseerAlert[], snapshot: AgentSnapshot): Promise<LLMAssessment>;
+}
