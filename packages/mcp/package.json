@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/mcp",
-  "version": "1.10.1",
+  "version": "1.10.5",
   "description": "MCP client for connecting to external MCP servers",
   "type": "module",
   "main": "dist/index.js",

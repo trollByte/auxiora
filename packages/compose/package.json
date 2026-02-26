@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/compose",
-  "version": "1.10.1",
+  "version": "1.10.5",
   "description": "Context-aware writing assistant with tone adaptation, templates, and grammar checking",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/react-loop",
-  "version": "1.10.1",
+  "version": "1.10.5",
   "description": "Autonomous ReAct reasoning-action loops for agentic task execution",
   "type": "module",
   "main": "dist/index.js",
