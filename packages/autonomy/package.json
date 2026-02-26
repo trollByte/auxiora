@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/autonomy",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "description": "Trust engine with 5-level autonomy, escalation, demotion, and audit trail",
   "type": "module",
   "main": "dist/index.js",

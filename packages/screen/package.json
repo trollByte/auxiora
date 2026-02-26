@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/screen",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "description": "Screen capture, OCR, desktop automation, and screen analysis",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/introspection",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "publishConfig": {
     "access": "public"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/bridge",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "description": "Bridge protocol for device pairing — connects mobile and desktop nodes to the server",
   "type": "module",
   "main": "dist/index.js",
