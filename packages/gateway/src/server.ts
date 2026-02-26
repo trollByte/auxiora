@@ -6,11 +6,13 @@ import * as crypto from 'node:crypto';
 import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import * as path from 'node:path';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { type Config } from '@auxiora/config';
 
-const _require = createRequire(import.meta.url);
-const AUXIORA_VERSION: string = (_require('../../package.json') as { version: string }).version;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pkgPath = path.resolve(__dirname, '..', 'package.json');
+const AUXIORA_VERSION: string = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string }).version;
 import { audit } from '@auxiora/audit';
 import { getLogger, generateRequestId, runWithRequestId } from '@auxiora/logger';
 import { paths } from '@auxiora/core';

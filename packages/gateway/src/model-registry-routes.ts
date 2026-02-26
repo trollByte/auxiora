@@ -34,8 +34,8 @@ interface ModelRegistryLike {
     createdAt: number;
     enabled: boolean;
   }>;
-  getModel(id: string): Record<string, unknown> | undefined;
-  getTrending(limit?: number): Array<Record<string, unknown>>;
+  getModel(id: string): object | undefined;
+  getTrending(limit?: number): object[];
   setEnabled(id: string, enabled: boolean): void;
 }
 
@@ -108,13 +108,19 @@ export function createModelRegistryRouter(
     res.json({ modelA, modelB });
   });
 
-  router.get('/discovered/:id(*)', (req: Request, res: Response) => {
+  router.get('/discovered/detail', (req: Request, res: Response) => {
     if (!deps.modelRegistry) {
       res.status(503).json({ error: 'Model registry not available' });
       return;
     }
 
-    const model = deps.modelRegistry.getModel(req.params.id);
+    const id = String(req.query.id || '');
+    if (!id) {
+      res.status(400).json({ error: '"id" query parameter is required' });
+      return;
+    }
+
+    const model = deps.modelRegistry.getModel(id);
     if (!model) {
       res.status(404).json({ error: 'Model not found' });
       return;
@@ -132,20 +138,20 @@ export function createModelRegistryRouter(
     res.status(202).json({ message: 'Refresh scheduled', jobId });
   });
 
-  router.patch('/discovered/:id(*)', (req: Request, res: Response) => {
+  router.patch('/discovered/toggle', (req: Request, res: Response) => {
     if (!deps.modelRegistry) {
       res.status(503).json({ error: 'Model registry not available' });
       return;
     }
 
-    const { enabled } = req.body as { enabled?: boolean };
-    if (typeof enabled !== 'boolean') {
-      res.status(400).json({ error: 'enabled field (boolean) is required' });
+    const { id, enabled } = req.body as { id?: string; enabled?: boolean };
+    if (!id || typeof enabled !== 'boolean') {
+      res.status(400).json({ error: 'id (string) and enabled (boolean) fields are required' });
       return;
     }
 
-    deps.modelRegistry.setEnabled(req.params.id, enabled);
-    res.json({ id: req.params.id, enabled });
+    deps.modelRegistry.setEnabled(id, enabled);
+    res.json({ id, enabled });
   });
 
   return router;

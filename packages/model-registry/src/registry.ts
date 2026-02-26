@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { openDatabase } from './db.js';
 import type { DiscoveredModel, ModelCapabilitiesLike, ModelSearchOptions } from './types.js';
 
@@ -82,7 +82,7 @@ export class ModelRegistry {
 
   getModels(options?: ModelSearchOptions): DiscoveredModel[] {
     const conditions: string[] = [];
-    const params: unknown[] = [];
+    const params: SQLInputValue[] = [];
 
     if (options?.source) {
       conditions.push('provider_source = ?');
@@ -170,7 +170,7 @@ export class ModelRegistry {
     const result = this.db.prepare(
       'DELETE FROM discovered_models WHERE last_refreshed_at < ?',
     ).run(cutoff);
-    return result.changes;
+    return Number(result.changes);
   }
 
   setEnabled(id: string, enabled: boolean): void {

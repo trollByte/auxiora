@@ -63,10 +63,10 @@ export function ModelExplorer() {
 
   const handleToggleEnabled = async (id: string, enabled: boolean) => {
     try {
-      await fetch(`/api/v1/models/discovered/${encodeURIComponent(id)}`, {
+      await fetch('/api/v1/models/discovered/toggle', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify({ id, enabled }),
       });
       setModels(prev => prev.map(m => m.id === id ? { ...m, enabled } : m));
     } catch { /* ignore */ }
