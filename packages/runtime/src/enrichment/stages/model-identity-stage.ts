@@ -15,7 +15,10 @@ export class ModelIdentityStage implements EnrichmentStage {
   readonly name = 'model-identity';
   readonly order = 500;
 
-  constructor(private readonly getProviderInfo: () => ProviderInfo) {}
+  constructor(
+    private readonly getProviderInfo: () => ProviderInfo,
+    private readonly version?: string,
+  ) {}
 
   enabled(_ctx: EnrichmentContext): boolean {
     return true;
@@ -28,6 +31,7 @@ export class ModelIdentityStage implements EnrichmentStage {
 
     const fragment = '\n\n[Model Identity]\n'
       + `You are running as ${activeModel} via ${provider.metadata.displayName}.`
+      + (this.version ? ` Auxiora version: ${this.version}.` : '')
       + (caps ? ` Context window: ${caps.maxContextTokens.toLocaleString()} tokens.` : '')
       + (caps?.supportsVision ? ' You have vision capabilities.' : '')
       + ` Today's date: ${new Date().toISOString().slice(0, 10)}.`;

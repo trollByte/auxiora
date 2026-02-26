@@ -91,4 +91,24 @@ describe('ModelIdentityStage', () => {
 
     expect(stage.order).toBe(500);
   });
+
+  it('includes version when provided', async () => {
+    const provider = makeProvider();
+    const stage = new ModelIdentityStage(() => ({ provider }), '1.10.7');
+    const ctx = makeCtx();
+
+    const result = await stage.enrich(ctx, 'current prompt');
+
+    expect(result.prompt).toContain('Auxiora version: 1.10.7');
+  });
+
+  it('omits version when not provided', async () => {
+    const provider = makeProvider();
+    const stage = new ModelIdentityStage(() => ({ provider }));
+    const ctx = makeCtx();
+
+    const result = await stage.enrich(ctx, 'current prompt');
+
+    expect(result.prompt).not.toContain('Auxiora version');
+  });
 });

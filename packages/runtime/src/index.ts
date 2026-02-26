@@ -47,6 +47,7 @@ import type { ResearchJob, ResearchProgressEvent } from '@auxiora/research';
 import { OrchestrationEngine } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { BehaviorManager, evaluateConditions } from '@auxiora/behaviors';
 import { BrowserManager } from '@auxiora/browser';
@@ -250,6 +251,7 @@ export class Auxiora {
   private jobQueue?: JobQueue;
   private modelRegistry?: import('@auxiora/model-registry').ModelRegistry;
   private modelRefreshTimer?: ReturnType<typeof setInterval>;
+  private auxioraVersion: string = '';
   // Self-improvement telemetry (structural types — no direct @auxiora/telemetry import)
   private telemetryTracker?: { getFlaggedTools(threshold: number, minCalls: number): Array<{ tool: string; totalCalls: number; successRate: number; lastError: string }> };
   private sessionReflector?: { reflect(sessionId: string): { sessionId: string; toolsUsed: number; overallSuccessRate: number; issues: string[]; summary: string }; save(reflection: unknown): void };
@@ -349,6 +351,13 @@ export class Auxiora {
   }> = [];
 
   async initialize(options: AuxioraOptions = {}): Promise<void> {
+    // Read version from package.json
+    try {
+      const runtimeDir = path.dirname(fileURLToPath(import.meta.url));
+      const pkgPath = path.resolve(runtimeDir, '..', 'package.json');
+      this.auxioraVersion = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string }).version;
+    } catch { /* version will remain empty */ }
+
     // Load config
     this.config = options.config || (await loadConfig());
 
@@ -2867,6 +2876,7 @@ export class Auxiora {
     const caps = provider.metadata.models[activeModel];
     return '\n\n[Model Identity]\n'
       + `You are running as ${activeModel} via ${provider.metadata.displayName}.`
+      + (this.auxioraVersion ? ` Auxiora version: ${this.auxioraVersion}.` : '')
       + (caps ? ` Context window: ${caps.maxContextTokens.toLocaleString()} tokens.` : '')
       + (caps?.supportsVision ? ' You have vision capabilities.' : '')
       + ` Today's date: ${new Date().toISOString().slice(0, 10)}.`;
