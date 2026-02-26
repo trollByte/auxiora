@@ -6,3 +6,5 @@ export { mountSelfImprovingRoutes } from './self-improving-routes.js';
 export type { SelfImprovingRoutesDeps } from './self-improving-routes.js';
 export { mountPhase3Routes } from './phase3-routes.js';
 export type { Phase3Deps } from './phase3-routes.js';
+export { mountPhase4Routes } from './phase4-routes.js';
+export type { Phase4Deps } from './phase4-routes.js';
