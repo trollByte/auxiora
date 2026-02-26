@@ -6,7 +6,11 @@ import * as crypto from 'node:crypto';
 import * as argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import * as path from 'node:path';
+import { createRequire } from 'node:module';
 import { type Config } from '@auxiora/config';
+
+const _require = createRequire(import.meta.url);
+const AUXIORA_VERSION: string = (_require('../../package.json') as { version: string }).version;
 import { audit } from '@auxiora/audit';
 import { getLogger, generateRequestId, runWithRequestId } from '@auxiora/logger';
 import { paths } from '@auxiora/core';
@@ -138,7 +142,7 @@ export class Gateway {
     this.app.get('/health', (req: Request, res: Response) => {
       res.json({
         status: 'ok',
-        version: '1.0.0',
+        version: AUXIORA_VERSION,
         uptime: process.uptime(),
       });
     });
@@ -147,7 +151,7 @@ export class Gateway {
     this.app.get('/api/v1', (req: Request, res: Response) => {
       res.json({
         name: 'Auxiora Gateway',
-        version: '1.0.0',
+        version: AUXIORA_VERSION,
         endpoints: {
           health: '/health',
           sessions: '/api/v1/sessions',

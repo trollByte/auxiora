@@ -81,6 +81,7 @@ export function DesktopShell() {
   const [checking, setChecking] = useState(true);
   const [ready, setReady] = useState(false);
   const [agentName, setAgentName] = useState('Auxiora');
+  const [version, setVersion] = useState('');
   const navigate = useNavigate();
   const time = useClockTime();
 
@@ -98,6 +99,7 @@ export function DesktopShell() {
       })
       .catch(() => {})
       .finally(() => setChecking(false));
+    fetch('/health').then(r => r.json()).then(d => { if (d.version) setVersion(d.version); }).catch(() => {});
   }, []);
 
   const { data: _status, refresh } = useApi(() => ready ? api.getStatus() : Promise.resolve(null), [ready]);
@@ -131,7 +133,7 @@ export function DesktopShell() {
       <div className="topbar">
         <div className="topbar-left"><span>{agentName}</span></div>
         <div className="topbar-center">{activeWindowId && APP_MAP.get(activeWindowId)?.label}</div>
-        <div className="topbar-right"><span>{time}</span></div>
+        <div className="topbar-right">{version && <span style={{ opacity: 0.5, marginRight: 8, fontSize: '0.85em' }}>v{version}</span>}<span>{time}</span></div>
       </div>
       <div style={{ position: 'relative', flex: 1 }}>
         {Array.from(windows.values()).map(w => {
