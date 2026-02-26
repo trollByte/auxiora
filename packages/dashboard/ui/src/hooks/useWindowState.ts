@@ -6,6 +6,19 @@ const MIN_HEIGHT = 240;
 const DEFAULT_WIDTH = 600;
 const DEFAULT_HEIGHT = 500;
 const CASCADE_OFFSET = 30;
+/** Minimum pixels of the title bar that must stay visible on-screen */
+const TITLE_BAR_HEIGHT = 36;
+const VISIBLE_MARGIN = 100;
+
+/** Clamp x/y so the window title bar stays reachable */
+function clampPosition(x: number, y: number, width: number, _height: number): { x: number; y: number } {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
+  return {
+    x: Math.max(VISIBLE_MARGIN - width, Math.min(x, vw - VISIBLE_MARGIN)),
+    y: Math.max(0, Math.min(y, vh - TITLE_BAR_HEIGHT)),
+  };
+}
 
 export interface WindowState {
   id: string;
@@ -24,7 +37,15 @@ function loadWindows(): Map<string, WindowState> {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return new Map();
     const obj = JSON.parse(raw) as Record<string, WindowState>;
-    return new Map(Object.entries(obj));
+    const map = new Map(Object.entries(obj));
+    // Clamp any persisted off-screen positions back into the viewport
+    for (const [id, w] of map) {
+      const clamped = clampPosition(w.x, w.y, w.width, w.height);
+      if (clamped.x !== w.x || clamped.y !== w.y) {
+        map.set(id, { ...w, x: clamped.x, y: clamped.y });
+      }
+    }
+    return map;
   } catch {
     return new Map();
   }
@@ -64,13 +85,20 @@ export function useWindowState() {
       }
       const next = new Map(prev);
       const cascadeCount = next.size;
+      const w = Math.max(MIN_WIDTH, preferredWidth ?? DEFAULT_WIDTH);
+      const h = Math.max(MIN_HEIGHT, preferredHeight ?? DEFAULT_HEIGHT);
+      const pos = clampPosition(
+        80 + (cascadeCount % 8) * CASCADE_OFFSET,
+        60 + (cascadeCount % 8) * CASCADE_OFFSET,
+        w, h,
+      );
       next.set(id, {
         id,
         title,
-        x: 80 + (cascadeCount % 8) * CASCADE_OFFSET,
-        y: 60 + (cascadeCount % 8) * CASCADE_OFFSET,
-        width: Math.max(MIN_WIDTH, preferredWidth ?? DEFAULT_WIDTH),
-        height: Math.max(MIN_HEIGHT, preferredHeight ?? DEFAULT_HEIGHT),
+        x: pos.x,
+        y: pos.y,
+        width: w,
+        height: h,
         zIndex: nextZIndex(next),
         minimized: false,
         maximized: false,
@@ -101,8 +129,9 @@ export function useWindowState() {
     update(prev => {
       const w = prev.get(id);
       if (!w) return prev;
+      const clamped = clampPosition(x, y, w.width, w.height);
       const next = new Map(prev);
-      next.set(id, { ...w, x, y });
+      next.set(id, { ...w, x: clamped.x, y: clamped.y });
       return next;
     });
   }, [update]);
