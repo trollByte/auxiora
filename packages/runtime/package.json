@@ -90,7 +90,10 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@auxiora/callgraph": "workspace:*",
+    "@auxiora/event-bus": "workspace:*",
     "@auxiora/overseer": "workspace:*",
+    "@auxiora/reasoning": "workspace:*",
     "@auxiora/telemetry": "workspace:*",
     "@types/express": "^5.0.0",
     "@types/supertest": "^6.0.0",

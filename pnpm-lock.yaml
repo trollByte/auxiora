@@ -155,6 +155,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/callgraph: {}
+
   packages/canvas:
     dependencies:
       '@auxiora/audit':
@@ -558,6 +560,8 @@ importers:
       '@auxiora/logger':
         specifier: workspace:*
         version: link:../logger
+
+  packages/event-bus: {}
 
   packages/gateway:
     dependencies:
@@ -1126,9 +1130,18 @@ importers:
         specifier: ^5.1.0
         version: 5.2.1
     devDependencies:
+      '@auxiora/callgraph':
+        specifier: workspace:*
+        version: link:../callgraph
+      '@auxiora/event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
       '@auxiora/overseer':
         specifier: workspace:*
         version: link:../overseer
+      '@auxiora/reasoning':
+        specifier: workspace:*
+        version: link:../reasoning
       '@auxiora/telemetry':
         specifier: workspace:*
         version: link:../telemetry
