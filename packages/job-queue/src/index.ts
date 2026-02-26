@@ -16,3 +16,7 @@ export { JobQueueMetrics } from './metrics.js';
 export type { JobMetricsSnapshot } from './metrics.js';
 export { DeadLetterMonitor } from './dead-letter.js';
 export type { DeadLetterEntry, DeadLetterStats } from './dead-letter.js';
+export type { TestBaseline, QualityGateResult } from './quality-gates.js';
+export { QualityGateChecker } from './quality-gates.js';
+export type { ResourceGuardOptions, ResourceCheckResult } from './resource-guard.js';
+export { ResourceGuard } from './resource-guard.js';

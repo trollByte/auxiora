@@ -162,7 +162,7 @@ import {
   MetaCognitor,
 } from '@auxiora/self-awareness';
 import type { SignalCollector } from '@auxiora/self-awareness';
-import { EnrichmentPipeline, MemoryStage, ModeStage, ArchitectStage, SelfAwarenessStage, GroupContextStage } from './enrichment/index.js';
+import { EnrichmentPipeline, MemoryStage, ModeStage, ArchitectStage, SelfAwarenessStage, GroupContextStage, TelemetryStage } from './enrichment/index.js';
 import type { EnrichmentContext } from './enrichment/index.js';
 
 export interface AuxioraOptions {
@@ -248,6 +248,9 @@ export class Auxiora {
   private actionPlanner?: ActionPlanner;
   private orchestrationEngine?: OrchestrationEngine;
   private jobQueue?: JobQueue;
+  // Self-improvement telemetry (structural types — no direct @auxiora/telemetry import)
+  private telemetryTracker?: { getFlaggedTools(threshold: number, minCalls: number): Array<{ tool: string; totalCalls: number; successRate: number; lastError: string }> };
+  private sessionReflector?: { reflect(sessionId: string): { sessionId: string; toolsUsed: number; overallSuccessRate: number; issues: string[]; summary: string }; save(reflection: unknown): void };
   // [P14] Team / Social
   private userManager?: UserManager;
   private workflowEngine?: WorkflowEngine;
@@ -2681,6 +2684,14 @@ export class Auxiora {
   private buildEnrichmentPipeline(): void {
     this.enrichmentPipeline = new EnrichmentPipeline();
 
+    // Stage 0: Telemetry warnings (order 50) — injects operational insights before everything
+    if (this.telemetryTracker) {
+      const tracker = this.telemetryTracker;
+      this.enrichmentPipeline.addStage(new TelemetryStage(
+        () => tracker.getFlaggedTools(0.7, 5),
+      ));
+    }
+
     // Group context (order 150) — self-gates via enabled()
     this.enrichmentPipeline.addStage(new GroupContextStage());
 
@@ -4480,6 +4491,13 @@ export class Auxiora {
     }
     if (this.jobQueue) {
       await this.jobQueue.stop(30000);
+    }
+    // Session reflection — capture insights before shutdown
+    if (this.sessionReflector) {
+      try {
+        const reflection = this.sessionReflector.reflect('shutdown');
+        this.sessionReflector.save(reflection);
+      } catch { /* best-effort — don't block shutdown */ }
     }
     this.consciousness?.shutdown();
     this.sessions.destroy();

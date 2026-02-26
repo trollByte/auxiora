@@ -2647,5 +2647,25 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     res.json({ data: { domain, level } });
   });
 
+  // --- Self-improvement telemetry ---
+  router.get('/telemetry/stats', requireAuth, (_req: Request, res: Response) => {
+    if (!deps.telemetry) {
+      res.status(503).json({ error: 'Telemetry not initialized' });
+      return;
+    }
+    const tools = deps.telemetry.getAllStats();
+    const flagged = deps.telemetry.getFlaggedTools(0.7, 5);
+    res.json({ data: { tools, flagged } });
+  });
+
+  router.get('/telemetry/report', requireAuth, (_req: Request, res: Response) => {
+    if (!deps.telemetry) {
+      res.status(503).json({ error: 'Telemetry not initialized' });
+      return;
+    }
+    const report = deps.telemetry.generateReport();
+    res.json({ data: { report } });
+  });
+
   return { router, auth };
 }

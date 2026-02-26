@@ -6,3 +6,5 @@ export { ArchitectStage } from './stages/architect-stage.js';
 export { SelfAwarenessStage } from './stages/self-awareness-stage.js';
 export { ModelIdentityStage } from './stages/model-identity-stage.js';
 export { GroupContextStage } from './stages/group-context-stage.js';
+export { TelemetryStage } from './stages/telemetry-stage.js';
+export type { TelemetryStatsLike } from './stages/telemetry-stage.js';

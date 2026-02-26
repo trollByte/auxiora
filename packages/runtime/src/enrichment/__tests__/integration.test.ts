@@ -3,6 +3,7 @@ import { EnrichmentPipeline } from '../pipeline.js';
 import { MemoryStage } from '../stages/memory-stage.js';
 import { ArchitectStage } from '../stages/architect-stage.js';
 import { SelfAwarenessStage } from '../stages/self-awareness-stage.js';
+import { TelemetryStage } from '../stages/telemetry-stage.js';
 import type { EnrichmentContext } from '../types.js';
 
 function makeCtx(overrides: Partial<EnrichmentContext> = {}): EnrichmentContext {
@@ -80,6 +81,17 @@ describe('EnrichmentPipeline integration', () => {
     expect(result.prompt).toContain('[Memories]');
     expect(result.prompt).toContain('[Security Expert Mode]');
     expect(result.prompt).toContain('[Dynamic Self-Awareness]');
+  });
+
+  it('includes telemetry warnings in enriched prompt when tools are flagged', async () => {
+    const pipeline = new EnrichmentPipeline();
+    pipeline.addStage(new TelemetryStage(() => [
+      { tool: 'provider.complete', totalCalls: 20, successRate: 0.3, lastError: 'rate limited' },
+    ]));
+
+    const result = await pipeline.run(makeCtx());
+    expect(result.prompt).toContain('[Operational Telemetry]');
+    expect(result.metadata.stages).toContain('telemetry');
   });
 
   it('skips architect stage for non-architect personality', async () => {

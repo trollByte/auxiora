@@ -1,0 +1,14 @@
+{
+  "name": "@auxiora/verification",
+  "version": "1.10.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": { "node": ">=22.0.0" }
+}

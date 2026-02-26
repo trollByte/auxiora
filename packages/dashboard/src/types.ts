@@ -277,6 +277,12 @@ export interface DashboardDeps {
     getChatMessages(chatId: string): Array<{ id: string; role: string; content: string; timestamp: number }>;
     updateChatMetadata?(chatId: string, metadata: Record<string, unknown>): void;
   };
+  // --- Self-improvement telemetry ---
+  telemetry?: {
+    getAllStats(): Array<{ tool: string; totalCalls: number; successCount: number; failureCount: number; successRate: number; avgDurationMs: number; lastError: string }>;
+    getFlaggedTools(threshold: number, minCalls: number): Array<{ tool: string; totalCalls: number; successRate: number; lastError: string }>;
+    generateReport(): string;
+  };
 }
 
 export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {

@@ -1203,6 +1203,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
 
+  packages/telemetry: {}
+
   packages/tools:
     dependencies:
       '@auxiora/audit':

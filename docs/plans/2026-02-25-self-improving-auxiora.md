@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Make Auxiora self-improving by adding telemetry tracking, session reflection, telemetry-to-prompt injection, independent job verification, quality gates with regression detection, and a periodic self-review cycle — inspired by BMO's 4-loop architecture and nightwire's autonomous task system.
+**Goal:** Make Auxiora self-improving by adding telemetry tracking, session reflection, telemetry-to-prompt injection, independent job verification, quality gates with regression detection, and a periodic self-review cycle.
 
 **Architecture:** Add a `TelemetryStage` to the existing enrichment pipeline (order 50, before all other stages) that injects operational insights into prompts. Add a `@auxiora/telemetry` package for persistent tool/job success tracking. Add a `@auxiora/verification` package for independent job output review. Wire session reflection into the runtime's session close handler. Add a periodic "battery change" behavior for deep self-review.
 
@@ -322,14 +322,14 @@ Expected: PASS (6 tests)
 
 ```bash
 git add packages/telemetry/
-git commit -m "feat(telemetry): add persistent tool/job telemetry tracker (BMO-inspired)"
+git commit -m "feat(telemetry): add persistent tool/job telemetry tracker"
 ```
 
 ---
 
 ### Task 2: Create TelemetryStage for the enrichment pipeline
 
-Add a new enrichment stage (order 50) that injects operational warnings into prompts when tools have low success rates. This is the "telemetry to prompt" feedback loop from BMO.
+Add a new enrichment stage (order 50) that injects operational warnings into prompts when tools have low success rates.
 
 **Files:**
 - Create: `packages/runtime/src/enrichment/stages/telemetry-stage.ts`
@@ -436,7 +436,6 @@ export interface TelemetryStatsLike {
 /**
  * Enrichment stage that injects operational telemetry warnings into prompts.
  *
- * Inspired by BMO's telemetry.json to system prompt injection pattern.
  * When tools have low success rates (below 70% with 5+ calls),
  * the stage prepends a warning section so the model can adapt.
  *
@@ -510,7 +509,7 @@ git commit -m "feat(enrichment): add TelemetryStage for operational warning inje
 
 ### Task 3: Create session reflection module
 
-At session close, reflect on what happened — what tools succeeded/failed, how long things took, what patterns recurred. Store reflections for the periodic deep review. Inspired by BMO's Loop 3 (Self-Reflection).
+At session close, reflect on what happened — what tools succeeded/failed, how long things took, what patterns recurred. Store reflections for the periodic deep review.
 
 **Files:**
 - Create: `packages/telemetry/src/reflection.ts`
@@ -617,7 +616,7 @@ const LOW_SUCCESS_THRESHOLD = 0.7;
 const MIN_CALLS_TO_FLAG = 3;
 
 /**
- * Generates structured session reflections (BMO Loop 3).
+ * Generates structured session reflections.
  *
  * Three questions:
  * 1. What went well?
@@ -746,14 +745,14 @@ export { SessionReflector } from './reflection.js';
 
 ```bash
 git add packages/telemetry/src/reflection.ts packages/telemetry/src/__tests__/reflection.test.ts packages/telemetry/src/index.ts
-git commit -m "feat(telemetry): add session reflection with 3-question BMO template"
+git commit -m "feat(telemetry): add session reflection with 3-question template"
 ```
 
 ---
 
 ### Task 4: Create `@auxiora/verification` package — independent job verification
 
-Port nightwire's verification agent pattern: after a job completes, a separate verification pass reviews the output for security concerns and logic errors. Verification failures block job completion.
+Independent verification pattern: after a job completes, a separate verification pass reviews the output for security concerns and logic errors. Verification failures block job completion.
 
 **Files:**
 - Create: `packages/verification/package.json`
@@ -894,7 +893,7 @@ const MAX_OUTPUT_LENGTH = 500_000;
 /**
  * Independent verification of job output.
  *
- * Inspired by nightwire's VerificationAgent: "No agent should verify its own work."
+ * "No agent should verify its own work."
  * Scans output for security concerns, logic errors, and suspicious patterns.
  * Verification failures block job completion (fail-closed).
  */
@@ -952,14 +951,14 @@ Expected: PASS (6 tests)
 
 ```bash
 git add packages/verification/
-git commit -m "feat(verification): add independent job output verifier (nightwire-inspired)"
+git commit -m "feat(verification): add independent job output verifier"
 ```
 
 ---
 
 ### Task 5: Add quality gates with regression detection to job queue
 
-Port nightwire's baseline snapshot + regression detection pattern. Before a job runs, snapshot the current test state; after it completes, compare. Only fail if NEW failures are introduced.
+Baseline snapshot + regression detection. Before a job runs, snapshot the current test state; after it completes, compare. Only fail if NEW failures are introduced.
 
 **Files:**
 - Create: `packages/job-queue/src/quality-gates.ts`
@@ -1027,7 +1026,7 @@ Expected: FAIL
 /**
  * Quality gate with regression detection.
  *
- * Inspired by nightwire: take a test baseline BEFORE a job runs,
+ * Take a test baseline BEFORE a job runs,
  * compare AFTER. Only fail if NEW failures are introduced.
  * Pre-existing failures don't block completion.
  */
@@ -1093,7 +1092,7 @@ export { QualityGateChecker } from './quality-gates.js';
 
 ```bash
 git add packages/job-queue/src/quality-gates.ts packages/job-queue/src/__tests__/quality-gates.test.ts packages/job-queue/src/index.ts
-git commit -m "feat(job-queue): add quality gates with regression detection (nightwire-inspired)"
+git commit -m "feat(job-queue): add quality gates with regression detection"
 ```
 
 ---
@@ -1174,8 +1173,8 @@ interface MemorySnapshot {
 /**
  * Pre-dispatch resource check for the job queue.
  *
- * Inspired by nightwire's ResourceGuard: check system capacity
- * before spawning workers. Defers jobs instead of risking OOM.
+ * Check system capacity before spawning workers.
+ * Defers jobs instead of risking OOM.
  */
 export class ResourceGuard {
   private readonly memoryThreshold: number;
@@ -1232,7 +1231,7 @@ Expected: PASS (4 tests)
 
 ```bash
 git add packages/job-queue/src/resource-guard.ts packages/job-queue/src/__tests__/resource-guard.test.ts packages/job-queue/src/index.ts
-git commit -m "feat(job-queue): add resource guard for pre-dispatch capacity check (nightwire-inspired)"
+git commit -m "feat(job-queue): add resource guard for pre-dispatch capacity check"
 ```
 
 ---
@@ -1441,14 +1440,14 @@ if (this.telemetryTracker && this.sessionReflector) {
 
 ```bash
 git add packages/runtime/src/index.ts
-git commit -m "feat(runtime): trigger session reflection on session close (BMO Loop 3)"
+git commit -m "feat(runtime): trigger session reflection on session close"
 ```
 
 ---
 
 ### Task 10: Add "battery change" behavior for periodic deep self-review
 
-Create a scheduled behavior that runs periodically to analyze aggregated telemetry, generate an improvement report, and surface it. This is BMO's Loop 4 (Battery Change).
+Create a scheduled behavior that runs periodically to analyze aggregated telemetry, generate an improvement report, and surface it.
 
 **Files:**
 - Create: `packages/telemetry/src/battery-change.ts`
@@ -1534,7 +1533,7 @@ import { SessionReflector } from './reflection.js';
 /**
  * Battery Change reviewer — periodic deep self-review.
  *
- * BMO Loop 4: Periodically analyze aggregated telemetry, recent
+ * Periodically analyze aggregated telemetry, recent
  * reflections, and generate actionable improvement suggestions.
  */
 export class BatteryChangeReviewer {
@@ -1621,7 +1620,7 @@ export { BatteryChangeReviewer } from './battery-change.js';
 
 ```bash
 git add packages/telemetry/src/battery-change.ts packages/telemetry/src/__tests__/battery-change.test.ts packages/telemetry/src/index.ts
-git commit -m "feat(telemetry): add battery change reviewer for periodic deep self-review (BMO Loop 4)"
+git commit -m "feat(telemetry): add battery change reviewer for periodic deep self-review"
 ```
 
 ---
@@ -1674,39 +1673,32 @@ git commit -m "feat(dashboard): add telemetry stats and self-improvement report 
 
 ## Summary
 
-| Task | Package | What | Source | Tests |
-|------|---------|------|--------|-------|
-| 1 | `@auxiora/telemetry` | Persistent tool/job tracker | BMO telemetry.json | 6 |
-| 2 | `runtime/enrichment` | TelemetryStage (order 50) | BMO prompt injection | 6 |
-| 3 | `@auxiora/telemetry` | Session reflection (3-question) | BMO Loop 3 | 4 |
-| 4 | `@auxiora/verification` | Independent job verifier | Nightwire VerificationAgent | 6 |
-| 5 | `@auxiora/job-queue` | Quality gates + regression detection | Nightwire QualityGateRunner | 4 |
-| 6 | `@auxiora/job-queue` | Resource guard (memory check) | Nightwire ResourceGuard | 4 |
-| 7 | `runtime` | Wire telemetry to job queue events | Integration | 2 |
-| 8 | `runtime` | Wire TelemetryStage into pipeline | Integration | 1 |
-| 9 | `runtime` | Session reflection on session close | BMO Loop 3 | 0* |
-| 10 | `@auxiora/telemetry` | Battery change deep self-review | BMO Loop 4 | 3 |
-| 11 | `dashboard` | Gateway API for telemetry/report | Observability | 1 |
+| Task | Package | What | Tests |
+|------|---------|------|-------|
+| 1 | `@auxiora/telemetry` | Persistent tool/job tracker | 6 |
+| 2 | `runtime/enrichment` | TelemetryStage (order 50) | 6 |
+| 3 | `@auxiora/telemetry` | Session reflection (3-question) | 4 |
+| 4 | `@auxiora/verification` | Independent job verifier | 6 |
+| 5 | `@auxiora/job-queue` | Quality gates + regression detection | 4 |
+| 6 | `@auxiora/job-queue` | Resource guard (memory check) | 4 |
+| 7 | `runtime` | Wire telemetry to job queue events | 2 |
+| 8 | `runtime` | Wire TelemetryStage into pipeline | 1 |
+| 9 | `runtime` | Session reflection on session close | 0* |
+| 10 | `@auxiora/telemetry` | Battery change deep self-review | 3 |
+| 11 | `dashboard` | Gateway API for telemetry/report | 1 |
 
 **Total: 11 tasks, ~37 new tests, 2 new packages, 1 new enrichment stage, 2 new gateway endpoints**
 
 \* Task 9 modifies existing runtime code to wire session reflection — tested via existing runtime tests.
 
-### BMO Loop Mapping
+### Self-Improvement Loop Mapping
 
-| BMO Loop | Auxiora Implementation | Task |
-|----------|----------------------|------|
-| Loop 1 — Build It Now | Existing: `@auxiora/skill-author` | — |
-| Loop 2 — Active Learning | `TelemetryTracker` + job event wiring | 1, 7 |
-| Loop 3 — Self-Reflection | `SessionReflector` on session close | 3, 9 |
-| Loop 4 — Battery Change | `BatteryChangeReviewer` scheduled behavior | 10 |
-| telemetry.json to prompt | `TelemetryStage` in enrichment pipeline | 2, 8 |
-
-### Nightwire Pattern Mapping
-
-| Nightwire Feature | Auxiora Implementation | Task |
-|-------------------|----------------------|------|
-| VerificationAgent | `@auxiora/verification` JobVerifier | 4 |
-| QualityGateRunner | `QualityGateChecker` with regression detection | 5 |
-| ResourceGuard | `ResourceGuard` with memory check | 6 |
-| LearningExtractor to prompt | `TelemetryStage` + `SessionReflector` | 2, 3 |
+| Loop | Auxiora Implementation | Task |
+|------|----------------------|------|
+| Active Learning | `TelemetryTracker` + job event wiring | 1, 7 |
+| Telemetry to Prompt | `TelemetryStage` in enrichment pipeline | 2, 8 |
+| Self-Reflection | `SessionReflector` on session close | 3, 9 |
+| Deep Self-Review | `BatteryChangeReviewer` scheduled behavior | 10 |
+| Independent Verification | `@auxiora/verification` JobVerifier | 4 |
+| Regression Detection | `QualityGateChecker` with baseline comparison | 5 |
+| Resource Management | `ResourceGuard` with memory check | 6 |
