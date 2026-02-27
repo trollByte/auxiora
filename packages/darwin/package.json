@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/darwin",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },

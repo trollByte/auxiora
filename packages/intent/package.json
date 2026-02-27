@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/intent",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Natural language intent parsing and action planning",
   "type": "module",
   "main": "dist/index.js",

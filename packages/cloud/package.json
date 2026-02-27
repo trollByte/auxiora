@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/cloud",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Multi-tenant cloud layer with isolation, billing, and quotas",
   "type": "module",
   "main": "dist/index.js",

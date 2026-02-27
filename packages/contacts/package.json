@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/contacts",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Unified contact graph with relationship scoring, deduplication, and context recall",
   "type": "module",
   "main": "dist/index.js",

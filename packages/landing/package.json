@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/landing",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Marketing landing page for Auxiora Cloud",
   "private": true,
   "scripts": {

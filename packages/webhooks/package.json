@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/webhooks",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

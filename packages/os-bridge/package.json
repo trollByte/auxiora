@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/os-bridge",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Deep OS integration: clipboard, file watching, app control, system state",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/behaviors",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Proactive behaviors: scheduled tasks, monitors, and one-shot reminders",
   "type": "module",
   "main": "dist/index.js",
