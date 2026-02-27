@@ -18,11 +18,14 @@ export interface ReleaseAsset {
   contentType: string;
 }
 
+export type UpdateSource = 'github' | 'npm';
+
 export interface UpdateCheckResult {
   available: boolean;
   currentVersion: string;
   latestVersion: string;
   channel: UpdateChannel;
+  source: UpdateSource;
   releaseUrl: string;
   releaseNotes: string;
   publishedAt: number;

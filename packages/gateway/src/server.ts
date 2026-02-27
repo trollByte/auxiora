@@ -177,6 +177,7 @@ export class Gateway {
           canSelfUpdate: info.canSelfUpdate,
           updateAvailable: checkResult.available,
           latestVersion: checkResult.latestVersion,
+          source: checkResult.source,
           channel: 'stable',
         });
       } catch {

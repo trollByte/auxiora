@@ -2,6 +2,7 @@
 export type {
   InstallMethod,
   UpdateChannel,
+  UpdateSource,
   InstallationInfo,
   ReleaseAsset,
   UpdateCheckResult,
