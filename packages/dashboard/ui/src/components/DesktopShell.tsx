@@ -26,6 +26,7 @@ import { Marketplace } from '../pages/Marketplace.js';
 import { SystemStatus } from '../pages/SystemStatus.js';
 import { MemoryManager } from '../pages/MemoryManager.js';
 import { ModelExplorer } from '../pages/ModelExplorer.js';
+import { LiveCanvas } from '../pages/LiveCanvas.js';
 
 interface AppEntry {
   id: string;
@@ -55,6 +56,7 @@ const APPS: AppEntry[] = [
   { id: 'security', label: 'Security', icon: '\u{1F6E1}\uFE0F', component: () => <SettingsSecurity />, defaultWidth: 680, defaultHeight: 520 },
   { id: 'marketplace', label: 'Marketplace', icon: '\u{1F3EA}', component: () => <Marketplace />, defaultWidth: 900, defaultHeight: 640 },
   { id: 'models', label: 'Models', icon: '\u{1F916}', component: () => <ModelExplorer />, defaultWidth: 900, defaultHeight: 650 },
+  { id: 'canvas', label: 'Canvas', icon: '\u{1F58C}\uFE0F', component: () => <LiveCanvas />, defaultWidth: 900, defaultHeight: 640 },
   { id: 'audit', label: 'Audit Log', icon: '\u{1F4CB}', component: () => <AuditLog />, defaultWidth: 820, defaultHeight: 600 },
 ];
 

@@ -5033,3 +5033,14 @@ body {
     flex-wrap: wrap;
   }
 }
+
+/* ── LiveCanvas ── */
+.lc-status { margin-bottom: 12px; }
+.lc-connected { color: var(--success); }
+.lc-disconnected { color: var(--text-secondary); }
+.lc-empty { color: var(--text-secondary); padding: 24px 0; }
+.lc-sessions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lc-canvas { background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; }
+.lc-obj { padding: 4px; border-radius: 4px; }
+.lc-text { color: var(--text-primary); white-space: pre-wrap; }
+.lc-image { object-fit: contain; }
