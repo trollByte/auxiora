@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api';
-import { DataTable } from '../components/DataTable';
 import { StatusBadge } from '../components/StatusBadge';
 
 type BehaviorType = 'scheduled' | 'monitor' | 'one-shot';
@@ -119,22 +118,12 @@ export function Behaviors() {
     [frequency, scheduleTime, everyNHours, weekday, customCron],
   );
 
-  const columns = [
-    { key: 'action', label: 'Action', render: (b: any) => <span title={b.action} style={{ display: 'block', maxWidth: 340, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>{b.action}</span> },
-    { key: 'type', label: 'Type' },
-    {
-      key: 'schedule', label: 'Schedule', render: (b: any) => {
-        if (b.schedule?.cron) return describeCron(b.schedule.cron);
-        if (b.polling) return `Every ${Math.round(b.polling.intervalMs / 60000)}m`;
-        if (b.delay?.fireAt) return new Date(b.delay.fireAt).toLocaleString();
-        return '-';
-      },
-    },
-    { key: 'status', label: 'Status', render: (b: any) => <StatusBadge status={b.status} /> },
-    { key: 'runCount', label: 'Runs' },
-    { key: 'failCount', label: 'Fails' },
-    { key: 'lastRun', label: 'Last Run', render: (b: any) => b.lastRun ? new Date(b.lastRun).toLocaleString() : '-' },
-  ];
+  const describeSchedule = (b: any): string => {
+    if (b.schedule?.cron) return describeCron(b.schedule.cron);
+    if (b.polling) return `Every ${Math.round(b.polling.intervalMs / 60000)}m`;
+    if (b.delay?.fireAt) return new Date(b.delay.fireAt).toLocaleString();
+    return '-';
+  };
 
   const handleToggle = async (b: any) => {
     try {
@@ -407,20 +396,36 @@ export function Behaviors() {
         </div>
       )}
 
-      <DataTable
-        columns={columns}
-        rows={behaviors}
-        keyField="id"
-        actions={(b: any) => (
-          <>
-            <button className="btn-sm" onClick={() => openEdit(b)}>Edit</button>
-            <button className="btn-sm" onClick={() => handleToggle(b)}>
-              {b.status === 'active' ? 'Pause' : 'Resume'}
-            </button>
-            <button className="btn-sm btn-danger" onClick={() => handleDelete(b)}>Delete</button>
-          </>
-        )}
-      />
+      {behaviors.length === 0 ? (
+        <div className="bv-empty">No behaviors configured yet.</div>
+      ) : (
+        <div className="bv-list">
+          {behaviors.map((b: any) => (
+            <div key={b.id} className={`bv-card ${b.status === 'paused' ? 'bv-card--paused' : ''}`}>
+              <div className="bv-card-main">
+                <div className="bv-card-action">{b.action}</div>
+                <div className="bv-card-meta">
+                  <span className="bv-card-schedule">{describeSchedule(b)}</span>
+                  <StatusBadge status={b.status} />
+                  <span className="bv-card-type">{b.type}</span>
+                </div>
+                <div className="bv-card-stats">
+                  <span>{b.runCount ?? 0} run{(b.runCount ?? 0) !== 1 ? 's' : ''}</span>
+                  {(b.failCount ?? 0) > 0 && <span className="bv-card-fails">{b.failCount} failed</span>}
+                  {b.lastRun && <span className="bv-card-lastrun">Last: {new Date(b.lastRun).toLocaleString()}</span>}
+                </div>
+              </div>
+              <div className="bv-card-actions">
+                <button className="btn-sm" onClick={() => openEdit(b)}>Edit</button>
+                <button className="btn-sm" onClick={() => handleToggle(b)}>
+                  {b.status === 'active' ? 'Pause' : 'Resume'}
+                </button>
+                <button className="btn-sm btn-danger" onClick={() => handleDelete(b)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
