@@ -17,17 +17,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auxiora/audit": "workspace:*",
     "@auxiora/core": "workspace:*",
     "@auxiora/errors": "workspace:*",
     "@auxiora/job-queue": "workspace:^",
     "@auxiora/logger": "workspace:*",
-    "@auxiora/audit": "workspace:*",
-    "node-cron": "^3.0.3",
+    "croner": "^10.0.1",
     "nanoid": "^5.1.2"
   },
-  "devDependencies": {
-    "@types/node-cron": "^3.0.11"
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=22.0.0"
   },

@@ -1,24 +1,21 @@
-import cron from 'node-cron';
+import { Cron } from 'croner';
 import { getLogger } from '@auxiora/logger';
 
 const logger = getLogger('behaviors:scheduler');
 
 export class Scheduler {
-  private jobs = new Map<string, cron.ScheduledTask>();
+  private jobs = new Map<string, Cron>();
 
   schedule(id: string, cronExpression: string, callback: () => void, timezone?: string): void {
     // Stop existing job with same ID
     this.stop(id);
 
-    const options: cron.ScheduleOptions = {
-      scheduled: true,
+    const task = new Cron(cronExpression, {
       timezone: timezone || undefined,
-    };
-
-    const task = cron.schedule(cronExpression, () => {
+    }, () => {
       logger.debug('Cron job fired', { id, cron: cronExpression });
       callback();
-    }, options);
+    });
 
     this.jobs.set(id, task);
     logger.info('Scheduled cron job', { id, cron: cronExpression, timezone });
@@ -50,6 +47,13 @@ export class Scheduler {
   }
 
   static isValidCron(expression: string): boolean {
-    return cron.validate(expression);
+    try {
+      // Croner validates on construction; use a dry-run pattern check
+      const c = new Cron(expression, { paused: true });
+      c.stop();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
