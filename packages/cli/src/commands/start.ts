@@ -10,10 +10,12 @@ export function createStartCommand(): Command {
   return new Command('start')
     .description('Start the Auxiora gateway')
     .option('-p, --password <password>', 'Vault password (or set AUXIORA_VAULT_PASSWORD env var)')
+    .option('--seal-pin <pin>', 'PIN for sealed auto-unseal (or set AUXIORA_SEAL_PIN env var)')
     .option('--no-vault', 'Start without unlocking the vault')
     .option('--no-browser', 'Do not auto-open browser')
     .action(async (options) => {
       let vaultPassword: string | undefined;
+      const sealPin: string | undefined = options.sealPin || process.env.AUXIORA_SEAL_PIN || undefined;
 
       if (options.vault !== false) {
         vaultPassword = options.password || process.env.AUXIORA_VAULT_PASSWORD;
@@ -45,7 +47,7 @@ export function createStartCommand(): Command {
       });
 
       try {
-        auxiora = await startAuxiora({ vaultPassword });
+        auxiora = await startAuxiora({ vaultPassword, sealPin });
 
         const port = process.env.AUXIORA_GATEWAY_PORT || '18800';
         const dashboardUrl = `http://localhost:${port}/dashboard`;

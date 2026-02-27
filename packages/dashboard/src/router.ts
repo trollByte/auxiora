@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
+import { Vault, SealManager } from '@auxiora/vault';
 import { DashboardAuth } from './auth.js';
 import type { DashboardConfig, DashboardDeps, SetupDeps } from './types.js';
 import type { CloudDeps, CloudSignupRequest, CloudLoginRequest, CloudPlanChangeRequest, CloudPaymentMethodRequest } from './cloud-types.js';
@@ -1275,6 +1276,54 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       res.json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to change vault password';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // Security: Seal status (auto-unseal)
+  router.get('/security/seal/status', async (_req: Request, res: Response) => {
+    try {
+      const seal = new SealManager();
+      const sealed = await seal.isSealed();
+      const pinRequired = sealed ? await seal.needsPin() : false;
+      res.json({ sealed, pinRequired });
+    } catch {
+      res.json({ sealed: false, pinRequired: false });
+    }
+  });
+
+  // Security: Enable seal (auto-unseal)
+  router.post('/security/seal', async (req: Request, res: Response) => {
+    const { password, pin } = req.body as { password?: string; pin?: string };
+    if (!password || typeof password !== 'string') {
+      res.status(400).json({ error: 'Vault password is required' });
+      return;
+    }
+    try {
+      // Verify password by unlocking a temporary vault instance
+      const tempVault = new Vault();
+      await tempVault.unlock(password);
+      tempVault.lock();
+
+      const seal = new SealManager();
+      await seal.seal(password, pin || undefined);
+      void audit('vault.seal', { pinRequired: !!pin });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to seal vault';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // Security: Disable seal (auto-unseal)
+  router.delete('/security/seal', async (_req: Request, res: Response) => {
+    try {
+      const seal = new SealManager();
+      await seal.unseal();
+      void audit('vault.unseal', {});
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to unseal';
       res.status(500).json({ error: msg });
     }
   });

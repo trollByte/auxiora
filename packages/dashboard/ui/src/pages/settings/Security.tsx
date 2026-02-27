@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../api';
 import { PasswordStrength } from '../../components/PasswordStrength';
 
@@ -17,6 +17,18 @@ export function SettingsSecurity() {
   const [vaultSaving, setVaultSaving] = useState(false);
   const [vaultSuccess, setVaultSuccess] = useState('');
   const [vaultError, setVaultError] = useState('');
+
+  // Seal (auto-unseal) state
+  const [sealStatus, setSealStatus] = useState<{ sealed: boolean; pinRequired: boolean } | null>(null);
+  const [sealPassword, setSealPassword] = useState('');
+  const [sealPin, setSealPin] = useState('');
+  const [sealSaving, setSealSaving] = useState(false);
+  const [sealSuccess, setSealSuccess] = useState('');
+  const [sealError, setSealError] = useState('');
+
+  useEffect(() => {
+    api.getSealStatus().then(setSealStatus).catch(() => setSealStatus({ sealed: false, pinRequired: false }));
+  }, []);
 
   const handleDashboardPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +81,47 @@ export function SettingsSecurity() {
     }
   };
 
+  const handleEnableSeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSealError('');
+    setSealSuccess('');
+    if (!sealPassword) {
+      setSealError('Vault password is required');
+      return;
+    }
+    if (sealPin && sealPin.length < 4) {
+      setSealError('PIN must be at least 4 characters');
+      return;
+    }
+    setSealSaving(true);
+    try {
+      await api.enableSeal(sealPassword, sealPin || undefined);
+      setSealSuccess('Auto-unseal enabled');
+      setSealPassword('');
+      setSealPin('');
+      setSealStatus({ sealed: true, pinRequired: sealPin.length > 0 });
+    } catch (err: any) {
+      setSealError(err.message);
+    } finally {
+      setSealSaving(false);
+    }
+  };
+
+  const handleDisableSeal = async () => {
+    setSealError('');
+    setSealSuccess('');
+    setSealSaving(true);
+    try {
+      await api.disableSeal();
+      setSealSuccess('Auto-unseal disabled');
+      setSealStatus({ sealed: false, pinRequired: false });
+    } catch (err: any) {
+      setSealError(err.message);
+    } finally {
+      setSealSaving(false);
+    }
+  };
+
   return (
     <div className="page">
       <h2>Security</h2>
@@ -105,6 +158,36 @@ export function SettingsSecurity() {
           {vaultSuccess && <div className="settings-success">{vaultSuccess}</div>}
           {vaultError && <div className="error">{vaultError}</div>}
         </form>
+      </div>
+
+      <div className="settings-section">
+        <h3>Auto-Unseal</h3>
+        <p className="settings-info">
+          When enabled, the vault automatically unlocks on restart using this machine's identity.
+          No plaintext password is stored on disk. Optionally add a PIN for extra security.
+        </p>
+        {sealStatus === null ? (
+          <p>Loading...</p>
+        ) : sealStatus.sealed ? (
+          <div>
+            <p>Status: <strong>Enabled</strong>{sealStatus.pinRequired ? ' (PIN required)' : ' (no PIN)'}</p>
+            <button className="settings-btn" onClick={handleDisableSeal} disabled={sealSaving}>
+              {sealSaving ? 'Disabling...' : 'Disable Auto-Unseal'}
+            </button>
+          </div>
+        ) : (
+          <form className="settings-form" onSubmit={handleEnableSeal}>
+            <label>Vault Password</label>
+            <input type="password" value={sealPassword} onChange={(e) => setSealPassword(e.target.value)} placeholder="Enter vault password to verify" />
+            <label>PIN (optional, 4+ characters)</label>
+            <input type="password" value={sealPin} onChange={(e) => setSealPin(e.target.value)} placeholder="Leave empty for machine-only binding" />
+            <button className="settings-btn" type="submit" disabled={sealSaving || !sealPassword}>
+              {sealSaving ? 'Enabling...' : 'Enable Auto-Unseal'}
+            </button>
+          </form>
+        )}
+        {sealSuccess && <div className="settings-success">{sealSuccess}</div>}
+        {sealError && <div className="error">{sealError}</div>}
       </div>
     </div>
   );

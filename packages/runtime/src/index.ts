@@ -171,6 +171,8 @@ import type { EnrichmentContext } from './enrichment/index.js';
 export interface AuxioraOptions {
   config?: Config;
   vaultPassword?: string;
+  /** PIN for sealed auto-unseal (or set AUXIORA_SEAL_PIN env var) */
+  sealPin?: string;
 }
 
 /**
@@ -371,6 +373,22 @@ export class Auxiora {
         await this.vault.unlock(options.vaultPassword);
       } catch (error) {
         this.logger.warn('Failed to unlock vault', { error: error instanceof Error ? error : new Error(String(error)) });
+      }
+    }
+
+    // Try sealed auto-unseal if vault is still locked
+    if (!options.vaultPassword) {
+      try {
+        const { SealManager } = await import('@auxiora/vault');
+        const seal = new SealManager();
+        if (await seal.isSealed()) {
+          const sealPin = options.sealPin || process.env.AUXIORA_SEAL_PIN || undefined;
+          if (await seal.autoUnseal(this.vault, sealPin)) {
+            this.logger.info('Vault auto-unsealed from seal');
+          }
+        }
+      } catch (error) {
+        this.logger.debug('Sealed auto-unseal not available', { error: error instanceof Error ? error : new Error(String(error)) });
       }
     }
 

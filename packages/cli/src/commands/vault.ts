@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { password as passwordPrompt, confirm } from '@inquirer/prompts';
-import { Vault, VaultError, vaultExists } from '@auxiora/vault';
+import { password as passwordPrompt, confirm, input } from '@inquirer/prompts';
+import { Vault, VaultError, vaultExists, SealManager } from '@auxiora/vault';
 import { audit } from '@auxiora/audit';
 
 // Known secret names used by Auxiora
@@ -333,6 +333,77 @@ export function createVaultCommand(): Command {
       } finally {
         vault.lock();
       }
+    });
+
+  vaultCmd
+    .command('seal')
+    .description('Enable sealed auto-unseal (vault auto-unlocks on restart)')
+    .option('--no-pin', 'Skip PIN (machine-binding only)')
+    .action(async (options) => {
+      if (!(await vaultExists())) {
+        console.error('No vault found. Use "vault init" to create one.');
+        process.exit(1);
+      }
+
+      const vault = new Vault();
+
+      // Verify vault access
+      console.log('Enter your vault password to enable sealed auto-unseal.\n');
+      const password = await passwordPrompt({
+        message: 'Vault password:',
+      });
+
+      try {
+        await vault.unlock(password);
+      } catch (error) {
+        if (error instanceof VaultError) {
+          console.error(`Error: ${error.message}`);
+          process.exit(1);
+        }
+        throw error;
+      }
+
+      try {
+        let pin: string | undefined;
+        if (options.pin !== false) {
+          pin = await input({
+            message: 'Enter a PIN for extra security (4+ chars, or press Enter to skip):',
+          });
+          if (pin && pin.length > 0 && pin.length < 4) {
+            console.error('PIN must be at least 4 characters');
+            process.exit(1);
+          }
+          if (pin === '') pin = undefined;
+        }
+
+        const seal = new SealManager();
+        await seal.seal(password, pin);
+        await audit('vault.seal', { pinRequired: !!pin });
+
+        console.log('\nSealed auto-unseal enabled.');
+        console.log('The vault will auto-unlock on restart using this machine\'s identity.');
+        if (pin) {
+          console.log('PIN is required — pass via --seal-pin or AUXIORA_SEAL_PIN env var.');
+        }
+      } finally {
+        vault.lock();
+      }
+    });
+
+  vaultCmd
+    .command('unseal')
+    .description('Disable sealed auto-unseal')
+    .action(async () => {
+      const seal = new SealManager();
+
+      if (!(await seal.isSealed())) {
+        console.log('Vault is not sealed. Nothing to do.');
+        return;
+      }
+
+      await seal.unseal();
+      await audit('vault.unseal', {});
+      console.log('Sealed auto-unseal disabled. Next restart will require manual password.');
     });
 
   return vaultCmd;

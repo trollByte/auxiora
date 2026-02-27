@@ -110,7 +110,7 @@ importers:
         specifier: workspace:*
         version: link:../errors
       '@auxiora/job-queue':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../job-queue
       '@auxiora/logger':
         specifier: workspace:*
@@ -464,6 +464,9 @@ importers:
       '@auxiora/providers':
         specifier: workspace:*
         version: link:../providers
+      '@auxiora/vault':
+        specifier: workspace:*
+        version: link:../vault
       express:
         specifier: ^5.1.0
         version: 5.2.1
@@ -927,7 +930,7 @@ importers:
   packages/runtime:
     dependencies:
       '@auxiora/a2a':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../a2a
       '@auxiora/agent-protocol':
         specifier: workspace:*
@@ -936,7 +939,7 @@ importers:
         specifier: workspace:*
         version: link:../ambient
       '@auxiora/approval-queue':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../approval-queue
       '@auxiora/audit':
         specifier: workspace:*
@@ -945,7 +948,7 @@ importers:
         specifier: workspace:*
         version: link:../autonomy
       '@auxiora/backup':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../backup
       '@auxiora/behaviors':
         specifier: workspace:*
@@ -957,13 +960,13 @@ importers:
         specifier: workspace:*
         version: link:../calendar-intelligence
       '@auxiora/canvas':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../canvas
       '@auxiora/channels':
         specifier: workspace:*
         version: link:../channels
       '@auxiora/code-interpreter':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../code-interpreter
       '@auxiora/compose':
         specifier: workspace:*
@@ -1014,7 +1017,7 @@ importers:
         specifier: workspace:*
         version: link:../conversation
       '@auxiora/conversation-branch':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../conversation-branch
       '@auxiora/core':
         specifier: workspace:*
@@ -1026,7 +1029,7 @@ importers:
         specifier: workspace:*
         version: link:../email-intelligence
       '@auxiora/evaluation':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../evaluation
       '@auxiora/gateway':
         specifier: workspace:*
@@ -1035,7 +1038,7 @@ importers:
         specifier: workspace:*
         version: link:../guardrails
       '@auxiora/image-gen':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../image-gen
       '@auxiora/intent':
         specifier: workspace:*
@@ -1044,10 +1047,10 @@ importers:
         specifier: workspace:*
         version: link:../introspection
       '@auxiora/job-queue':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../job-queue
       '@auxiora/knowledge-graph':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../knowledge-graph
       '@auxiora/logger':
         specifier: workspace:*
@@ -1065,7 +1068,7 @@ importers:
         specifier: workspace:*
         version: link:../model-registry
       '@auxiora/nl-automation':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../nl-automation
       '@auxiora/notification-hub':
         specifier: workspace:*
@@ -1092,10 +1095,10 @@ importers:
         specifier: workspace:*
         version: link:../providers
       '@auxiora/rag':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../rag
       '@auxiora/react-loop':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../react-loop
       '@auxiora/research':
         specifier: workspace:*
@@ -1104,7 +1107,7 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@auxiora/sandbox':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../sandbox
       '@auxiora/screen':
         specifier: workspace:*
@@ -1134,7 +1137,7 @@ importers:
         specifier: workspace:*
         version: link:../vault
       '@auxiora/vector-store':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vector-store
       '@auxiora/voice':
         specifier: workspace:*

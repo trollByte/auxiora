@@ -201,6 +201,19 @@ export const api = {
       body: JSON.stringify({ newPassword }),
     }),
 
+  // Seal (auto-unseal) API
+  getSealStatus: () =>
+    fetchApi<{ sealed: boolean; pinRequired: boolean }>('/security/seal/status'),
+  enableSeal: (password: string, pin?: string) =>
+    fetchApi<{ success: boolean }>('/security/seal', {
+      method: 'POST',
+      body: JSON.stringify({ password, pin }),
+    }),
+  disableSeal: () =>
+    fetchApi<{ success: boolean }>('/security/seal', {
+      method: 'DELETE',
+    }),
+
   // Connector OAuth API
   getConnectorStatus: (connectorId: string) =>
     fetchApi<{ data: { connectorId: string; hasCredentials: boolean; connected: boolean; expiresAt?: number } }>(

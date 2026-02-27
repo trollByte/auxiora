@@ -13,6 +13,8 @@ export type AuditEventType =
   | 'vault.unlock_failed'
   | 'vault.init'
   | 'vault.password_changed'
+  | 'vault.seal'
+  | 'vault.unseal'
   | 'auth.login'
   | 'auth.logout'
   | 'auth.failed'
