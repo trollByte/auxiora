@@ -90,7 +90,8 @@
     "@auxiora/voice": "workspace:*",
     "@auxiora/webhooks": "workspace:*",
     "@auxiora/workflows": "workspace:*",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@auxiora/callgraph": "workspace:*",
@@ -99,6 +100,7 @@
     "@auxiora/reasoning": "workspace:*",
     "@auxiora/telemetry": "workspace:*",
     "@types/express": "^5.0.0",
+    "@types/ws": "^8.5.10",
     "@types/supertest": "^6.0.0",
     "supertest": "^7.1.0"
   },

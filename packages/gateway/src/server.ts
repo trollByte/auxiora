@@ -567,6 +567,18 @@ export class Gateway {
     return this.app;
   }
 
+  public getServer(): HttpServer {
+    return this.server;
+  }
+
+  public onUpgrade(handler: (req: import('node:http').IncomingMessage, socket: import('node:stream').Duplex, head: Buffer) => boolean): void {
+    this.server.on('upgrade', (req, socket, head) => {
+      // Give custom handlers a chance to claim the upgrade; if none claim it,
+      // let the default WSS handle it (chat WebSocket).
+      if (handler(req, socket as import('node:stream').Duplex, head)) return;
+    });
+  }
+
   private handleAudioFrame(client: ClientConnection, frame: Buffer): void {
     if (!client.authenticated || !client.voiceActive) return;
 

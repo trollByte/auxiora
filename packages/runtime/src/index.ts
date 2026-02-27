@@ -106,6 +106,8 @@ import type { ReActCallbacks, ReActConfig, ReActStep } from '@auxiora/react-loop
 import { AgentCardBuilder, TaskManager as A2ATaskManager, A2AClient } from '@auxiora/a2a';
 import type { AgentCard, A2ATask } from '@auxiora/a2a';
 import { CanvasSession } from '@auxiora/canvas';
+import type { CanvasEventType } from '@auxiora/canvas';
+import { WebSocketServer as CanvasWSS, WebSocket as CanvasWS } from 'ws';
 import { SandboxManager } from '@auxiora/sandbox';
 import type { DockerApi, ExecResult } from '@auxiora/sandbox';
 import { DocumentStore, ContextBuilder } from '@auxiora/rag';
@@ -1517,6 +1519,9 @@ export class Auxiora {
 
     // Canvas API routes
     this.gateway.mountRouter('/api/v1/canvas', this.createCanvasRouter());
+
+    // Canvas WebSocket upgrade handler
+    this.setupCanvasWebSocket();
 
     // Sandbox API routes
     this.gateway.mountRouter('/api/v1/sandbox', this.createSandboxRouter());
@@ -6811,6 +6816,17 @@ export class Auxiora {
   private createCanvasRouter(): import('express').Router {
     const router = Router();
 
+    // GET /sessions — list all canvas sessions
+    router.get('/sessions', (_req: any, res: any) => {
+      const sessions = Array.from(this.canvasSessions.entries()).map(([id, s]) => ({
+        id,
+        objectCount: s.getObjects().length,
+        size: s.getSize(),
+        createdAt: s.createdAt,
+      }));
+      res.json({ sessions });
+    });
+
     // POST /sessions — create a new canvas session
     router.post('/sessions', (req: any, res: any) => {
       const { width, height } = req.body as { width?: number; height?: number };
@@ -6878,6 +6894,66 @@ export class Auxiora {
     });
 
     return router;
+  }
+
+  private setupCanvasWebSocket(): void {
+    const canvasWss = new CanvasWSS({ noServer: true });
+    const CANVAS_WS_PATTERN = /^\/api\/v1\/canvas\/sessions\/([^/]+)\/ws/;
+    const BROADCAST_EVENTS: CanvasEventType[] = [
+      'object:added',
+      'object:updated',
+      'object:removed',
+      'canvas:cleared',
+      'canvas:resized',
+    ];
+
+    this.gateway.onUpgrade((req, socket, head) => {
+      const url = req.url ?? '';
+      const match = CANVAS_WS_PATTERN.exec(url);
+      if (!match) return false;
+
+      const sessionId = decodeURIComponent(match[1]);
+      const session = this.canvasSessions.get(sessionId);
+      if (!session) {
+        socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+        socket.destroy();
+        return true;
+      }
+
+      canvasWss.handleUpgrade(req, socket, head, (ws) => {
+        // Send initial snapshot
+        const snapshot = session.snapshot();
+        if (ws.readyState === CanvasWS.OPEN) {
+          ws.send(JSON.stringify({ type: 'snapshot', data: snapshot }));
+        }
+
+        // Subscribe to session events and forward to the WS client
+        const handlers: Array<{ event: CanvasEventType; handler: (evt: unknown) => void }> = [];
+        for (const eventType of BROADCAST_EVENTS) {
+          const handler = (evt: unknown) => {
+            if (ws.readyState === CanvasWS.OPEN) {
+              ws.send(JSON.stringify(evt));
+            }
+          };
+          session.on(eventType, handler);
+          handlers.push({ event: eventType, handler });
+        }
+
+        ws.on('close', () => {
+          for (const { event, handler } of handlers) {
+            session.off(event, handler);
+          }
+        });
+
+        ws.on('error', () => {
+          for (const { event, handler } of handlers) {
+            session.off(event, handler);
+          }
+        });
+      });
+
+      return true;
+    });
   }
 
   private createSandboxRouter(): import('express').Router {
