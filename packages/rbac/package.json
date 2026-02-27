@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/rbac",
-  "version": "1.10.11",
+  "version": "1.10.12",
   "description": "Role-based access control for multi-user Auxiora",
   "type": "module",
   "main": "dist/index.js",

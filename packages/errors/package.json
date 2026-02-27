@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/errors",
-  "version": "1.10.11",
+  "version": "1.10.12",
   "description": "Centralized error handling for Auxiora",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/config",
-  "version": "1.10.11",
+  "version": "1.10.12",
   "description": "Zod-validated configuration system for Auxiora",
   "type": "module",
   "main": "dist/index.js",

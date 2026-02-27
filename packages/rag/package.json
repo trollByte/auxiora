@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/rag",
-  "version": "1.10.11",
+  "version": "1.10.12",
   "description": "Document ingestion and retrieval-augmented generation",
   "type": "module",
   "main": "dist/index.js",
