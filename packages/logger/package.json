@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/logger",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Structured logging for Auxiora",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/desktop",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "private": true,
   "description": "Auxiora desktop companion app (Tauri 2.x)",
   "type": "module",

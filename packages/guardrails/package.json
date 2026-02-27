@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/guardrails",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Content safety guardrails with PII detection and prompt injection defense",
   "type": "module",
   "main": "dist/index.js",

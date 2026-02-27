@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/vault",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Encrypted credential vault with AES-256-GCM and Argon2id",
   "type": "module",
   "main": "dist/index.js",

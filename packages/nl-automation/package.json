@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/nl-automation",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Natural language to automation builder",
   "type": "module",
   "main": "dist/index.js",

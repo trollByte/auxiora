@@ -1,7 +1,7 @@
 {
   "name": "@auxiora/mobile",
   "private": true,
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Mobile node stubs (iOS/Android) — device capability interfaces and Bridge protocol contract",
   "type": "module",
   "main": "dist/index.js",
