@@ -10,3 +10,5 @@ export { mountPhase4Routes } from './phase4-routes.js';
 export type { Phase4Deps } from './phase4-routes.js';
 export { createModelRegistryRouter } from './model-registry-routes.js';
 export type { ModelRegistryRoutesDeps } from './model-registry-routes.js';
+export { mountOpenAICompatRoutes } from './openai-compat-routes.js';
+export type { OpenAICompatDeps, CompletionResult } from './openai-compat-routes.js';

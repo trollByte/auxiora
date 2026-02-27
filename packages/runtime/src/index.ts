@@ -1,4 +1,4 @@
-import { Gateway, createModelRegistryRouter, type ClientConnection, type WsMessage } from '@auxiora/gateway';
+import { Gateway, createModelRegistryRouter, mountOpenAICompatRoutes, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { MediaProcessor, detectProviders } from '@auxiora/media';
 import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
@@ -1586,6 +1586,43 @@ export class Auxiora {
 
       return jobsRouter;
     })());
+
+    // OpenAI-compatible chat completions endpoint (/v1/chat/completions)
+    if (this.providers) {
+      let openaiCompatToken: string | undefined;
+      try { openaiCompatToken = this.vault.get('OPENAI_COMPAT_TOKEN'); } catch { /* vault locked or key missing */ }
+
+      mountOpenAICompatRoutes(this.gateway.getApp(), {
+        complete: async (messages, options) => {
+          const provider = this.providers.getPrimaryProvider();
+          const result = await provider.complete(
+            messages.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
+            { maxTokens: options.maxTokens, temperature: options.temperature },
+          );
+          return {
+            content: result.content,
+            model: result.model,
+            usage: { promptTokens: result.usage.inputTokens, completionTokens: result.usage.outputTokens },
+          };
+        },
+        stream: (messages: Array<{ role: string; content: string }>, options: { model?: string; temperature?: number; maxTokens?: number }) => {
+          const provider = this.providers.getPrimaryProvider();
+          const gen = provider.stream(
+            messages.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
+            { maxTokens: options.maxTokens, temperature: options.temperature },
+          );
+          return (async function* () {
+            for await (const chunk of gen) {
+              if (chunk.type === 'text' && chunk.content !== undefined) {
+                yield { type: 'delta' as const, text: chunk.content };
+              }
+            }
+          })();
+        },
+        authToken: openaiCompatToken,
+      });
+      this.logger.info('OpenAI-compatible endpoint mounted at /v1/chat/completions');
+    }
 
     // Initialize plugin system (if enabled)
     if (this.config.plugins?.enabled !== false) {

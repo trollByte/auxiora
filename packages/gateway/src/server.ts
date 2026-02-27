@@ -563,6 +563,10 @@ export class Gateway {
     this.app.use(path, router);
   }
 
+  public getApp(): Express {
+    return this.app;
+  }
+
   private handleAudioFrame(client: ClientConnection, frame: Buffer): void {
     if (!client.authenticated || !client.voiceActive) return;
 
