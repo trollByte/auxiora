@@ -7,6 +7,7 @@ import { useWindowState } from '../hooks/useWindowState.js';
 import { Window } from './Window.js';
 import { Dock, type DockItem } from './Dock.js';
 
+import { ApprovalBanner } from './ApprovalBanner.js';
 import { Overview } from '../pages/Overview.js';
 import { Chat } from '../pages/Chat.js';
 import { Behaviors } from '../pages/Behaviors.js';
@@ -150,6 +151,7 @@ export function DesktopShell() {
           <span>{time}</span>
         </div>
       </div>
+      <ApprovalBanner />
       <div style={{ position: 'relative', flex: 1 }}>
         {snapEnabled && (
           <div

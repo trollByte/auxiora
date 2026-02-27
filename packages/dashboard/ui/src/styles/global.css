@@ -5044,3 +5044,61 @@ body {
 .lc-obj { padding: 4px; border-radius: 4px; }
 .lc-text { color: var(--text-primary); white-space: pre-wrap; }
 .lc-image { object-fit: contain; }
+
+/* ── ApprovalBanner ── */
+.ab-banner {
+  background: rgba(234, 179, 8, 0.1);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.3);
+  padding: 6px 16px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ab-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+.ab-tool {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--warning);
+  white-space: nowrap;
+}
+.ab-args {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.ab-approve,
+.ab-deny {
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.ab-approve {
+  background: var(--success);
+  color: #fff;
+}
+.ab-approve:hover {
+  background: #16a34a;
+}
+.ab-deny {
+  background: var(--danger);
+  color: #fff;
+}
+.ab-deny:hover {
+  background: var(--danger-hover);
+}
