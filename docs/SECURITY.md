@@ -100,6 +100,20 @@ Environment variables leak through:
 
 An encrypted vault with Argon2id key derivation is categorically more secure.
 
+### Sealed Auto-Unseal
+
+For unattended deployments, sealed mode encrypts the vault password with a machine-derived key:
+
+- **Key derivation**: Argon2id(PIN || "", SHA-256(hostname + platform + machine-id), 8 MB, 1 iteration)
+- **Encryption**: AES-256-GCM (same as vault)
+- **Machine binding**: Different machine = different fingerprint = decryption fails
+- **Optional PIN**: Adds a knowledge factor on top of machine binding
+- **Memory safety**: Seal key and recovered password zeroed immediately after use
+
+This is comparable to HashiCorp Vault's auto-unseal or Bitwarden's unlock-with-PIN: the secret is encrypted at rest, but can be recovered without human interaction on the same machine.
+
+**Trade-off**: An attacker with root access on the same machine and knowledge of the PIN (if set) can recover the vault password. This is an acceptable trade-off for unattended operation -- the alternative (plaintext `AUXIORA_VAULT_PASSWORD` env var) is strictly worse.
+
 ### OS Keychain Integration (Planned)
 
 When available, Auxiora will use native keystores:
@@ -293,6 +307,7 @@ For tools that execute code (bash, scripts, etc.):
 | Unauthorized autonomous actions | Trust levels per domain |
 | SSRF via browser automation | Numeric IP validation + protocol blocking |
 | Excessive autonomy escalation | Evidence-based trust changes with rollback |
+| Plaintext password in env vars for unattended mode | Sealed auto-unseal with machine-bound encryption |
 
 ### Out of Scope (Trust Boundaries)
 
@@ -320,6 +335,7 @@ For tools that execute code (bash, scripts, etc.):
 - Attacker opens vault file
 - File is encrypted
 - Without master password (in your head), data is unrecoverable
+- If sealed mode is enabled: attacker also needs the PIN (if set) and must run on the same machine to reconstruct the fingerprint
 
 **4. Compromised Dependency**
 - Malicious npm package included

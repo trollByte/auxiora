@@ -103,7 +103,7 @@ Ten settings pages for fine-grained control:
 | Ambient | Ambient intelligence: enable/disable, briefing schedule, notification preferences |
 | Appearance | Theme (light/dark/system), accent color, font size, layout |
 | Notifications | Desktop and in-app notification preferences, quiet hours |
-| Security | Password change, trust levels, session management |
+| Security | Password change, trust levels, sealed auto-unseal toggle, session management |
 | Audit | View the tamper-evident audit log with chained SHA-256 hashes |
 
 ## Use Cases

@@ -10,7 +10,7 @@ New to Auxiora? Start here: **[Getting Started Guide](../guide/getting-started.m
 
 ### Security & Infrastructure
 
-- **[Vault & Security](vault-and-security.md)** -- Encrypted vault, tamper-evident audit logs, 5-level trust system, SSRF protection
+- **[Vault & Security](vault-and-security.md)** -- Encrypted vault, sealed auto-unseal, tamper-evident audit logs, 5-level trust system, SSRF protection
 - **[AI Providers](providers.md)** -- 10+ providers, model routing, cost tracking, local model support via Ollama
 
 ### Communication

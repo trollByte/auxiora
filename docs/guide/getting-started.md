@@ -223,9 +223,24 @@ This registers Auxiora as a system service:
 
 Check status anytime with `auxiora daemon status`.
 
+### Auto-Unseal for Unattended Restarts
+
+By default the vault stays locked after a restart, meaning channels and providers are offline until you re-enter the password. **Sealed mode** solves this by encrypting the vault password with a machine-derived key so it auto-unlocks on restart -- no plaintext password on disk.
+
+```bash
+# Enable sealed auto-unseal (one-time, interactive)
+auxiora vault seal
+# Enter vault password, optionally add a PIN for extra security
+
+# Now restarts auto-unseal the vault
+auxiora daemon restart   # vault unlocks automatically
+```
+
+See [Vault & Security](../features/vault-and-security.md) for full details on sealed mode.
+
 ## What's Next?
 
-- [Security & Vault](../features/vault-and-security.md) -- Trust levels, audit logs, encryption
+- [Security & Vault](../features/vault-and-security.md) -- Trust levels, audit logs, encryption, sealed auto-unseal
 - [AI Providers](../features/providers.md) -- Model routing, cost tracking, 10+ providers
 - [Messaging Channels](../features/channels.md) -- Connect Discord, Telegram, Slack, and 9 more
 - [Service Connectors](../features/connectors.md) -- GitHub, Notion, Home Assistant, and 8 more

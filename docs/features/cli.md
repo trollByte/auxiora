@@ -17,7 +17,7 @@ auxiora [command] [subcommand] [options]
 | Command | Description |
 |---------|-------------|
 | `auxiora init` | Interactive setup wizard -- walks through vault creation, provider setup, and personality selection |
-| `auxiora start` | Start the gateway and open the dashboard at `http://localhost:18800/dashboard` |
+| `auxiora start` | Start the gateway and open the dashboard (tries sealed auto-unseal if available) |
 | `auxiora doctor` | System health check -- verifies vault, providers, channels, and connectivity |
 | `auxiora paths` | Show file and directory locations (config, vault, data, logs) |
 
@@ -32,8 +32,10 @@ Manage the encrypted credential vault. Secrets are encrypted with AES-256-GCM an
 | `auxiora vault status` | Show which credentials are configured vs. missing |
 | `auxiora vault remove <NAME>` | Remove a credential from the vault |
 | `auxiora vault get <NAME>` | Print a credential value to stdout (for scripting) |
+| `auxiora vault seal` | Enable sealed auto-unseal (vault auto-unlocks on restart) |
+| `auxiora vault unseal` | Disable sealed auto-unseal (deletes seal file) |
 
-See [Vault & Security](vault-and-security.md) for encryption details and required secrets.
+See [Vault & Security](vault-and-security.md) for encryption details, auto-unseal, and required secrets.
 
 ### Personality
 
@@ -178,6 +180,23 @@ auxiora daemon status
 # View logs (platform-dependent)
 # macOS: log show --predicate 'process == "auxiora"' --last 1h
 # Linux: journalctl -u auxiora --since "1 hour ago"
+```
+
+### Unattended auto-unseal
+
+```bash
+# Seal the vault once (interactive — prompts for password + optional PIN)
+auxiora vault seal
+
+# Start with auto-unseal (no password prompt needed)
+auxiora start
+
+# If you sealed with a PIN, pass it via flag or env var
+auxiora start --seal-pin 1234
+AUXIORA_SEAL_PIN=1234 auxiora start
+
+# Disable auto-unseal
+auxiora vault unseal
 ```
 
 ### Self-update

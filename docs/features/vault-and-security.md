@@ -63,6 +63,100 @@ The vault is stored as a single encrypted JSON file. Its location follows platfo
 
 The vault file is created with `0600` permissions on Unix systems (owner read/write only).
 
+## Sealed Auto-Unseal
+
+### The Problem
+
+When Auxiora restarts (crash, update, reboot), the vault stays locked and all channels go dead until someone manually enters the vault password. For unattended deployments (systemd service, Docker, headless server), this means downtime until you are back at the keyboard.
+
+The `AUXIORA_VAULT_PASSWORD` env var works but stores the password in plaintext on disk. Sealed mode solves this.
+
+### How It Works
+
+Sealed mode encrypts your vault password with a machine-derived key so the vault can auto-unlock on restart **without a plaintext password on disk**.
+
+```
+One-time seal:
+  Machine fingerprint: SHA-256(hostname + platform + machine-id)
+  Seal key:            Argon2id(PIN || "", fingerprint_as_salt, 8 MB, 1 iter)
+  seal.enc:            AES-256-GCM(vault_password, seal_key)
+
+Every restart:
+  Reconstruct fingerprint → derive seal key → decrypt vault password → unlock vault
+```
+
+- **Machine-bound** -- Moving `seal.enc` to another machine fails because the fingerprint is different.
+- **Optional PIN** -- Adds defense-in-depth. Even on the same machine, an attacker needs the PIN.
+- **PIN-less mode** -- For headless/Docker deployments, PIN can be omitted (machine binding alone).
+- **Graceful fallback** -- If decryption fails, falls back to password prompt or `AUXIORA_VAULT_PASSWORD`.
+
+### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `auxiora vault seal` | Enable sealed auto-unseal (prompts for vault password + optional PIN) |
+| `auxiora vault unseal` | Disable sealed auto-unseal (deletes seal file) |
+
+```bash
+# Enable auto-unseal with a PIN
+auxiora vault seal
+# Enter vault password: ********
+# Enter PIN (optional): 1234
+
+# Enable auto-unseal without a PIN (machine-binding only)
+auxiora vault seal --no-pin
+
+# Disable auto-unseal
+auxiora vault unseal
+```
+
+### Start with Auto-Unseal
+
+When `seal.enc` exists, `auxiora start` automatically attempts to unseal the vault before falling back to a password prompt:
+
+```bash
+# Auto-unseal without PIN
+auxiora start
+
+# Auto-unseal with PIN
+auxiora start --seal-pin 1234
+
+# Or via environment variable
+AUXIORA_SEAL_PIN=1234 auxiora start
+```
+
+### Dashboard
+
+The auto-unseal toggle is available under **Settings > Security**. You can enable or disable sealed mode and see whether a PIN is required.
+
+### Security Properties
+
+| Property | Details |
+|----------|---------|
+| Encryption | AES-256-GCM (same as vault) |
+| Key derivation | Argon2id with lighter params (8 MB, 1 iteration) -- fingerprint adds sufficient entropy |
+| Machine binding | SHA-256 of hostname + platform + `/etc/machine-id` (Linux), `IOPlatformUUID` (macOS), or hostname+homedir (fallback) |
+| Seal file permissions | `0600` on Unix (owner read/write only) |
+| Memory safety | Seal key and recovered password are zeroed immediately after use |
+
+### Seal File Format
+
+The seal file (`seal.enc`) is stored alongside `vault.enc`:
+
+```json
+{
+  "version": 1,
+  "fingerprintHash": "hex(SHA-256(fingerprint))",
+  "pinRequired": true,
+  "iv": "base64",
+  "data": "base64",
+  "tag": "base64",
+  "salt": "base64"
+}
+```
+
+The `fingerprintHash` field is used for quick mismatch detection (not used in key derivation -- the raw fingerprint is).
+
 ## Audit Logging
 
 ### How It Works
@@ -82,7 +176,7 @@ Sensitive fields (passwords, tokens, API keys) are automatically redacted before
 
 The audit system tracks over 100 distinct event types, organized into categories:
 
-- **Vault operations** -- unlock, lock, add, remove, access, password changes
+- **Vault operations** -- unlock, lock, add, remove, access, password changes, seal, unseal
 - **Authentication** -- login, logout, failed attempts, token refresh, JWT configuration
 - **Pairing** -- code generated, accepted, rejected, expired
 - **Channel activity** -- connected, disconnected, errors, messages sent/received
