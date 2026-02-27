@@ -202,6 +202,65 @@ describe('SqliteVecStore', () => {
     });
   });
 
+  describe('FTS5 keyword search', () => {
+    it('should find entries by exact keyword match', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'TypeError: Cannot read property foo of undefined');
+      store.add('doc2', [0, 1, 0], 'The weather is sunny today');
+      store.add('doc3', [0, 0, 1], 'TypeError: foo is not a function');
+
+      const results = store.keywordSearch('TypeError foo', 10);
+      expect(results.length).toBe(2);
+      expect(results.map(r => r.entry.id)).toContain('doc1');
+      expect(results.map(r => r.entry.id)).toContain('doc3');
+    });
+
+    it('should return empty array when no match', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'hello world');
+
+      const results = store.keywordSearch('nonexistent', 10);
+      expect(results.length).toBe(0);
+    });
+
+    it('should respect limit', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'error in module A');
+      store.add('doc2', [0, 1, 0], 'error in module B');
+      store.add('doc3', [0, 0, 1], 'error in module C');
+
+      const results = store.keywordSearch('error', 2);
+      expect(results.length).toBe(2);
+    });
+
+    it('should handle quotes in query safely', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'some "quoted" text');
+
+      const results = store.keywordSearch('"quoted"', 10);
+      expect(results.length).toBe(1);
+      expect(results[0].entry.id).toBe('doc1');
+    });
+
+    it('should keep FTS index in sync after remove', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'unique keyword here');
+      store.remove('doc1');
+
+      const results = store.keywordSearch('unique', 10);
+      expect(results.length).toBe(0);
+    });
+
+    it('should keep FTS index in sync after clear', () => {
+      createStore();
+      store.add('doc1', [1, 0, 0], 'searchable content');
+      store.clear();
+
+      const results = store.keywordSearch('searchable', 10);
+      expect(results.length).toBe(0);
+    });
+  });
+
   describe('close', () => {
     it('should close without error', () => {
       createStore();

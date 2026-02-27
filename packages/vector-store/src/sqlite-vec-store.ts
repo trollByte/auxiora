@@ -29,6 +29,9 @@ export class SqliteVecStore {
         created_at INTEGER NOT NULL
       )
     `);
+    this.db.exec(
+      'CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(id UNINDEXED, content)',
+    );
   }
 
   add(
@@ -56,6 +59,10 @@ export class SqliteVecStore {
       JSON.stringify(metadata),
       existing?.createdAt ?? now,
     );
+
+    // Keep FTS index in sync — delete old row first (INSERT OR REPLACE not supported for FTS5)
+    this.db.prepare('DELETE FROM chunks_fts WHERE id = ?').run(id);
+    this.db.prepare('INSERT INTO chunks_fts (id, content) VALUES (?, ?)').run(id, content);
 
     return { id, vector, content, metadata, createdAt: existing?.createdAt ?? now };
   }
@@ -95,6 +102,45 @@ export class SqliteVecStore {
     return results.slice(0, limit);
   }
 
+  keywordSearch(query: string, limit = 10): SimilarityResult[] {
+    // Sanitize: remove quotes to prevent FTS5 syntax errors
+    const sanitized = query.replace(/["']/g, '');
+    if (!sanitized.trim()) return [];
+
+    // Split into terms, wrap each in quotes, join with OR
+    const terms = sanitized.split(/\s+/).filter(Boolean);
+    const ftsQuery = terms.map(t => `"${t}"`).join(' OR ');
+
+    const rows = this.db
+      .prepare(
+        `SELECT f.id, f.rank, v.vector, v.content, v.metadata, v.created_at
+         FROM chunks_fts f
+         JOIN vectors v ON v.id = f.id
+         WHERE chunks_fts MATCH ?
+         ORDER BY f.rank
+         LIMIT ?`,
+      )
+      .all(ftsQuery, limit) as Array<{
+      id: string;
+      rank: number;
+      vector: string;
+      content: string;
+      metadata: string;
+      created_at: number;
+    }>;
+
+    return rows.map(row => ({
+      entry: {
+        id: row.id,
+        vector: JSON.parse(row.vector) as number[],
+        content: row.content,
+        metadata: JSON.parse(row.metadata) as Record<string, unknown>,
+        createdAt: row.created_at,
+      },
+      score: -row.rank, // FTS5 rank is negative, lower=better; negate for positive score
+    }));
+  }
+
   get(id: string): VectorEntry | undefined {
     const row = this.db
       .prepare(
@@ -124,6 +170,9 @@ export class SqliteVecStore {
     const result = this.db
       .prepare('DELETE FROM vectors WHERE id = ?')
       .run(id);
+    if (result.changes > 0) {
+      this.db.prepare('DELETE FROM chunks_fts WHERE id = ?').run(id);
+    }
     return result.changes > 0;
   }
 
@@ -167,6 +216,7 @@ export class SqliteVecStore {
 
   clear(): void {
     this.db.exec('DELETE FROM vectors');
+    this.db.exec('DELETE FROM chunks_fts');
   }
 
   close(): void {
