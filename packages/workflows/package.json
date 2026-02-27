@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/workflows",
-  "version": "1.10.12",
+  "version": "1.10.13",
   "description": "Cross-person workflow orchestration with approvals, reminders, and escalation",
   "type": "module",
   "main": "dist/index.js",

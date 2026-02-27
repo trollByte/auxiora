@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/observability",
-  "version": "1.10.12",
+  "version": "1.10.13",
   "description": "Distributed tracing and observability for Auxiora",
   "type": "module",
   "main": "dist/index.js",

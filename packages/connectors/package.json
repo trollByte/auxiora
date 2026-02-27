@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connectors",
-  "version": "1.10.12",
+  "version": "1.10.13",
   "description": "Connector SDK, registry, auth manager, and action executor",
   "type": "module",
   "main": "dist/index.js",
