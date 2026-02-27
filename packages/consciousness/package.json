@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/consciousness",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Unified consciousness layer — persistent self-awareness, self-monitoring, self-repair, and self-model",
   "type": "module",
   "main": "dist/index.js",

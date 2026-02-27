@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/behaviors",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Proactive behaviors: scheduled tasks, monitors, and one-shot reminders",
   "type": "module",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
     "@auxiora/audit": "workspace:*",
     "@auxiora/core": "workspace:*",
     "@auxiora/errors": "workspace:*",
-    "@auxiora/job-queue": "workspace:^",
+    "@auxiora/job-queue": "workspace:*",
     "@auxiora/logger": "workspace:*",
     "croner": "^10.0.1",
     "nanoid": "^5.1.2"

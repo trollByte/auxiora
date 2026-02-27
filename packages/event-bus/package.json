@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/event-bus",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

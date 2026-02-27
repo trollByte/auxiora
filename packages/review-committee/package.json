@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/review-committee",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

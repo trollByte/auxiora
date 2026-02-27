@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-social",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Social media connectors: Twitter/X, LinkedIn, Reddit, Instagram",
   "type": "module",
   "main": "dist/index.js",

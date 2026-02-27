@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/daemon",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Cross-platform daemon management for Auxiora",
   "type": "module",
   "main": "dist/index.js",

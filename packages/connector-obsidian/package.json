@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-obsidian",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Obsidian connector: notes, search, daily notes",
   "type": "module",
   "main": "dist/index.js",

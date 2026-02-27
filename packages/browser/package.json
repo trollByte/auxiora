@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/browser",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

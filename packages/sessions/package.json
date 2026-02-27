@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/sessions",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "Session management for Auxiora",
   "type": "module",
   "main": "dist/index.js",
