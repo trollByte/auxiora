@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/backup",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "description": "Unified backup and restore for Auxiora data",
   "type": "module",
   "main": "dist/index.js",

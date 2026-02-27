@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/ambient",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "description": "Ambient pattern detection, anticipation, briefings, and quiet notifications",
   "type": "module",
   "main": "dist/index.js",

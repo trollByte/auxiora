@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-linear",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "description": "Linear connector: Issues, projects, cycles",
   "type": "module",
   "main": "dist/index.js",

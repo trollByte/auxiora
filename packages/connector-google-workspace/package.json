@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-google-workspace",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "description": "Google Workspace connector: Calendar, Gmail, Drive",
   "type": "module",
   "main": "dist/index.js",
