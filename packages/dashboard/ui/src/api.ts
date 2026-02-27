@@ -398,6 +398,26 @@ export const api = {
   },
   retryJob: (id: string) =>
     fetch(`/api/v1/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', credentials: 'include' }).then(r => r.json()) as Promise<{ data: { originalId: string; newJobId: string } }>,
+
+  // Darwin / Evolution
+  getDarwinStatus: () =>
+    fetch('/api/v1/darwin/status', { credentials: 'include' }).then(r => r.json()) as Promise<{ totalCycles: number; successfulCycles: number; failedCycles: number; archiveOccupancy: number; totalVariants: number; running: boolean }>,
+  getDarwinArchive: () =>
+    fetch('/api/v1/darwin/archive', { credentials: 'include' }).then(r => r.json()) as Promise<Array<{ niche: { domain: string; complexity: string }; variantId: string; benchmarkScore: number; lastEvaluated: number; staleness: number }>>,
+  getDarwinVariant: (id: string) =>
+    fetch(`/api/v1/darwin/variants/${encodeURIComponent(id)}`, { credentials: 'include' }).then(r => r.json()),
+  getDarwinGovernor: () =>
+    fetch('/api/v1/darwin/governor', { credentials: 'include' }).then(r => r.json()) as Promise<{ tokensUsedThisHour: number; variantsCreatedToday: number }>,
+  getDarwinApprovals: () =>
+    fetch('/api/v1/darwin/approvals', { credentials: 'include' }).then(r => r.json()) as Promise<Array<{ variantId: string; queuedAt: number }>>,
+  approveDarwinVariant: (id: string) =>
+    fetch(`/api/v1/darwin/approvals/${encodeURIComponent(id)}/approve`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+  rejectDarwinVariant: (id: string) =>
+    fetch(`/api/v1/darwin/approvals/${encodeURIComponent(id)}/reject`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+  pauseDarwin: () =>
+    fetch('/api/v1/darwin/pause', { method: 'POST', credentials: 'include' }).then(r => r.json()),
+  resumeDarwin: () =>
+    fetch('/api/v1/darwin/resume', { method: 'POST', credentials: 'include' }).then(r => r.json()),
 };
 
 export type { PluginListing, PersonalityListing };
