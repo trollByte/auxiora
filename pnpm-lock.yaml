@@ -477,9 +477,21 @@ importers:
         specifier: workspace:*
         version: link:../verification
     devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.13
+      '@types/supertest':
+        specifier: ^6.0.0
+        version: 6.0.3
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      supertest:
+        specifier: ^7.0.0
+        version: 7.2.2
 
   packages/dashboard:
     dependencies:
@@ -1050,6 +1062,9 @@ importers:
       '@auxiora/core':
         specifier: workspace:*
         version: link:../core
+      '@auxiora/darwin':
+        specifier: workspace:*
+        version: link:../darwin
       '@auxiora/dashboard':
         specifier: workspace:*
         version: link:../dashboard

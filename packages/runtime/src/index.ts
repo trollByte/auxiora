@@ -291,6 +291,13 @@ export class Auxiora {
   private notificationHub?: NotificationHub;
   private dndManager?: DoNotDisturbManager;
   private notificationOrchestrator?: NotificationOrchestrator;
+  private darwinLoop?: {
+    tick(): Promise<unknown>;
+    getGovernor(): { getStats(): unknown };
+    getDeploymentManager(): { getPendingApprovals(): Array<{ variantId: string; queuedAt: number }>; approve(id: string): Promise<boolean>; reject(id: string): boolean };
+    getStats(): unknown;
+  };
+  private darwinPaused = false;
 
   private researchEngine?: ResearchEngine;
   private intentDetector = new ResearchIntentDetector();
@@ -1886,6 +1893,91 @@ export class Auxiora {
       },
     );
     this.logger.info('Notification orchestrator initialized');
+
+    // Initialize Darwin evolutionary self-improvement
+    try {
+      const { ArchiveStore, DarwinLoop, mountDarwinRoutes, DEFAULT_DARWIN_CONFIG } = await import('@auxiora/darwin');
+      const darwinDataDir = path.join(path.dirname(getBehaviorsPath()), 'darwin');
+      await fs.mkdir(darwinDataDir, { recursive: true });
+      const archiveStore = new ArchiveStore(path.join(darwinDataDir, 'archive.db'));
+
+      // LLM adapter wrapping the primary provider
+      const llm = {
+        call: async (prompt: string, options?: { maxTokens?: number }): Promise<string> => {
+          try {
+            const provider = this.providers.getPrimaryProvider();
+            const result = await provider.complete(
+              [{ role: 'user' as const, content: prompt }],
+              { maxTokens: options?.maxTokens ?? 4096 },
+            );
+            return typeof result.content === 'string' ? result.content : '';
+          } catch {
+            return '';
+          }
+        },
+      };
+
+      this.darwinLoop = new DarwinLoop({
+        store: archiveStore,
+        llm,
+        darwinDir: darwinDataDir,
+        config: DEFAULT_DARWIN_CONFIG,
+        domains: ['general', 'code', 'email', 'schedule', 'research'],
+      });
+
+      // Register darwin-tick job if job queue is available
+      if (this.jobQueue) {
+        this.jobQueue.register<Record<string, never>, void>('darwin-tick', async () => {
+          if (!this.darwinPaused) {
+            await this.darwinLoop!.tick();
+          }
+        });
+
+        // Enqueue first tick (delayed 60s to let other subsystems stabilize)
+        const existingDarwin = this.jobQueue.listJobs({ type: 'darwin-tick', status: 'pending' });
+        if (existingDarwin.length === 0) {
+          this.jobQueue.enqueue('darwin-tick', {}, { scheduledAt: Date.now() + 60_000 });
+        }
+
+        // Re-enqueue after completion (self-recurring job)
+        this.jobQueue.on('job:completed', (data: unknown) => {
+          const { job } = data as { job: { type: string } };
+          if (job.type === 'darwin-tick' && !this.darwinPaused && this.jobQueue) {
+            const pending = this.jobQueue.listJobs({ type: 'darwin-tick', status: 'pending' });
+            if (pending.length === 0) {
+              this.jobQueue.enqueue('darwin-tick', {}, { scheduledAt: Date.now() + 60_000 });
+            }
+          }
+        });
+      }
+
+      // Mount Darwin API routes
+      mountDarwinRoutes(this.gateway.getApp() as any, {
+        archiveStore,
+        getLoopStats: () => this.darwinLoop!.getStats() as any,
+        getGovernorStats: () => this.darwinLoop!.getGovernor().getStats() as any,
+        getPendingApprovals: () => this.darwinLoop!.getDeploymentManager().getPendingApprovals(),
+        approveVariant: (id: string) => this.darwinLoop!.getDeploymentManager().approve(id),
+        rejectVariant: (id: string) => this.darwinLoop!.getDeploymentManager().reject(id),
+        isRunning: () => !this.darwinPaused,
+        pause: () => { this.darwinPaused = true; },
+        resume: () => {
+          this.darwinPaused = false;
+          if (this.jobQueue) {
+            const pending = this.jobQueue.listJobs({ type: 'darwin-tick', status: 'pending' });
+            if (pending.length === 0) {
+              this.jobQueue.enqueue('darwin-tick', {}, { scheduledAt: Date.now() + 60_000 });
+            }
+          }
+        },
+      });
+
+      this.logger.info('Darwin evolutionary self-improvement initialized');
+    } catch (err) {
+      this.logger.warn('Failed to initialize Darwin self-improvement', {
+        error: err instanceof Error ? err : new Error(String(err)),
+      });
+    }
 
     // Initialize autonomous workflow executor
     if (this.workflowEngine && this.trustGate && this.trustEngine && this.trustAuditTrail) {

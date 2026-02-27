@@ -51,6 +51,7 @@
     "@auxiora/conversation": "workspace:*",
     "@auxiora/conversation-branch": "workspace:*",
     "@auxiora/core": "workspace:*",
+    "@auxiora/darwin": "workspace:*",
     "@auxiora/dashboard": "workspace:*",
     "@auxiora/email-intelligence": "workspace:*",
     "@auxiora/evaluation": "workspace:*",
