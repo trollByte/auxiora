@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/self-awareness",
-  "version": "1.10.9",
+  "version": "1.10.10",
   "description": "Dynamic self-awareness: composable signal collectors for per-message context enrichment",
   "type": "module",
   "main": "dist/index.js",

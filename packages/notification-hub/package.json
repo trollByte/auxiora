@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/notification-hub",
-  "version": "1.10.9",
+  "version": "1.10.10",
   "description": "Unified notification center with priority scoring, batching, and routing",
   "type": "module",
   "main": "dist/index.js",

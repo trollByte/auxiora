@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/conversation-branch",
-  "version": "1.10.9",
+  "version": "1.10.10",
   "description": "Conversation forking and branching for exploring alternatives",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/tools",
-  "version": "1.10.9",
+  "version": "1.10.10",
   "description": "Tool system for Auxiora AI assistant",
   "type": "module",
   "main": "dist/index.js",

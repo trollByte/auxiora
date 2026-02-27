@@ -1,8 +1,10 @@
 {
   "name": "@auxiora/benchmark",
-  "version": "1.10.9",
+  "version": "1.10.10",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {},
   "devDependencies": {}
 }
