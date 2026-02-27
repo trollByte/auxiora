@@ -6,6 +6,12 @@ export interface SqliteVecStoreOptions extends VectorStoreOptions {
   dbPath: string; // path to SQLite file, or ':memory:' for testing
 }
 
+export interface HybridSearchOptions {
+  limit?: number;
+  minScore?: number;
+  mode?: 'vector' | 'keyword' | 'hybrid';
+}
+
 export class SqliteVecStore {
   private db: DatabaseSync;
   private dimensions: number;
@@ -139,6 +145,39 @@ export class SqliteVecStore {
       },
       score: -row.rank, // FTS5 rank is negative, lower=better; negate for positive score
     }));
+  }
+
+  hybridSearch(
+    queryVector: number[],
+    queryText: string,
+    options: HybridSearchOptions = {},
+  ): SimilarityResult[] {
+    const { limit = 10, minScore = 0, mode = 'hybrid' } = options;
+    if (mode === 'vector') return this.search(queryVector, limit, minScore);
+    if (mode === 'keyword') return this.keywordSearch(queryText, limit);
+
+    // Both with 2x limit for better fusion
+    const vectorResults = this.search(queryVector, limit * 2, minScore);
+    const keywordResults = this.keywordSearch(queryText, limit * 2);
+
+    // Reciprocal Rank Fusion (k=60)
+    const k = 60;
+    const scores = new Map<string, number>();
+    const entries = new Map<string, SimilarityResult>();
+
+    vectorResults.forEach((r, i) => {
+      scores.set(r.entry.id, (scores.get(r.entry.id) ?? 0) + 1 / (k + i + 1));
+      entries.set(r.entry.id, r);
+    });
+    keywordResults.forEach((r, i) => {
+      scores.set(r.entry.id, (scores.get(r.entry.id) ?? 0) + 1 / (k + i + 1));
+      if (!entries.has(r.entry.id)) entries.set(r.entry.id, r);
+    });
+
+    return Array.from(entries.values())
+      .map(e => ({ ...e, score: scores.get(e.entry.id) ?? 0 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
   }
 
   get(id: string): VectorEntry | undefined {

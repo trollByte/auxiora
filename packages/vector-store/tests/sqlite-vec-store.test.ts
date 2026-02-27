@@ -261,6 +261,53 @@ describe('SqliteVecStore', () => {
     });
   });
 
+  describe('hybrid search', () => {
+    it('should merge vector and keyword results via RRF', () => {
+      createStore();
+      store.add('doc1', [0.9, 0.1, 0], 'fix the TypeError in auth module');
+      store.add('doc2', [0.8, 0.2, 0], 'repair the authentication bug');
+      store.add('doc3', [0, 0, 1], 'TypeError: network timeout');
+
+      const results = store.hybridSearch([1, 0, 0], 'TypeError', { limit: 10 });
+      expect(results.length).toBe(3);
+      // doc1 should rank highest (strong in both vector + keyword)
+      expect(results[0].entry.id).toBe('doc1');
+    });
+
+    it('should support searchMode option', () => {
+      createStore();
+      store.add('a', [1, 0, 0], 'hello world');
+
+      const vectorOnly = store.hybridSearch([1, 0, 0], 'hello', { mode: 'vector' });
+      expect(vectorOnly.length).toBe(1);
+
+      const keywordOnly = store.hybridSearch([1, 0, 0], 'hello', { mode: 'keyword' });
+      expect(keywordOnly.length).toBe(1);
+    });
+
+    it('should respect limit', () => {
+      createStore();
+      store.add('a', [1, 0, 0], 'alpha search term');
+      store.add('b', [0.9, 0.1, 0], 'beta search term');
+      store.add('c', [0.8, 0.2, 0], 'gamma search term');
+
+      const results = store.hybridSearch([1, 0, 0], 'search', { limit: 2 });
+      expect(results.length).toBe(2);
+    });
+
+    it('should default to hybrid mode', () => {
+      createStore();
+      store.add('vec', [1, 0, 0], 'unrelated content');
+      store.add('kw', [0, 0, 1], 'specific keyword match');
+
+      const results = store.hybridSearch([1, 0, 0], 'specific keyword');
+      // Both should appear: vec from vector similarity, kw from keyword match
+      expect(results.length).toBe(2);
+      expect(results.map(r => r.entry.id)).toContain('vec');
+      expect(results.map(r => r.entry.id)).toContain('kw');
+    });
+  });
+
   describe('close', () => {
     it('should close without error', () => {
       createStore();
