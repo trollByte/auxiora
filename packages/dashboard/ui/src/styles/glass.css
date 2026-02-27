@@ -193,6 +193,47 @@
   margin-left: auto;
 }
 
+/* ── 8b. Grid Toggle + Overlay ───────────────────────── */
+
+.grid-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.grid-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.grid-toggle--active {
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent);
+}
+
+.grid-toggle--active:hover {
+  background: rgba(var(--accent-rgb), 0.35);
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
 /* ── 9. Window Chrome ────────────────────────────────── */
 
 .window {

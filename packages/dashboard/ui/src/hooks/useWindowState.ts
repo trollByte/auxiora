@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 
 const STORAGE_KEY = 'auxiora-windows';
+const GRID_KEY = 'auxiora-snap-grid';
 const MIN_WIDTH = 360;
 const MIN_HEIGHT = 240;
 const DEFAULT_WIDTH = 600;
@@ -9,6 +10,12 @@ const CASCADE_OFFSET = 30;
 /** Minimum pixels of the title bar that must stay visible on-screen */
 const TITLE_BAR_HEIGHT = 36;
 const VISIBLE_MARGIN = 100;
+const GRID_SIZE = 40;
+
+/** Round a value to the nearest grid increment */
+function snapValue(v: number, grid: number): number {
+  return Math.round(v / grid) * grid;
+}
 
 /** Clamp x/y so the window title bar stays reachable */
 function clampPosition(x: number, y: number, width: number, _height: number): { x: number; y: number } {
@@ -64,8 +71,17 @@ function nextZIndex(windows: Map<string, WindowState>): number {
   return max + 1;
 }
 
+function loadSnapEnabled(): boolean {
+  try {
+    return localStorage.getItem(GRID_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function useWindowState() {
   const [windows, setWindows] = useState<Map<string, WindowState>>(loadWindows);
+  const [snapEnabled, setSnapEnabled] = useState(loadSnapEnabled);
 
   const update = useCallback((fn: (prev: Map<string, WindowState>) => Map<string, WindowState>) => {
     setWindows(prev => {
@@ -125,30 +141,38 @@ export function useWindowState() {
     });
   }, [update]);
 
+  const toggleSnap = useCallback(() => {
+    setSnapEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem(GRID_KEY, next ? '1' : '0'); } catch { /* */ }
+      return next;
+    });
+  }, []);
+
   const moveWindow = useCallback((id: string, x: number, y: number) => {
     update(prev => {
       const w = prev.get(id);
       if (!w) return prev;
-      const clamped = clampPosition(x, y, w.width, w.height);
+      const sx = snapEnabled ? snapValue(x, GRID_SIZE) : x;
+      const sy = snapEnabled ? snapValue(y, GRID_SIZE) : y;
+      const clamped = clampPosition(sx, sy, w.width, w.height);
       const next = new Map(prev);
       next.set(id, { ...w, x: clamped.x, y: clamped.y });
       return next;
     });
-  }, [update]);
+  }, [update, snapEnabled]);
 
   const resizeWindow = useCallback((id: string, width: number, height: number) => {
     update(prev => {
       const w = prev.get(id);
       if (!w) return prev;
+      const sw = snapEnabled ? snapValue(Math.max(MIN_WIDTH, width), GRID_SIZE) : Math.max(MIN_WIDTH, width);
+      const sh = snapEnabled ? snapValue(Math.max(MIN_HEIGHT, height), GRID_SIZE) : Math.max(MIN_HEIGHT, height);
       const next = new Map(prev);
-      next.set(id, {
-        ...w,
-        width: Math.max(MIN_WIDTH, width),
-        height: Math.max(MIN_HEIGHT, height),
-      });
+      next.set(id, { ...w, width: sw, height: sh });
       return next;
     });
-  }, [update]);
+  }, [update, snapEnabled]);
 
   const toggleMinimize = useCallback((id: string) => {
     update(prev => {
@@ -185,6 +209,8 @@ export function useWindowState() {
   return {
     windows,
     activeWindowId,
+    snapEnabled,
+    gridSize: GRID_SIZE,
     openWindow,
     closeWindow,
     focusWindow,
@@ -192,5 +218,6 @@ export function useWindowState() {
     resizeWindow,
     toggleMinimize,
     toggleMaximize,
+    toggleSnap,
   };
 }
