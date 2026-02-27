@@ -1,0 +1,19 @@
+{
+  "name": "@auxiora/darwin",
+  "version": "1.10.13",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
+  "engines": { "node": ">=22.0.0" },
+  "dependencies": {
+    "@auxiora/benchmark": "workspace:*",
+    "@auxiora/event-bus": "workspace:*",
+    "@auxiora/job-queue": "workspace:*",
+    "@auxiora/logger": "workspace:*",
+    "@auxiora/review-committee": "workspace:*",
+    "@auxiora/telemetry": "workspace:*",
+    "@auxiora/verification": "workspace:*"
+  },
+  "devDependencies": { "@types/node": "^22.0.0" },
+  "publishConfig": { "access": "public" }
+}
