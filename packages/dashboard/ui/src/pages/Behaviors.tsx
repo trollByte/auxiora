@@ -120,7 +120,7 @@ export function Behaviors() {
   );
 
   const columns = [
-    { key: 'action', label: 'Action', render: (b: any) => b.action?.slice(0, 60) },
+    { key: 'action', label: 'Action', render: (b: any) => <span title={b.action} style={{ display: 'block', maxWidth: 340, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>{b.action}</span> },
     { key: 'type', label: 'Type' },
     {
       key: 'schedule', label: 'Schedule', render: (b: any) => {
