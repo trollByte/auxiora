@@ -1,4 +1,4 @@
-import { Gateway, createModelRegistryRouter, mountOpenAICompatRoutes, type ClientConnection, type WsMessage } from '@auxiora/gateway';
+import { Gateway, createModelRegistryRouter, mountOpenAICompatRoutes, mountApprovalRoutes, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { MediaProcessor, detectProviders } from '@auxiora/media';
 import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
@@ -253,6 +253,7 @@ export class Auxiora {
   private jobQueue?: JobQueue;
   private modelRegistry?: import('@auxiora/model-registry').ModelRegistry;
   private modelRefreshTimer?: ReturnType<typeof setInterval>;
+  private toolApprovalGate?: import('./tool-approval-gate.js').ToolApprovalGate;
   private auxioraVersion: string = '';
   // Self-improvement telemetry (structural types — no direct @auxiora/telemetry import)
   private telemetryTracker?: { getFlaggedTools(threshold: number, minCalls: number): Array<{ tool: string; totalCalls: number; successRate: number; lastError: string }> };
@@ -1627,6 +1628,25 @@ export class Auxiora {
         authToken: openaiCompatToken,
       });
       this.logger.info('OpenAI-compatible endpoint mounted at /v1/chat/completions');
+    }
+
+    // Tool approval gate — interactive approval for sensitive tool invocations
+    {
+      const { ToolApprovalGate } = await import('./tool-approval-gate.js');
+      const approvalTools = (this.config as Record<string, unknown>).approvalTools as string[] | undefined;
+      this.toolApprovalGate = new ToolApprovalGate({
+        requireApproval: approvalTools ?? ['exec', 'file_write', 'browser_navigate'],
+        timeoutMs: 5 * 60_000,
+      });
+      const gate = this.toolApprovalGate;
+      mountApprovalRoutes(this.gateway.getApp(), {
+        getPending: () => gate!.getPending().map(p => ({ ...p })),
+        resolve: (id: string, approved: boolean, comment?: string) => {
+          const r = gate!.resolve(id, approved, comment);
+          return r ? { ...r } : undefined;
+        },
+      });
+      this.logger.info('Tool approval gate mounted with routes at /api/v1/tool-approvals');
     }
 
     // Initialize plugin system (if enabled)
