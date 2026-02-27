@@ -12,3 +12,5 @@ export { createModelRegistryRouter } from './model-registry-routes.js';
 export type { ModelRegistryRoutesDeps } from './model-registry-routes.js';
 export { mountOpenAICompatRoutes } from './openai-compat-routes.js';
 export type { OpenAICompatDeps, CompletionResult } from './openai-compat-routes.js';
+export { mountApprovalRoutes } from './approval-routes.js';
+export type { ApprovalRoutesDeps } from './approval-routes.js';
