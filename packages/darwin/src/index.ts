@@ -4,3 +4,4 @@ export { MutationEngine, type StrategyContext, type MutationRequest, type Mutati
 export { EvaluationPipeline, type EvaluationPipelineOptions } from './evaluation-pipeline.js';
 export { ResourceGovernor, type ResourceGovernorOptions, type GovernorStats } from './resource-governor.js';
 export { DeploymentManager, type DeploymentManagerOptions, type DeployResult } from './deployment-manager.js';
+export { DarwinLoop, type DarwinLoopOptions, type TickResult, type LoopStats } from './darwin-loop.js';
