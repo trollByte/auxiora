@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/orchestrator",
-  "version": "1.10.16",
+  "version": "1.10.17",
   "description": "Multi-agent orchestration engine for Auxiora",
   "type": "module",
   "main": "dist/index.js",

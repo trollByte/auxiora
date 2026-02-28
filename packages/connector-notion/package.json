@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-notion",
-  "version": "1.10.16",
+  "version": "1.10.17",
   "description": "Notion connector: Pages, databases, search, blocks",
   "type": "module",
   "main": "dist/index.js",

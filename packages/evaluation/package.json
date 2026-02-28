@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/evaluation",
-  "version": "1.10.16",
+  "version": "1.10.17",
   "description": "Quality evaluation metrics for AI responses and task execution",
   "type": "module",
   "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/approval-queue",
-  "version": "1.10.16",
+  "version": "1.10.17",
   "description": "Human-in-the-loop approval queue for autonomous agent actions",
   "type": "module",
   "main": "dist/index.js",

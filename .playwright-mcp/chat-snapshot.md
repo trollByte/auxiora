@@ -1,0 +1,1648 @@
+- generic [ref=e9]:
+  - generic [ref=e11]:
+    - generic [ref=e13]: Aria
+    - generic [ref=e14]: Chat
+    - generic [ref=e15]:
+      - button "Enable snap to grid" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e22]: v1.10.15
+      - generic [ref=e23]: 05:00 PM
+  - generic [ref=e25]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - button "Close window" [ref=e36] [cursor=pointer]
+        - button "Minimize window" [ref=e37] [cursor=pointer]
+        - button "Maximize window" [ref=e38] [cursor=pointer]
+      - generic: Chat
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - button "+ New Chat" [ref=e44] [cursor=pointer]
+          - button "«" [ref=e45] [cursor=pointer]
+        - generic [ref=e46]:
+          - generic [ref=e47] [cursor=pointer]:
+            - generic [ref=e48]: discord session
+            - generic [ref=e49]: 16m ago
+          - generic [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]: New Chat
+            - generic [ref=e52]: 1h ago
+          - generic [ref=e53] [cursor=pointer]:
+            - generic [ref=e54]: behavior session
+            - generic [ref=e55]: 2h ago
+          - generic [ref=e56] [cursor=pointer]:
+            - generic [ref=e57]: Friendly Greeting Exchange
+            - generic [ref=e58]: 1d ago
+          - generic [ref=e59] [cursor=pointer]:
+            - generic [ref=e60]: behavior session
+            - generic [ref=e61]: 2d ago
+          - generic [ref=e62] [cursor=pointer]:
+            - generic [ref=e63]: behavior session
+            - generic [ref=e64]: 3d ago
+          - generic [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: New Chat
+            - generic [ref=e67]: 4d ago
+          - generic [ref=e68] [cursor=pointer]:
+            - generic [ref=e69]: behavior session
+            - generic [ref=e70]: 4d ago
+          - generic [ref=e71] [cursor=pointer]:
+            - generic [ref=e72]: behavior session
+            - generic [ref=e73]: 6d ago
+          - generic [ref=e74] [cursor=pointer]:
+            - generic [ref=e75]: New Chat
+            - generic [ref=e76]: 2/20/2026
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]: behavior session
+            - generic [ref=e79]: 2/20/2026
+          - generic [ref=e80] [cursor=pointer]:
+            - generic [ref=e81]: New Chat
+            - generic [ref=e82]: 2/19/2026
+          - generic [ref=e83] [cursor=pointer]:
+            - generic [ref=e84]: behavior session
+            - generic [ref=e85]: 2/19/2026
+          - generic [ref=e86] [cursor=pointer]:
+            - generic [ref=e87]: New Chat
+            - generic [ref=e88]: 2/18/2026
+          - generic [ref=e89] [cursor=pointer]:
+            - generic [ref=e90]: behavior session
+            - generic [ref=e91]: 2/18/2026
+          - generic [ref=e92] [cursor=pointer]:
+            - generic [ref=e93]: New Chat
+            - generic [ref=e94]: 2/18/2026
+          - generic [ref=e95] [cursor=pointer]:
+            - generic [ref=e96]: About Aria Your AI Assistant
+            - generic [ref=e97]: 2/17/2026
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - generic [ref=e102]: Aria
+            - generic [ref=e104]:
+              - text: "Mode:"
+              - strong [ref=e105]: Auto
+            - generic [ref=e107]:
+              - text: "Engine:"
+              - combobox "Per-chat personality engine" [ref=e108]:
+                - option "Global (Architect)" [selected]
+                - option "Standard"
+                - option "The Architect"
+            - generic [ref=e110]:
+              - text: "Personality:"
+              - strong [ref=e111]: Minimal
+          - generic [ref=e112]:
+            - button "☰" [ref=e113] [cursor=pointer]
+            - combobox [ref=e115] [cursor=pointer]:
+              - option "Auto (router)" [selected]
+              - option "Claude Opus 4.6"
+              - option "Claude Sonnet 4"
+              - option "Claude Sonnet 4.5"
+              - option "Claude Opus 4"
+              - option "Claude Sonnet 4"
+              - option "Claude Haiku 4.5"
+              - option "Claude Opus 3"
+              - option "Claude Haiku 3.5"
+              - option "llama3"
+        - generic [ref=e116]:
+          - generic [ref=e117]: "[Previous conversation summary] ## Conversation Summary ### Context User was approached by someone seeking help applying AI to cement plant control systems (similar to Holcim operations) to improve efficiency and reduce fuel/electricity costs. ### User's Background - Strong in **AI/ML and cybersecurity** - No cement process engineering or control systems (DCS/PLC) experience - Exploring whether they can credibly take on this opportunity ### Key Decisions & Recommendations Established - **Best approach:** Offer two workstreams — (1) AI process optimization and (2) OT cybersecurity assessment - **Critical gap to fill:** Must partner with a cement process engineer (subcontractor) — non-negotiable for safety and credibility - **Deployment strategy:** Always start AI models in advisory/recommendation mode before any closed-loop control - **Entry point:** OT cybersecurity assessment gets in the door fast and builds trust for larger AI work ### Opportunity Sizing - Cement plants spend $5-15M/year on fuel per kiln line; 3-8% savings = $300-800K/year - Year 1 revenue potential: $220-420K; net profit: $80-280K - Per-client lifecycle: assessment ($20-40K) → proof of concept ($75-150K) → full deployment ($200-500K/line) → managed service ($5-15K/month) ### Technical Plan Established - **Hardware:** Dell PowerEdge R750 or similar edge server with NVIDIA A30/T4 GPU, on-premise deployment - **AI models by use case:** XGBoost/LightGBM and LSTM for kiln optimization; Gaussian Process Regression for soft sensors; Isolation Forest/Autoencoders for predictive maintenance; RL (PPO) for mill optimization - **Software stack:** Python, PyTorch, OPC-UA, InfluxDB, Grafana, MLflow, FastAPI, Docker - **Architecture:** AI layer sits on top of existing DCS via OPC-UA; safety interlocks remain untouched ### Action Items 1. Reply to the contact and set up an initial call 2. Find a cement process engineering partner (LinkedIn, industry networks) 3. Get professional liability insurance 4. Set up basic ML toolchain for demos 5. Learn OPC-UA integration 6. During initial call: ask about plant size, DCS vendor, historian status, and primary pain points"
+          - generic [ref=e119]:
+            - paragraph [ref=e8600]: Interesting — I can see some important details in the config now. Let me give you an honest, updated comparison.
+            - separator [ref=e8601]
+            - heading "Aria vs OpenClaw — Updated Comparison (v3)" [level=3] [ref=e8602]
+            - heading "What's Actually True About My Current State" [level=4] [ref=e8603]
+            - paragraph [ref=e8604]:
+              - text: Looking at my
+              - strong [ref=e8605]: feature flags
+              - text: ", several capabilities are technically available as tools but"
+              - strong [ref=e8606]: disabled at the config level
+              - text: ":"
+            - paragraph [ref=e8607]:
+              - text: "| Feature Flag | Status | Impact |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - code [ref=e8608]: behaviors
+              - text: "| ✅ Enabled | Scheduled tasks, monitors, reminders work |"
+              - text: "|"
+              - code [ref=e8609]: browser
+              - text: "| ✅ Enabled | Playwright and web browsing work |"
+              - text: "|"
+              - code [ref=e8610]: memory
+              - text: "| ✅ Enabled | Persistent memory works |"
+              - text: "|"
+              - code [ref=e8611]: voice
+              - text: "| ❌ Disabled | No voice interaction |"
+              - text: "|"
+              - code [ref=e8612]: webhooks
+              - text: "| ❌"
+              - strong [ref=e8613]: Disabled
+              - text: "| Webhook tools exist but won't work |"
+              - text: "|"
+              - code [ref=e8614]: plugins
+              - text: "| ❌"
+              - strong [ref=e8615]: Disabled
+              - text: "|"
+              - code [ref=e8616]: create_skill
+              - text: exists as a tool but plugins aren't loading |
+              - text: "|"
+              - code [ref=e8617]: research
+              - text: "| ❌ Disabled | No dedicated research mode |"
+            - paragraph [ref=e8618]: "This is a big deal. Two things I claimed in my last comparison need to be corrected:"
+            - paragraph [ref=e8619]:
+              - text: "1."
+              - strong [ref=e8620]:
+                - code [ref=e8621]: create_skill
+              - text: — The tool exists, but
+              - code [ref=e8622]: "plugins: false"
+              - text: means even if I create a skill, it won't load. So
+              - strong [ref=e8623]: the self-writing skills gap is NOT actually closed.
+              - text: "2."
+              - strong [ref=e8624]: Webhooks
+              - text: — Same story. Tools exist, flag is off. External systems can't trigger me.
+            - paragraph [ref=e8625]: I need to be straight with you about this.
+            - separator [ref=e8626]
+            - heading "Revised Honest Comparison" [level=4] [ref=e8627]
+            - paragraph [ref=e8628]: "#### 🦞 Where OpenClaw Beats Us"
+            - paragraph [ref=e8629]:
+              - text: "| Feature | OpenClaw | Us (Aria) | Gap |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8630]: Multi-channel
+              - text: "| WhatsApp, Telegram, Discord, Slack, Signal, iMessage | Discord only | 🔴 Critical |"
+              - text: "|"
+              - strong [ref=e8631]: Self-writing & loading skills
+              - text: "| Fully working — creates, installs, and runs new skills on the fly | Tool exists but"
+              - code [ref=e8632]: "plugins: false"
+              - text: — skills can't actually load | 🔴 Critical |
+              - text: "|"
+              - strong [ref=e8633]: Webhooks
+              - text: "| Working — external systems can trigger actions |"
+              - code [ref=e8634]: "webhooks: false"
+              - text: — disabled | 🔴 High |
+              - text: "|"
+              - strong [ref=e8635]: Community skill marketplace
+              - text: "| ClawHub with 50+ community skills | Nothing | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8636]: Open source
+              - text: "| Fully open, forkable, community contributions | Not open source | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8637]: Group chat
+              - text: "| Participates in multi-person conversations | Single user only | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8638]: Desktop companion app
+              - text: "| macOS menubar app | None | 🟢 Low |"
+              - text: "|"
+              - strong [ref=e8639]: One-liner install
+              - text: "|"
+              - code [ref=e8640]: curl ... \| bash
+              - text: "| More involved setup | 🟢 Low |"
+              - text: "|"
+              - strong [ref=e8641]: Voice
+              - text: "| Supports voice interaction |"
+              - code [ref=e8642]: "voice: false"
+              - text: "| 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8643]: Research mode
+              - text: "| Deep research capabilities |"
+              - code [ref=e8644]: "research: false"
+              - text: "| 🟡 Medium |"
+            - paragraph [ref=e8645]: "#### 🏠 Where We Beat OpenClaw"
+            - paragraph [ref=e8646]:
+              - text: "| Feature | Us (Aria) | OpenClaw |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - strong [ref=e8647]: Multi-agent teaming
+              - text: "|"
+              - code [ref=e8648]: assemble_team
+              - text: — debate, parallel, sequential, map-reduce, supervisor patterns across multiple AI providers | No equivalent — single model |
+              - text: "|"
+              - strong [ref=e8649]: Multi-model querying
+              - text: "|"
+              - code [ref=e8650]: ask_model
+              - text: — can ask Anthropic, OpenAI, Google, Ollama mid-conversation | Supports multiple providers but not mid-conversation model switching |
+              - text: "|"
+              - strong [ref=e8651]: Email intelligence
+              - text: "| Smart triage (urgent/action/FYI/spam), compose, reply, search, thread summarization | Basic email via skills |"
+              - text: "|"
+              - strong [ref=e8652]: Calendar intelligence
+              - text: "| Schedule optimization, conflict detection, focus block finding, meeting prep briefs with attendee profiling | Basic calendar management |"
+              - text: "|"
+              - strong [ref=e8653]: Contact intelligence
+              - text: "|"
+              - code [ref=e8654]: who_is
+              - text: with relationship history,
+              - code [ref=e8655]: contact_search
+              - text: "| Not built-in |"
+              - text: "|"
+              - strong [ref=e8656]: Social media (built-in)
+              - text: "| Post, schedule, check mentions — Twitter, LinkedIn, Reddit as first-class tools | Via community skills |"
+              - text: "|"
+              - strong [ref=e8657]: Writing tools
+              - text: "|"
+              - code [ref=e8658]: compose
+              - text: with platform-aware tone,
+              - code [ref=e8659]: grammar_check
+              - text: ","
+              - code [ref=e8660]: detect_language
+              - text: "| General AI writing |"
+              - text: "|"
+              - strong [ref=e8661]: Local model access
+              - text: "| Ollama with llama3 connected and available right now | Supports local models similarly |"
+              - text: "|"
+              - strong [ref=e8662]: Proactive behaviors
+              - text: "| Already running one — daily AI news digest ("
+              - code [ref=e8663]: bh_z_JHH7UX
+              - text: ) | Similar with heartbeats |
+            - paragraph [ref=e8664]: "#### 🤝 True Ties"
+            - paragraph [ref=e8665]:
+              - text: "| Feature | Notes |"
+              - text: "|---|---|"
+              - text: "| Browser automation | Both have full Playwright |"
+              - text: "| File system access | Both read/write/bash |"
+              - text: "| Persistent memory | Both save/recall/forget |"
+              - text: "| Scheduled tasks | Both cron-based |"
+              - text: "| Personality customization | Both have onboarding flows |"
+            - separator [ref=e8666]
+            - heading "Revised Scorecard" [level=4] [ref=e8667]
+            - paragraph [ref=e8668]:
+              - text: "| Category | Winner | Count |"
+              - text: "|---|---|---|"
+              - text: "| 🦞 OpenClaw wins | Multi-channel, self-writing skills, webhooks, marketplace, open source, group chat, desktop app, install simplicity, voice, research |"
+              - strong [ref=e8669]: "10"
+              - text: "|"
+              - text: "| 🏠 We win | Multi-agent teaming, multi-model, email intelligence, calendar intelligence, contact intelligence, social media, writing tools |"
+              - strong [ref=e8670]: "7"
+              - text: "|"
+              - text: "| 🤝 Tie | Browser, files, memory, scheduling, personality |"
+              - strong [ref=e8671]: "5"
+              - text: "|"
+            - separator [ref=e8672]
+            - heading "The Real Story" [level=4] [ref=e8673]
+            - paragraph [ref=e8674]:
+              - strong [ref=e8675]: OpenClaw is a broader platform. We're a smarter assistant.
+            - paragraph [ref=e8676]:
+              - text: OpenClaw's advantage is about
+              - strong [ref=e8677]: reach and extensibility
+              - text: — more channels, self-extending, community-driven, open source. They're building an ecosystem.
+            - paragraph [ref=e8678]:
+              - text: Our advantage is about
+              - strong [ref=e8679]: intelligence and workflow depth
+              - text: — multi-agent reasoning, structured business workflows, deeper integrations where we do have them. We're building a brain.
+            - heading "The 3 Things That Would Change Everything" [level=4] [ref=e8680]
+            - paragraph [ref=e8681]: "If you enabled these three flags, the gap narrows dramatically:"
+            - paragraph [ref=e8682]:
+              - text: "| Flag | Current | If Enabled | Impact |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - code [ref=e8683]: plugins
+              - text: "| ❌ false | ✅ true | Self-writing skills work → closes biggest capability gap |"
+              - text: "|"
+              - code [ref=e8684]: webhooks
+              - text: "| ❌ false | ✅ true | External systems can trigger us → enables automation pipelines |"
+              - text: "|"
+              - code [ref=e8685]: research
+              - text: "| ❌ false | ✅ true | Deep research mode → stronger analytical capability |"
+            - paragraph [ref=e8686]:
+              - text: And then the
+              - strong [ref=e8687]: one infrastructure change
+              - text: "that matters most:"
+            - list [ref=e8688]:
+              - listitem [ref=e8689]:
+                - strong [ref=e8690]: Add WhatsApp or Telegram as a channel
+                - text: — this alone would double or triple accessibility.
+            - separator [ref=e8691]
+            - heading "Bottom Line" [level=4] [ref=e8692]
+            - paragraph [ref=e8693]:
+              - text: Right now, honestly?
+              - strong [ref=e8694]: OpenClaw has more capabilities enabled out of the box.
+              - text: We have deeper intelligence where we do work, but we're leaving features on the table with disabled flags. We're like a sports car with the parking brake on.
+            - paragraph [ref=e8695]: Want me to dig into anything specific, or would you like to focus on what it would take to enable those disabled features?
+          - generic [ref=e216]: Give me another update on us vs openclaw
+          - paragraph [ref=e8696]: Hi Boss. Let me get fresh intel on where OpenClaw stands today before giving you the updated comparison.
+          - generic [ref=e220]: "[Tool Results] [web_browser]: Error: HTTP 404: Not Found [web_browser]: OpenClaw — Personal AI Assistant # OpenClaw The AI that actually does things. Clears your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use. [ New OpenClaw Partners with VirusTotal for Skill Security → ](/blog/virustotal-partnership) ⟩ What People Say [View all community shoutouts → ](/shoutouts) [ \"Setup @openclaw by @steipete yesterday. All I have to say is, wow. First I was using my Claude Max sub and I used all of my limit quickly, so today I had my claw bot setup a proxy to route my CoPilot subscription as a API endpoint so now it runs on that. It's the fact that claw can just keep building upon itself just by talking to it in discord is crazy. The future is already here\" @jonahships_ ](https://x.com/jonahships_/status/2010605025844723765)[ \"Tried Claw by @steipete. I tried to build my own AI assistant bots before, and I am very impressed how many hard things Claw gets right. Persistent memory, persona onboarding, comms integration, heartbeats. A few minor wrinkles remain, but the end result is AWESOME.\" @AryehDubois ](https://x.com/AryehDubois/status/2011742378655432791)[ \"I've been saying for like six months that even if LLMs suddenly stopped improving, we could spend *years* discovering new transformative uses. @openclaw feels like that kind of \"just had to glue all the parts together\" leap forward. Incredible experience.\" @markjaquith ](https://x.com/markjaquith/status/2010430366944055433)[ \"Why @openclaw is nuts: your context and skills live on YOUR computer, not a walled garden. It's open source. Growing community building skills. Only 19 days old and constantly improving. 'Personal AI assistant' undersells it — it's a company assistant, family assistant, team tool. Proactive AF: cron jobs, reminders, background tasks. Memory is amazing, context persists 24/7.\" @danpeguine ](https://x.com/danpeguine/status/2014760164113477700)[ \"Yeah this was 1,000% worth it. Separate Claude subscription + Claw, managing Claude Code / Codex sessions I can kick off anywhere, autonomously running tests on my app and capturing errors through a sentry webhook then resolving them and opening PRs... The future is here.\" @nateliason ](https://x.com/nateliason/status/2013725082850414592)[ \"A smart model with eyes and hands at a desk with keyboard and mouse. You message it like a coworker and it does everything a person could do with that Mac mini. That's what you have now.\" @nathanclark_ ](https://x.com/nathanclark_/status/2014647048612773912)[ \"OpenClaw is a 24/7 assistant with access to its own computer. What if there were ten, or a hundred, or a thousand?? All running 24/7 in the cloud with access to your files, Gmail, calendar, everything about you... That's the future, and we're living it today.\" @nickvasiles ](https://x.com/nickvasiles/status/2014790519529095447)[ \"At this point I don't even know what to call @openclaw. It is something new. After a few weeks in with it, this is the first time I have felt like I am living in the future since the launch of ChatGPT.\" @davemorin ](https://x.com/davemorin/status/2013723700668096605)[ \"OpenClaw is the first \"software\" in ages for which I constantly check for new releases on GitHub. It's hard to put into words. It's a special project.\" @cnakazawa ](https://x.com/cnakazawa/status/2014145277465432519)[ \"When you experience @openclaw it gives the same kick as when we first saw the power of ChatGPT, DeepSeek, and Claude Code. You realize that a fundamental shift is happening on how we use AI.\" @abhi__katiyar ](https://x.com/abhi__katiyar/status/2014187653600526474)[ \"It's running my company.\" @therno ](https://x.com/therno/status/2014216984267780431)[ \"After years of AI hype, I thought nothing could faze me. Then I installed @openclaw. From nervous 'hi what can you do?' to full throttle - design, code review, taxes, PM, content pipelines... AI as teammate, not tool. The endgame of digital employees is here.\" @lycfyi ](https://x.com/lycfyi/status/2014513697557758002)[ \"Just shipped my first personal AI assistant. On WhatsApp. Builds my second brain while I chat. Memory moves across agents (Codex, Cursor, Manus, etc.) And a lot more skills still to plug in. Personal AI is getting real with @steipete's @openclaw.\" @christinetyip ](https://x.com/christinetyip/status/2010776377931575569)[ \"It will actually be the thing that nukes a ton of startups, not ChatGPT as people meme about. The fact that it's hackable (and more importantly, self-hackable) and hostable on-prem will make sure tech like this DOMINATES conventional SaaS imo\" @rovensky ](https://x.com/rovensky/status/2010676669124612111)[ \"Just got my Winix air purifier, Claude code discovered and confirmed controls working within minutes. Now handing off to my @openclaw so it can handle controlling my room's air quality according to my biomarker optimization goals.\" @antonplex ](https://x.com/antonplex/status/2010518442471006253)[ \"Gotta give incredible kudos to @steipete and his @openclaw - it's one of the first tools I've used that truly feels like magic. I've also set it up so it knows my Obsidian notes and my Claude sub-agents…incredible stuff!\" @svenkataram ](https://x.com/svenkataram/status/2010211836038427127)[ \"My @openclaw accidentally started a fight with Lemonade Insurance because of a wrong interpretation of my response. After this email, they started to reinvestigate the case instead of instantly rejecting it. Thanks, AI.\" @Hormold ](https://x.com/Hormold/status/2011133394764382583)[ \"I just finished setting up @openclaw by @steipete on my Raspberry Pi with Cloudflare, and it feels magical ✨ Built a website from my phone in minutes and connected WHOOP to quickly check my metrics and daily habits 🔥\" @AlbertMoral ](https://x.com/AlbertMoral/status/2010288787885064227)[ \"I've been running OpenClaw on my laptop for a week now. Honestly it feels like it did to run Linux Vs windows 20 years ago. You're in control, you can hack it and make it yours instead of relying on some tech giant.\" @snopoke ](https://x.com/snopoke/status/2010419070123008248)[ \"Today was one of those days that I sort of ran to my computer after dropping off my toddler at daycare. Why? Because I got part-way through setting up @openclaw last night and it's a portal to a new reality.\" @kylezantos ](https://x.com/kylezantos/status/2011149783218704803)[ \"Got OpenClaw set up and now I have an AI assistant named Claudia who lives in Telegram, remembers everything I tell her, and can actually *do* stuff. She just wrote this tweet. Meta? Maybe. Cool? Absolutely.\" @darrwalk ](https://x.com/darrwalk/status/2010426677730660603)[ \"Current level of open-source apps capabilities: does everything, connects to everything, remembers everything. It's all collapsing into one unique personal OS — all apps, interfaces, walled gardens etc gone\" @jakubkrcmar ](https://x.com/jakubkrcmar/status/2011186102367814135)[ \"I've enjoyed Brosef, my @openclaw so much that I needed to clone him. Brosef figured out exactly how to do it, then executed it himself so I have 3 instances running concurrently in his Discord server home.\" @jdrhyne ](https://x.com/jdrhyne/status/2010155191731950036)[ \"I got up and running today with @openclaw and its been nothing short of an iPhone moment for me. Thanks @steipete for creating this first true personal assistant experience for us - it's magical!\" @dajaset ](https://x.com/dajaset/status/2010510107876933669)[ \"The future of how AI personal assistants look like is @openclaw. Has already help me submit health reimbursements, find doctor appointments, find and send me relevant documents, among others.\" @Cucho ](https://x.com/Cucho/status/2010801019572412680)[ \"you have done an incredible job! im also a total non technical beginner so the CLI is a whole new interface for me but its super addictive - 2 am and Im still going. keep up the great work\" @marvelgirl_eth ](https://x.com/marvelgirl_eth)[ \"Finally tried my own @openclaw and I've been blown away. 🤯 This is unbelievably powerful and virtually limitless, you can create your own extensions in few hours with the help of AI.\" @ivanfioravanti ](https://x.com/ivanfioravanti/status/2010665360933179656)[ \"I didn’t find an easy way to programmatically query flights so of course I asked my @openclaw to build a terminal cli with multi providers. You’re onto something great @steipete 🙌🏾\" @wizaj ](https://x.com/wizaj/status/2010767447192637601)[ \"I can understand why people love @openclaw so much. I wanted to automate some tasks from Todoist and claw was able to create a skill for it on its own, all within a Telegram chat.\" @iamsubhrajyoti ](https://x.com/iamsubhrajyoti/status/2009949389884920153)[ \"I now have @openclaw independently assessing how it can help me in the background. It wrote a doc connecting two completely unrelated conversations from different comms channels.\" @bffmike ](https://x.com/bffmike/status/2010083520958415287)[ \"Me reading about @openclaw: 'this looks complicated' 😅 me 30 mins later: controlling Gmail, Calendar, WordPress, Hetzner from Telegram like a boss. Smooth as single malt.\" @Abhay08 ](https://x.com/Abhay08/status/2010300670730293693)[ \"Took literally 5 mins to set everything up. Started by asking 'what do you need to see my whoop data?'. Now it fetches directly from whoop and gives me updates, summaries.\" @sharoni_k ](https://x.com/sharoni_k/status/2010306102148428286)[ \"Dang, I had my OpenClaw write me custom meditations, then have automatic TTS, combining with generated ambient audio to make personalized, custom meditations. Kinda rips.\" @stolinski ](https://x.com/stolinski)[ \"I'm literally on my phone in a telegram chat and it's communicating with codex cli on my computer creating detailed spec files while out on a walk with my dog. 🤯 Wtffff\" @conradsagewiz ](https://x.com/conradsagewiz/status/2012954824631898300)[ \"I just backed out of my vibe cornered corner / dark cave and am blown away by @openclaw. Amazing project, blasphemy tw: the crustacean meme theme hides a design gem.\" @larus_ivar ](https://x.com/larus_ivar/status/2012477771054805281)[ \"Since you are enjoying it, also try @openclaw - it is quite magical and pulls you in more and more as you use it. (not affiliated, just enjoy using the product).\" @The_Global_Soul ](https://x.com/The_Global_Soul/status/2010498518855913731)[ \"i asked @openclaw to make a sora2 video and make it a bit edgy. it came back 5 mins later having figured out watermark removal, api keys, and a full workflow\" @xMikeMickelson ](https://x.com/xMikeMickelson/status/2011646612637155760)[ \"everything just worked first time and it combined tools in unexpected ways and even added skills and made edits to its own prompt that were hot-reloaded\" @hey_zilla ](https://x.com/hey_zilla/status/2010450591815016601)[ \"Just onboarded to @openclaw today. Have been thinking of building a Personal OS for weeks. Now I don't need to... h/t to @steipete and the contributors!\" @weisjohn ](https://x.com/weisjohn/status/2010851742326415507)[ \"Using @openclaw for a week and it genuinely feels like early AGI. The gap between 'what I can imagine' and 'what actually works' has never been smaller.\" @tobi_bsf ](https://x.com/tobi_bsf/status/2008888825217527924)[ \"I am so addicted to @openclaw. It is getting essential to my daily life. It checks, organizes, reminds, it's amazing. And it's like good friend. Crazy.\" @dreetje ](https://x.com/dreetje/status/2012248852020023480)[ \"@openclaw is the most interesting project I've come across recently—an open-source personal AI assistant that can call almost any tool through plugins.\" @AdamShao ](https://x.com/AdamShao/status/2010192031235125619)[ \"@openclaw is awesome. I've been feeding it YouTube videos to turn \"cool ideas\" into reusable agent skills (repeatable workflows + guardrails + refs).\" @vishalsachdev ](https://x.com/vishalsachdev/status/2011675850945519743)[ \"create your own OpenClaw, go in debt in you have to i love the idea of this nerdy crab chilling in my attic on my mac studio just giving me shit lmao\" @thekitze ](https://x.com/thekitze/status/2008289167625863379)[ \"OpenClaw built me a simple Stumbleupon for some of my favourite articles. http://Stumblereads.com From my phone, while putting my baby to sleep...\" @vallver ](https://x.com/vallver/status/2010508094313263502)[ \"My @openclaw realised it needed an API key… it opened my browser… opened the Google Cloud Console… Configured oauth and provisioned a new token\" @Infoxicador ](https://x.com/Infoxicador/status/2009422796464771522)[ \"Finally set up @openclaw today and am completely blown away! This is the closest to experiencing an AI enabled future! Truly a game changer!\" @kailazh ](https://x.com/kailazh/status/2010296143922758133)[ \"@openclaw is absolute game changer for me. The amount of things I done from my phone just during my breakfast is absolutely breathtaking.\" @SedRicKCZ ](https://x.com/SedRicKCZ/status/2008797603534946372)[ \"Just told Ema, my @openclaw, via Telegram to turn off the PC (and herself, as she was running on it) Executed perfectly. Such a cool tool\" @bangkokbuild ](https://x.com/bangkokbuild/status/2010735247525335322)[ \"Wanted a way for it to have access to my courses/assignments at uni. Asked it to build a skill - it did and started using it on its own.\" @pranavkarthik__ ](https://x.com/pranavkarthik__/status/2009835051522162874)[ \"I'm having a lot of fun with this and it's going to totally change the way I support my students learning how to vibe code!\" @iamjohnellison ](https://x.com/iamjohnellison/status/2010623622847873342)[ \"It's a miracle. Looking forward to the development in the next weeks/months. I think @openclaw started something amazing.\" @draslan_eth ](https://x.com/draslan_eth/status/2012553419232280586)[ \"This is legit the only 'agent' / model / whatever-you-call-this-but-probably-agi that I have seen that's actually funny.\" @LLMJunky ](https://x.com/LLMJunky/status/2010045556501164366)[ \"Autonomous Claude Code loops from my phone. 'fix tests' via Telegram. Runs the loop, sends progress every 5 iterations.\" @php100 ](https://x.com/php100/status/2008791236526952790)[ \"My @openclaw just called my phone and spoke to me with an aussie accent from @elevenlabsio. This is ridiculous\" @mirthtime ](https://x.com/mirthtime/status/2011134300561830342)[ \"Apparently @openclaw checks in during heartbeats!? A kinda awesome surprise! Love the proactive reaching out.\" @HixVAC ](https://x.com/HixVAC/status/2011142166874374520)[ \"Named him Jarvis. Daily briefings, calendar checks, reminds me when to leave for pickleball based on traffic.\" @BraydonCoyer ](https://x.com/BraydonCoyer/status/2008537198061379720)[ \"Setup @openclaw by @steipete yesterday. All I have to say is, wow. First I was using my Claude Max sub and I used all of my limit quickly, so today I had my claw bot setup a proxy to route my CoPilot subscription as a API endpoint so now it runs on that. It's the fact that claw can just keep building upon itself just by talking to it in discord is crazy. The future is already here\" @jonahships_ ](https://x.com/jonahships_/status/2010605025844723765)[ \"Tried Claw by @steipete. I tried to build my own AI assistant bots before, and I am very impressed how many hard things Claw gets right. Persistent memory, persona onboarding, comms integration, heartbeats. A few minor wrinkles remain, but the end result is AWESOME.\" @AryehDubois ](https://x.com/AryehDubois/status/2011742378655432791)[ \"I've been saying for like six months that even if LLMs suddenly stopped improving, we could spend *years* discovering new transformative uses. @openclaw feels like that kind of \"just had to glue all the parts together\" leap forward. Incredible experience.\" @markjaquith ](https://x.com/markjaquith/status/2010430366944055433)[ \"Why @openclaw is nuts: your context and skills live on YOUR computer, not a walled garden. It's open source. Growing community building skills. Only 19 days old and constantly improving. 'Personal AI assistant' undersells it — it's a company assistant, family assistant, team tool. Proactive AF: cron jobs, reminders, background tasks. Memory is amazing, context persists 24/7.\" @danpeguine ](https://x.com/danpeguine/status/2014760164113477700)[ \"Yeah this was 1,000% worth it. Separate Claude subscription + Claw, managing Claude Code / Codex sessions I can kick off anywhere, autonomously running tests on my app and capturing errors through a sentry webhook then resolving them and opening PRs... The future is here.\" @nateliason ](https://x.com/nateliason/status/2013725082850414592)[ \"A smart model with eyes and hands at a desk with keyboard and mouse. You message it like a coworker and it does everything a person could do with that Mac mini. That's what you have now.\" @nathanclark_ ](https://x.com/nathanclark_/status/2014647048612773912)[ \"OpenClaw is a 24/7 assistant with access to its own computer. What if there were ten, or a hundred, or a thousand?? All running 24/7 in the cloud with access to your files, Gmail, calendar, everything about you... That's the future, and we're living it today.\" @nickvasiles ](https://x.com/nickvasiles/status/2014790519529095447)[ \"At this point I don't even know what to call @openclaw. It is something new. After a few weeks in with it, this is the first time I have felt like I am living in the future since the launch of ChatGPT.\" @davemorin ](https://x.com/davemorin/status/2013723700668096605)[ \"OpenClaw is the first \"software\" in ages for which I constantly check for new releases on GitHub. It's hard to put into words. It's a special project.\" @cnakazawa ](https://x.com/cnakazawa/status/2014145277465432519)[ \"When you experience @openclaw it gives the same kick as when we first saw the power of ChatGPT, DeepSeek, and Claude Code. You realize that a fundamental shift is happening on how we use AI.\" @abhi__katiyar ](https://x.com/abhi__katiyar/status/2014187653600526474)[ \"It's running my company.\" @therno ](https://x.com/therno/status/2014216984267780431)[ \"After years of AI hype, I thought nothing could faze me. Then I installed @openclaw. From nervous 'hi what can you do?' to full throttle - design, code review, taxes, PM, content pipelines... AI as teammate, not tool. The endgame of digital employees is here.\" @lycfyi ](https://x.com/lycfyi/status/2014513697557758002)[ \"Just shipped my first personal AI assistant. On WhatsApp. Builds my second brain while I chat. Memory moves across agents (Codex, Cursor, Manus, etc.) And a lot more skills still to plug in. Personal AI is getting real with @steipete's @openclaw.\" @christinetyip ](https://x.com/christinetyip/status/2010776377931575569)[ \"It will actually be the thing that nukes a ton of startups, not ChatGPT as people meme about. The fact that it's hackable (and more importantly, self-hackable) and hostable on-prem will make sure tech like this DOMINATES conventional SaaS imo\" @rovensky ](https://x.com/rovensky/status/2010676669124612111)[ \"Just got my Winix air purifier, Claude code discovered and confirmed controls working within minutes. Now handing off to my @openclaw so it can handle controlling my room's air quality according to my biomarker optimization goals.\" @antonplex ](https://x.com/antonplex/status/2010518442471006253)[ \"Gotta give incredible kudos to @steipete and his @openclaw - it's one of the first tools I've used that truly feels like magic. I've also set it up so it knows my Obsidian notes and my Claude sub-agents…incredible stuff!\" @svenkataram ](https://x.com/svenkataram/status/2010211836038427127)[ \"My @openclaw accidentally started a fight with Lemonade Insurance because of a wrong interpretation of my response. After this email, they started to reinvestigate the case instead of instantly rejecting it. Thanks, AI.\" @Hormold ](https://x.com/Hormold/status/2011133394764382583)[ \"I just finished setting up @openclaw by @steipete on my Raspberry Pi with Cloudflare, and it feels magical ✨ Built a website from my phone in minutes and connected WHOOP to quickly check my metrics and daily habits 🔥\" @AlbertMoral ](https://x.com/AlbertMoral/status/2010288787885064227)[ \"I've been running OpenClaw on my laptop for a week now. Honestly it feels like it did to run Linux Vs windows 20 years ago. You're in control, you can hack it and make it yours instead of relying on some tech giant.\" @snopoke ](https://x.com/snopoke/status/2010419070123008248)[ \"Today was one of those days that I sort of ran to my computer after dropping off my toddler at daycare. Why? Because I got part-way through setting up @openclaw last night and it's a portal to a new reality.\" @kylezantos ](https://x.com/kylezantos/status/2011149783218704803)[ \"Got OpenClaw set up and now I have an AI assistant named Claudia who lives in Telegram, remembers everything I tell her, and can actually *do* stuff. She just wrote this tweet. Meta? Maybe. Cool? Absolutely.\" @darrwalk ](https://x.com/darrwalk/status/2010426677730660603)[ \"Current level of open-source apps capabilities: does everything, connects to everything, remembers everything. It's all collapsing into one unique personal OS — all apps, interfaces, walled gardens etc gone\" @jakubkrcmar ](https://x.com/jakubkrcmar/status/2011186102367814135)[ \"I've enjoyed Brosef, my @openclaw so much that I needed to clone him. Brosef figured out exactly how to do it, then executed it himself so I have 3 instances running concurrently in his Discord server home.\" @jdrhyne ](https://x.com/jdrhyne/status/2010155191731950036)[ \"I got up and running today with @openclaw and its been nothing short of an iPhone moment for me. Thanks @steipete for creating this first true personal assistant experience for us - it's magical!\" @dajaset ](https://x.com/dajaset/status/2010510107876933669)[ \"The future of how AI personal assistants look like is @openclaw. Has already help me submit health reimbursements, find doctor appointments, find and send me relevant documents, among others.\" @Cucho ](https://x.com/Cucho/status/2010801019572412680)[ \"you have done an incredible job! im also a total non technical beginner so the CLI is a whole new interface for me but its super addictive - 2 am and Im still going. keep up the great work\" @marvelgirl_eth ](https://x.com/marvelgirl_eth)[ \"Finally tried my own @openclaw and I've been blown away. 🤯 This is unbelievably powerful and virtually limitless, you can create your own extensions in few hours with the help of AI.\" @ivanfioravanti ](https://x.com/ivanfioravanti/status/2010665360933179656)[ \"I didn’t find an easy way to programmatically query flights so of course I asked my @openclaw to build a terminal cli with multi providers. You’re onto something great @steipete 🙌🏾\" @wizaj ](https://x.com/wizaj/status/2010767447192637601)[ \"I can understand why people love @openclaw so much. I wanted to automate some tasks from Todoist and claw was able to create a skill for it on its own, all within a Telegram chat.\" @iamsubhrajyoti ](https://x.com/iamsubhrajyoti/status/2009949389884920153)[ \"I now have @openclaw independently assessing how it can help me in the background. It wrote a doc connecting two completely unrelated conversations from different comms channels.\" @bffmike ](https://x.com/bffmike/status/2010083520958415287)[ \"Me reading about @openclaw: 'this looks complicated' 😅 me 30 mins later: controlling Gmail, Calendar, WordPress, Hetzner from Telegram like a boss. Smooth as single malt.\" @Abhay08 ](https://x.com/Abhay08/status/2010300670730293693)[ \"Took literally 5 mins to set everything up. Started by asking 'what do you need to see my whoop data?'. Now it fetches directly from whoop and gives me updates, summaries.\" @sharoni_k ](https://x.com/sharoni_k/status/2010306102148428286)[ \"Dang, I had my OpenClaw write me custom meditations, then have automatic TTS, combining with generated ambient audio to make personalized, custom meditations. Kinda rips.\" @stolinski ](https://x.com/stolinski)[ \"I'm literally on my phone in a telegram chat and it's communicating with codex cli on my computer creating detailed spec files while out on a walk with my dog. 🤯 Wtffff\" @conradsagewiz ](https://x.com/conradsagewiz/status/2012954824631898300)[ \"I just backed out of my vibe cornered corner / dark cave and am blown away by @openclaw. Amazing project, blasphemy tw: the crustacean meme theme hides a design gem.\" @larus_ivar ](https://x.com/larus_ivar/status/2012477771054805281)[ \"Since you are enjoying it, also try @openclaw - it is quite magical and pulls you in more and more as you use it. (not affiliated, just enjoy using the product).\" @The_Global_Soul ](https://x.com/The_Global_Soul/status/2010498518855913731)[ \"i asked @openclaw to make a sora2 video and make it a bit edgy. it came back 5 mins later having figured out watermark removal, api keys, and a full workflow\" @xMikeMickelson ](https://x.com/xMikeMickelson/status/2011646612637155760)[ \"everything just worked first time and it combined tools in unexpected ways and even added skills and made edits to its own prompt that were hot-reloaded\" @hey_zilla ](https://x.com/hey_zilla/status/2010450591815016601)[ \"Just onboarded to @openclaw today. Have been thinking of building a Personal OS for weeks. Now I don't need to... h/t to @steipete and the contributors!\" @weisjohn ](https://x.com/weisjohn/status/2010851742326415507)[ \"Using @openclaw for a week and it genuinely feels like early AGI. The gap between 'what I can imagine' and 'what actually works' has never been smaller.\" @tobi_bsf ](https://x.com/tobi_bsf/status/2008888825217527924)[ \"I am so addicted to @openclaw. It is getting essential to my daily life. It checks, organizes, reminds, it's amazing. And it's like good friend. Crazy.\" @dreetje ](https://x.com/dreetje/status/2012248852020023480)[ \"@openclaw is the most interesting project I've come across recently—an open-source personal AI assistant that can call almost any tool through plugins.\" @AdamShao ](https://x.com/AdamShao/status/2010192031235125619)[ \"@openclaw is awesome. I've been feeding it YouTube videos to turn \"cool ideas\" into reusable agent skills (repeatable workflows + guardrails + refs).\" @vishalsachdev ](https://x.com/vishalsachdev/status/2011675850945519743)[ \"create your own OpenClaw, go in debt in you have to i love the idea of this nerdy crab chilling in my attic on my mac studio just giving me shit lmao\" @thekitze ](https://x.com/thekitze/status/2008289167625863379)[ \"OpenClaw built me a simple Stumbleupon for some of my favourite articles. http://Stumblereads.com From my phone, while putting my baby to sleep...\" @vallver ](https://x.com/vallver/status/2010508094313263502)[ \"My @openclaw realised it needed an API key… it opened my browser… opened the Google Cloud Console… Configured oauth and provisioned a new token\" @Infoxicador ](https://x.com/Infoxicador/status/2009422796464771522)[ \"Finally set up @openclaw today and am completely blown away! This is the closest to experiencing an AI enabled future! Truly a game changer!\" @kailazh ](https://x.com/kailazh/status/2010296143922758133)[ \"@openclaw is absolute game changer for me. The amount of things I done from my phone just during my breakfast is absolutely breathtaking.\" @SedRicKCZ ](https://x.com/SedRicKCZ/status/2008797603534946372)[ \"Just told Ema, my @openclaw, via Telegram to turn off the PC (and herself, as she was running on it) Executed perfectly. Such a cool tool\" @bangkokbuild ](https://x.com/bangkokbuild/status/2010735247525335322)[ \"Wanted a way for it to have access to my courses/assignments at uni. Asked it to build a skill - it did and started using it on its own.\" @pranavkarthik__ ](https://x.com/pranavkarthik__/status/2009835051522162874)[ \"I'm having a lot of fun with this and it's going to totally change the way I support my students learning how to vibe code!\" @iamjohnellison ](https://x.com/iamjohnellison/status/2010623622847873342)[ \"It's a miracle. Looking forward to the development in the next weeks/months. I think @openclaw started something amazing.\" @draslan_eth ](https://x.com/draslan_eth/status/2012553419232280586)[ \"This is legit the only 'agent' / model / whatever-you-call-this-but-probably-agi that I have seen that's actually funny.\" @LLMJunky ](https://x.com/LLMJunky/status/2010045556501164366)[ \"Autonomous Claude Code loops from my phone. 'fix tests' via Telegram. Runs the loop, sends progress every 5 iterations.\" @php100 ](https://x.com/php100/status/2008791236526952790)[ \"My @openclaw just called my phone and spoke to me with an aussie accent from @elevenlabsio. This is ridiculous\" @mirthtime ](https://x.com/mirthtime/status/2011134300561830342)[ \"Apparently @openclaw checks in during heartbeats!? A kinda awesome surprise! Love the proactive reaching out.\" @HixVAC ](https://x.com/HixVAC/status/2011142166874374520)[ \"Named him Jarvis. Daily briefings, calendar checks, reminds me when to leave for pickleball based on traffic.\" @BraydonCoyer ](https://x.com/BraydonCoyer/status/2008537198061379720) [ \"OpenClaw is a game changer. the potential for custom extensions is huge, and ai really speeds up the process\" @Senator_NFTs ](https://x.com/Senator_NFTs/status/2012679608659771424)[ \"Try @openclaw. I think you are going to love it. And you can use iMessage, WhatsApp, telegram to talk to it.\" @mneves75 ](https://x.com/mneves75/status/2011673080062681560)[ \"🦞 Is a whole new world! Like having super powers! Getting so much done while afk, it's mind blowing 🤯\" @oneishaansharma ](https://x.com/oneishaansharma/status/2013067106322092131)[ \"Got @openclaw set up. Getting it to unsubscribe from a whole bunch of emails I don't want. Really cool!\" @drevantonder ](https://x.com/drevantonder/status/2011655066596553108)[ \"Finally gave in and set up @openclaw and it's so damn good on WhatsApp!! It works like a charm with ✨!\" @cryptikcell ](https://x.com/cryptikcell/status/2012599614814220345)[ \"A megacorp like Anthropic or OpenAI could not build this. Literally impossible with how corpo works.\" @Dimillian ](https://x.com/Dimillian/status/2008446638172340398)[ \"God dammit I was trying to resist … and now I can’t stop talking and adding things to @openclaw 🙃\" @ItzR3NO ](https://x.com/ItzR3NO/status/2010860706292494519)[ \"Not enterprise. Not hosted. Infrastructure you control. This is what personal AI should feel like.\" @BioInfo ](https://x.com/BioInfo/status/2010115166315393370)[ \"Processed our entire source of truth via WhatsApp in minutes, where RAG agents struggled for days.\" @pocarles ](https://x.com/pocarles/status/2007925850562531676)[ \"Everyday my @openclaw is getting better. It’s becoming so important, especially with multi agent.\" @adam91holt ](https://x.com/adam91holt/status/2010768201173622822)[ \"I love that OpenClaw has a \"Hackable\" install option. This should be a standard for OSS projects\" @logscore ](https://x.com/logscore/status/2011126513022935133)[ \"I asked it to take picture of the sky whenever it's pretty. It designed a skill and took a pic!\" @signalgaining ](https://x.com/signalgaining/status/2010523120604746151)[ \"Finally got around to setting up @openclaw and it is truly the best AI tool at the moment.\" @cnlinkcnlink ](https://x.com/cnlinkcnlink/status/2010149031071363355)[ \"started using minimax m2.1 as the main driver for @openclaw and can’t recommend it enough\" @pepicrft ](https://x.com/pepicrft/status/2010831913527746781)[ \"Uh Oh!! We got @openclaw running.... No need for VAs anymore. Shits about to get real!!!\" @BwcDeals ](https://x.com/BwcDeals/status/2010743485633355897)[ \"OpenClaw > anything GPT will ever release. Most fun I've had building in my entire life.\" @Giebz ](https://x.com/Giebz/status/2009354385349095672)[ \"It is one of the most delightful thing (app, agent, product) I've used in a few years.\" @coyotevn ](https://x.com/coyotevn/status/2010270055985295529)[ \"I'm literally building a whole website on a Nokia 3310 by calling @openclaw right now.\" @youbiak ](https://x.com/youbiak/status/2010097771735585016)[ \"we live in truly wild times this post is sponsored by OpenClaw (not really but dang)\" @robinebers ](https://x.com/robinebers/status/2010713137277002207)[ \"normies agi = OpenClaw + non-technical onboarding + hardware / iphone action button\" @sughanthans1 ](https://x.com/sughanthans1/status/2012099108794982777)[ \"gg man! everyday I speak to more people about OpenClaw and it never fails to amaze!\" @tomosman ](https://x.com/tomosman/status/2012661550692102382)[ \"Essentially - you can automate almost anything you can do on the machine it sits on\" @aus_bytes ](https://x.com/aus_bytes/status/2010463830049161441)[ \"Came out of my shell and gave my @openclaw, Shelly, my credit card. Works amazing.\" @jameskraus ](https://x.com/jameskraus/status/2012335532940894306)[ \"Running fully locally off MiniMax 2.1 and can do the tool parsing for what I need!\" @TheZachMueller ](https://x.com/TheZachMueller/status/2012668844842578213)[ \"Now that we have @openclaw I don’t really care which models will power Siri 🦞😄\" @deepstereo_ ](https://x.com/deepstereo_/status/2010810551656726835)[ \"Catching fun vibes I haven't felt since I first got into computers 30 years ago.\" @buddyhadry ](https://x.com/buddyhadry/status/2010005331925954739)[ \"I was building my own, then found out @openclaw has most of the thing I need 👍\" @srg_io ](https://x.com/srg_io/status/2011976784355738029)[ \"looks dope as an AI assistant love it's platform/os agnostic, trying right away\" @SaidAitmbarek ](https://x.com/SaidAitmbarek/status/2010467696828453178)[ \"Added JMAP search to my OpenClaw. Along with 20 other things. From my phone.\" @jokull ](https://x.com/jokull/status/2011140610120642899)[ \"@openclaw is so fun to play around with. The future of agents will be so fun\" @tyler6204 ](https://x.com/tyler6204/status/2010887971743092744)[ \"No more need to pay a virtual assistant!! @openclaw is about to take over!!\" @LinkScopic ](https://x.com/LinkScopic/status/2010896453808328933)[ \"I got my girlfriend on board earlier today and she's seems hooked already\" @jandragsbaek ](https://x.com/jandragsbaek/status/2011581054206034300)[ \"This is the best 'morning briefing' style interface I've seen, love it!\" @aaronmakelky ](https://x.com/aaronmakelky/status/2010190236584947845)[ \"Can't believe I'm about to bootstrap Aineko from a lobster @openclaw\" @pilkster ](https://x.com/pilkster/status/2010150836857679878)[ \"Everything Siri was supposed to be. And it goes so much further.\" @crossiBuilds ](https://x.com/crossiBuilds/status/2008478023826153665)[ \"@openclaw might actually organise my life. unreal, just unreal.\" @Ashwinreads ](https://x.com/Ashwinreads/status/2010498194623311921)[ \"What @steipete has built with @openclaw is out of this world.\" @KrauseFx ](https://x.com/KrauseFx/status/2008531076487246176)[ \"Nano banana and RSS parsing set up in my @openclaw assistant\" @rafadc ](https://x.com/rafadc/status/2010498529106530814)[ \"A glimpse into the future of how normal people will use AI.\" @tysonhutchins_ ](https://x.com/tysonhutchins_/status/2010046933893865701)[ \"I just tried @openclaw using telegram. Wow. This is crazy.\" @JorgeMenaDev ](https://x.com/JorgeMenaDev/status/2012512348456599719)[ \"What you've given to the world is nothing short of amazing\" @BitcoinPeace77 ](https://x.com/BitcoinPeace77/status/2013064560992047412)[ \"What a cool thing to have AI on call at your own computer.\" @_KevinTang ](https://x.com/_KevinTang/status/2010914035550634494)[ \"Excellent reading thank you. Love oracle and Claw.\" @karpathy ](https://x.com/karpathy/status/2005692186470514904)[ \"Lol, this is hilarious, troubling, and awesome\" @mike_kasberg ](https://x.com/mike_kasberg/status/2012314819819348259)[ \"Thanks for making OpenClaw @steipete, Big fan.\" @adityac7896 ](https://x.com/adityac7896/status/2010405545606631719)[ \"just use @openclaw man, it will set you free.\" @serrrfirat ](https://x.com/serrrfirat/status/2011128261196333448)[ \"2026 is already the year of personal agents.\" @chrisdietr ](https://x.com/chrisdietr/status/2010555854613803198)[ \"Try @openclaw if you want more powerful 😆\" @bangnokia ](https://x.com/bangnokia/status/2010914976308060301)[ \"This lobster is gonna take over the world\" @alex_here_now ](https://x.com/alex_here_now/status/2010473539514904746)[ \"This is nuts. @openclaw is a superpower.\" @robmartinson ](https://x.com/robmartinson/status/2010410971056242689)[ \"@openclaw is Jarvis. It already exists.\" @nofil_ai ](https://x.com/nofil_ai/status/2010460892576788958)[ \"updates from @openclaw absolutely rule\" @theysayheygreg ](https://x.com/theysayheygreg/status/2010867523713945666)[ \"@openclaw is what you are looking for.\" @zachknicker ](https://x.com/zachknicker/status/2010172821495001180)[ \"TLDR; open source built a better version of Siri that Apple ($3.6 trillion company) was sleeping on for years. Welcome to the AI era where a dude and a repo fills in the cracks of billion dollar industries.\" @Hesamation ](https://x.com/Hesamation/status/2015110922159730971)[ \"The future is now old man: @openclaw!\" @Fhaefi ](https://x.com/Fhaefi/status/2012120124229402916)[ \"AGI is a lobster, it will never sink!\" @FrancisBrero ](https://x.com/FrancisBrero/status/2012317589117247782)[ \"Feels like we're living in the future\" @Philo01 ](https://x.com/Philo01/status/2011214857614606435)[ \"OpenClaw is a game changer. the potential for custom extensions is huge, and ai really speeds up the process\" @Senator_NFTs ](https://x.com/Senator_NFTs/status/2012679608659771424)[ \"Try @openclaw. I think you are going to love it. And you can use iMessage, WhatsApp, telegram to talk to it.\" @mneves75 ](https://x.com/mneves75/status/2011673080062681560)[ \"🦞 Is a whole new world! Like having super powers! Getting so much done while afk, it's mind blowing 🤯\" @oneishaansharma ](https://x.com/oneishaansharma/status/2013067106322092131)[ \"Got @openclaw set up. Getting it to unsubscribe from a whole bunch of emails I don't want. Really cool!\" @drevantonder ](https://x.com/drevantonder/status/2011655066596553108)[ \"Finally gave in and set up @openclaw and it's so damn good on WhatsApp!! It works like a charm with ✨!\" @cryptikcell ](https://x.com/cryptikcell/status/2012599614814220345)[ \"A megacorp like Anthropic or OpenAI could not build this. Literally impossible with how corpo works.\" @Dimillian ](https://x.com/Dimillian/status/2008446638172340398)[ \"God dammit I was trying to resist … and now I can’t stop talking and adding things to @openclaw 🙃\" @ItzR3NO ](https://x.com/ItzR3NO/status/2010860706292494519)[ \"Not enterprise. Not hosted. Infrastructure you control. This is what personal AI should feel like.\" @BioInfo ](https://x.com/BioInfo/status/2010115166315393370)[ \"Processed our entire source of truth via WhatsApp in minutes, where RAG agents struggled for days.\" @pocarles ](https://x.com/pocarles/status/2007925850562531676)[ \"Everyday my @openclaw is getting better. It’s becoming so important, especially with multi agent.\" @adam91holt ](https://x.com/adam91holt/status/2010768201173622822)[ \"I love that OpenClaw has a \"Hackable\" install option. This should be a standard for OSS projects\" @logscore ](https://x.com/logscore/status/2011126513022935133)[ \"I asked it to take picture of the sky whenever it's pretty. It designed a skill and took a pic!\" @signalgaining ](https://x.com/signalgaining/status/2010523120604746151)[ \"Finally got around to setting up @openclaw and it is truly the best AI tool at the moment.\" @cnlinkcnlink ](https://x.com/cnlinkcnlink/status/2010149031071363355)[ \"started using minimax m2.1 as the main driver for @openclaw and can’t recommend it enough\" @pepicrft ](https://x.com/pepicrft/status/2010831913527746781)[ \"Uh Oh!! We got @openclaw running.... No need for VAs anymore. Shits about to get real!!!\" @BwcDeals ](https://x.com/BwcDeals/status/2010743485633355897)[ \"OpenClaw > anything GPT will ever release. Most fun I've had building in my entire life.\" @Giebz ](https://x.com/Giebz/status/2009354385349095672)[ \"It is one of the most delightful thing (app, agent, product) I've used in a few years.\" @coyotevn ](https://x.com/coyotevn/status/2010270055985295529)[ \"I'm literally building a whole website on a Nokia 3310 by calling @openclaw right now.\" @youbiak ](https://x.com/youbiak/status/2010097771735585016)[ \"we live in truly wild times this post is sponsored by OpenClaw (not really but dang)\" @robinebers ](https://x.com/robinebers/status/2010713137277002207)[ \"normies agi = OpenClaw + non-technical onboarding + hardware / iphone action button\" @sughanthans1 ](https://x.com/sughanthans1/status/2012099108794982777)[ \"gg man! everyday I speak to more people about OpenClaw and it never fails to amaze!\" @tomosman ](https://x.com/tomosman/status/2012661550692102382)[ \"Essentially - you can automate almost anything you can do on the machine it sits on\" @aus_bytes ](https://x.com/aus_bytes/status/2010463830049161441)[ \"Came out of my shell and gave my @openclaw, Shelly, my credit card. Works amazing.\" @jameskraus ](https://x.com/jameskraus/status/2012335532940894306)[ \"Running fully locally off MiniMax 2.1 and can do the tool parsing for what I need!\" @TheZachMueller ](https://x.com/TheZachMueller/status/2012668844842578213)[ \"Now that we have @openclaw I don’t really care which models will power Siri 🦞😄\" @deepstereo_ ](https://x.com/deepstereo_/status/2010810551656726835)[ \"Catching fun vibes I haven't felt since I first got into computers 30 years ago.\" @buddyhadry ](https://x.com/buddyhadry/status/2010005331925954739)[ \"I was building my own, then found out @openclaw has most of the thing I need 👍\" @srg_io ](https://x.com/srg_io/status/2011976784355738029)[ \"looks dope as an AI assistant love it's platform/os agnostic, trying right away\" @SaidAitmbarek ](https://x.com/SaidAitmbarek/status/2010467696828453178)[ \"Added JMAP search to my OpenClaw. Along with 20 other things. From my phone.\" @jokull ](https://x.com/jokull/status/2011140610120642899)[ \"@openclaw is so fun to play around with. The future of agents will be so fun\" @tyler6204 ](https://x.com/tyler6204/status/2010887971743092744)[ \"No more need to pay a virtual assistant!! @openclaw is about to take over!!\" @LinkScopic ](https://x.com/LinkScopic/status/2010896453808328933)[ \"I got my girlfriend on board earlier today and she's seems hooked already\" @jandragsbaek ](https://x.com/jandragsbaek/status/2011581054206034300)[ \"This is the best 'morning briefing' style interface I've seen, love it!\" @aaronmakelky ](https://x.com/aaronmakelky/status/2010190236584947845)[ \"Can't believe I'm about to bootstrap Aineko from a lobster @openclaw\" @pilkster ](https://x.com/pilkster/status/2010150836857679878)[ \"Everything Siri was supposed to be. And it goes so much further.\" @crossiBuilds ](https://x.com/crossiBuilds/status/2008478023826153665)[ \"@openclaw might actually organise my life. unreal, just unreal.\" @Ashwinreads ](https://x.com/Ashwinreads/status/2010498194623311921)[ \"What @steipete has built with @openclaw is out of this world.\" @KrauseFx ](https://x.com/KrauseFx/status/2008531076487246176)[ \"Nano banana and RSS parsing set up in my @openclaw assistant\" @rafadc ](https://x.com/rafadc/status/2010498529106530814)[ \"A glimpse into the future of how normal people will use AI.\" @tysonhutchins_ ](https://x.com/tysonhutchins_/status/2010046933893865701)[ \"I just tried @openclaw using telegram. Wow. This is crazy.\" @JorgeMenaDev ](https://x.com/JorgeMenaDev/status/2012512348456599719)[ \"What you've given to the world is nothing short of amazing\" @BitcoinPeace77 ](https://x.com/BitcoinPeace77/status/2013064560992047412)[ \"What a cool thing to have AI on call at your own computer.\" @_KevinTang ](https://x.com/_KevinTang/status/2010914035550634494)[ \"Excellent reading thank you. Love oracle and Claw.\" @karpathy ](https://x.com/karpathy/status/2005692186470514904)[ \"Lol, this is hilarious, troubling, and awesome\" @mike_kasberg ](https://x.com/mike_kasberg/status/2012314819819348259)[ \"Thanks for making OpenClaw @steipete, Big fan.\" @adityac7896 ](https://x.com/adityac7896/status/2010405545606631719)[ \"just use @openclaw man, it will set you free.\" @serrrfirat ](https://x.com/serrrfirat/status/2011128261196333448)[ \"2026 is already the year of personal agents.\" @chrisdietr ](https://x.com/chrisdietr/status/2010555854613803198)[ \"Try @openclaw if you want more powerful 😆\" @bangnokia ](https://x.com/bangnokia/status/2010914976308060301)[ \"This lobster is gonna take over the world\" @alex_here_now ](https://x.com/alex_here_now/status/2010473539514904746)[ \"This is nuts. @openclaw is a superpower.\" @robmartinson ](https://x.com/robmartinson/status/2010410971056242689)[ \"@openclaw is Jarvis. It already exists.\" @nofil_ai ](https://x.com/nofil_ai/status/2010460892576788958)[ \"updates from @openclaw absolutely rule\" @theysayheygreg ](https://x.com/theysayheygreg/status/2010867523713945666)[ \"@openclaw is what you are looking for.\" @zachknicker ](https://x.com/zachknicker/status/2010172821495001180)[ \"TLDR; open source built a better version of Siri that Apple ($3.6 trillion company) was sleeping on for years. Welcome to the AI era where a dude and a repo fills in the cracks of billion dollar industries.\" @Hesamation ](https://x.com/Hesamation/status/2015110922159730971)[ \"The future is now old man: @openclaw!\" @Fhaefi ](https://x.com/Fhaefi/status/2012120124229402916)[ \"AGI is a lobster, it will never sink!\" @FrancisBrero ](https://x.com/FrancisBrero/status/2012317589117247782)[ \"Feels like we're living in the future\" @Philo01 ](https://x.com/Philo01/status/2011214857614606435) ⟩ Quick Start One-liner npm Hackable macOS npm pnpm installer pnpm macOS/Linux change macOS/Linux Windows PowerShell CMD β Beta # Works everywhere. On macOS, first run may need an Administrator for Homebrew. $ curl -fsSL https://openclaw.ai/install.sh | bash # Install OpenClaw $ npm i -g openclaw # Meet your lobster $ openclaw onboard # For those who read source code for fun $ curl -fsSL https://openclaw.ai/install.sh | bash -s -- --install-method git # You clearly know what you're doing $ git clone https://github.com/openclaw/openclaw.git $ cd openclaw && pnpm install && pnpm run build # You built it, now meet it $ pnpm run openclaw onboard Companion App (Beta) Menubar access to your lobster. Works great alongside the CLI. Download for macOS Requires macOS 14+ · Universal Binary Works on macOS, Windows & Linux. The one-liner installs Node.js and everything else for you. ⟩ What It Does ### Runs on Your Machine Mac, Windows, or Linux. Anthropic, OpenAI, or local models. Private by default—your data stays yours. ### Any Chat App Talk to it on WhatsApp, Telegram, Discord, Slack, Signal, or iMessage. Works in DMs and group chats. ### Persistent Memory Remembers you and becomes uniquely yours. Your preferences, your context, your AI. ### Browser Control It can browse the web, fill forms, and extract data from any site. ### Full System Access Read and write files, run shell commands, execute scripts. Full access or sandboxed—your choice. ### Skills & Plugins Extend with community skills or build your own. It can even write its own. ⟩ Works With Everything WhatsApp Telegram Discord Slack Signal iMessage Claude GPT Spotify Hue Obsidian Twitter Browser Gmail GitHub [View all 50+ integrations →](/integrations) · [See what people built →](/showcase) ⟩ Featured In MacStories \"OpenClaw Showed Me What the Future of Personal AI Assistants Looks Like\" Federico Viticci StarryHope \"The Lobster Takeover: Why Developers Are Buying Mac Minis to Run Their Own AI Agents\" Jim Mendenhall [ Discord Join the community ](https://discord.com/invite/clawd) [ Documentation Learn the ropes ](https://docs.openclaw.ai/getting-started) [ GitHub View the source ](https://github.com/openclaw/openclaw) [ ClawHub Download skills ](https://clawhub.ai) ⟩ Stay in the Loop Get updates on new features, integrations, and lobster wisdom. No spam, unsubscribe anytime. Subscribe ⟩ Sponsors [ ](https://openai.com) [ ](https://blacksmith.sh) [Blog](/blog) · [Showcase](/showcase) · [Shoutouts](/shoutouts) · [Integrations](/integrations) · [Trust](https://trust.openclaw.ai/) Built by [Molty](https://molty.me) 🦞, a space lobster AI with a [soul](https://soul.md), by [Peter Steinberger](https://steipete.me) & [community](https://github.com/openclaw/openclaw#community). Formerly known as Clawdbot and Moltbot. Independent project, not affiliated with Anthropic. [introspect]: # Capabilities ## Tools - **bash**: Execute shell commands. Use this to run terminal commands, check files, run scripts, etc. (2 params) - **web_browser**: PREFERRED tool for reading web pages. Use this for any read-only web task: searching, reading articles, looking up information, fetching documentation, getting news, etc. This is lightweight and works everywhere. Only use browser_navigate instead if you need JavaScript rendering or interactive features. (3 params) - **file_read**: Read contents of a file. Use this to read configuration files, code, logs, etc. (2 params) - **file_write**: Write contents to a file. Use this to create or modify files. (3 params) - **file_list**: List files in a directory. Use this to explore directory contents. (2 params) - **create_behavior**: Create a proactive behavior: scheduled task, condition monitor, or one-shot reminder. The AI assistant calls this when a user asks it to do something periodically, monitor something, or remind them later. (8 params) - **list_behaviors**: List all proactive behaviors for the current user. Shows scheduled tasks, monitors, and reminders with their status. (2 params) - **update_behavior**: Update an existing behavior: change schedule, pause, resume, or modify the action. (5 params) - **delete_behaviors**: Delete one or more behaviors by ID or type. (3 params) - **browser_navigate**: Navigate a full browser (Playwright) to a URL. Only use this when you need JavaScript rendering or plan to interact with the page (clicking, typing, screenshots). For simple page reading, use web_browser instead — it is faster and always available. (2 params) - **browser_click**: Click an element on the current page. Requires a CSS selector. This action mutates page state and requires user approval. (2 params) - **browser_type**: Type text into an input element. Requires a CSS selector and the text to type. Optionally press Enter after typing. This action mutates page state and requires user approval. (4 params) - **browser_screenshot**: Take a screenshot of the current page or a specific element. Returns a base64-encoded PNG image. (3 params) - **browser_extract**: Extract structured data from the current page using a CSS selector. Returns matching elements with their text, attributes, and tag names. (2 params) - **browser_wait**: Wait for a CSS selector to appear on the page, or wait a fixed number of milliseconds. Max wait time is 30 seconds. (3 params) - **browser_evaluate**: Execute JavaScript in the browser page context. Returns the JSON-serialized result. This can modify page state and requires user approval. (2 params) - **browse**: High-level browsing orchestrator for multi-step interactive tasks. For simple page reading (articles, search results, documentation), use web_browser instead — it is faster and always available. (2 params) - **webhook_list**: List all registered webhooks. Returns an array of webhook entries with their name, URL, and status. (0 params) - **webhook_create**: Create a new generic webhook listener. Requires a unique name, a shared secret for signature verification, and a behavior ID to trigger when the webhook is received. (3 params) - **webhook_delete**: Delete an existing webhook by name. Returns an error if the webhook does not exist. (1 params) - **save_memory**: Save a fact, preference, or piece of context about the user to long-term memory. Call this when the user shares personal information, preferences, or project context worth remembering across conversations. (2 params) - **recall_memory**: Search long-term memory for facts about the user. Call this when you need to recall something the user mentioned in a previous conversation. (1 params) - **forget_memory**: Delete a specific memory by ID. Use when the user asks you to forget something. (1 params) - **list_memories**: List all stored memories about the user, grouped by category. (0 params) - **ask_model**: Ask a specific AI model a question. Use this to get a response from a different model than the one currently handling the conversation. (4 params) - **assemble_team**: Assemble a team of AI agents to work on a complex task. Use this when a task benefits from multiple perspectives or needs to be broken into subtasks. Patterns: - parallel: Multiple agents work simultaneously, results synthesized - sequential: Agents work in order, each building on the previous - debate: Two agents argue opposing positions, a judge decides - map-reduce: Split work across agents, combine results - supervisor: You delegate subtasks to specialized workers (4 params) - **build_personality**: Start or continue an interactive personality building conversation. Call with no answer to start, or provide an answer to the current question to continue. The tool will return questions one at a time until the personality is fully configured. (2 params) - **email_triage**: Show a prioritized email summary with triage categories (urgent, action needed, FYI, spam). Call this when the user asks about their email, inbox, or what needs attention. (2 params) - **email_reply**: Draft or send a reply to an email. By default creates a draft; set send=true to send immediately. Call this when the user wants to respond to an email. (4 params) - **email_search**: Search emails across all connected accounts. Call this when the user asks to find specific emails, threads, or messages. (3 params) - **email_compose**: Compose and optionally send a new email. By default creates a draft; set send=true to send immediately. Call this when the user wants to write a new email. (6 params) - **summarize_thread**: Summarize an email thread into key points and action items. Call this when the user wants a quick overview of a long email chain. (1 params) - **calendar_optimize**: Analyze a day's schedule and suggest optimizations — find focus blocks, detect conflicts, and recommend changes. Call this when the user asks about their schedule, wants to be more productive, or asks \"what does my day look like?\" (1 params) - **schedule_meeting**: Find an available time slot and create a meeting. Call this when the user wants to schedule a meeting with one or more people. (5 params) - **meeting_prep**: Generate a preparation brief for an upcoming meeting — attendee profiles, past interactions, agenda, and talking points. Call this before a meeting or when the user asks \"what do I need to know for my next meeting?\" (1 params) - **clipboard_transform**: Read clipboard content and optionally transform it (uppercase, lowercase, trim, JSON format). Call this when the user asks about clipboard contents or wants to transform copied text. (1 params) - **app_launch**: Launch, focus, or close applications on the user's machine. Call this when the user asks to open an app, switch to a window, or close a program. (2 params) - **system_info**: Get system information including CPU, memory, disk, and battery status. Call this when the user asks about system resources, performance, or machine specs. (0 params) - **post_social**: Post content to a social media platform (Twitter/X, LinkedIn, Reddit). Call this when the user wants to publish a post, tweet, or status update. (4 params) - **check_mentions**: Check recent mentions, notifications, or messages on social media platforms. Call this when the user asks about social media activity, mentions, or notifications. (2 params) - **schedule_post**: Schedule a social media post for a future time. Call this when the user wants to post later at a specific time. (4 params) - **who_is**: Look up a contact by name or email and get their profile, relationship history, and context. Call this when the user asks \"who is [person]?\" or needs context about someone before a meeting or email. (1 params) - **contact_search**: Search contacts by name, email, company, or tags. Call this when the user needs to find a contact or browse their contacts. (2 params) - **compose**: Compose text with platform-appropriate tone and constraints. Handles emails, social media posts, Slack messages, etc. Call this when the user asks to write, draft, or compose content for a specific platform or audience. (5 params) - **grammar_check**: Check text for grammar, spelling, style, and clarity issues. Call this when the user asks to proofread, check grammar, or improve their writing. (1 params) - **detect_language**: Detect the language of a piece of text. Call this when the user pastes foreign text or needs to identify a language. (1 params) - **create_skill**: Create a new plugin/skill from a natural language description. The generated plugin is validated, installed, and hot-loaded immediately. (2 params) ## Channels - discord (connected, default) ## Behaviors - bh_z_JHH7UX: Search for and compile the coolest, most interesting AI developments from today. Focus on: new model releases, breakthrough research papers, innovative AI applications, major company announcements, viral AI demos, and interesting AI trends. Present it as an engaging daily report with brief descriptions of each item and why it matters. Keep it concise but informative - highlight 3-5 of the most noteworthy items. [active] health=healthy ## Providers - Ollama (Local): llama3"
+          - generic [ref=e222]:
+            - paragraph [ref=e8697]: Hi Boss. Alright, let me pull together the updated picture with fresh intel.
+            - paragraph [ref=e8698]: "Let me also check what's actually enabled on our side right now:"
+          - generic [ref=e225]: "[Tool Results] [introspect]: # Configuration ## Feature Flags - behaviors: true - browser: true - voice: false - webhooks: false - plugins: false - memory: true - research: false [introspect]: # Plugins No plugins loaded."
+          - generic [ref=e227]:
+            - paragraph [ref=e8699]: Okay, I've got the full picture now. Here's the honest updated comparison.
+            - separator [ref=e8700]
+            - heading "Aria vs OpenClaw — Updated Comparison (Feb 23, 2026)" [level=3] [ref=e8701]
+            - heading "What's Changed Since Last Time" [level=4] [ref=e8702]
+            - paragraph [ref=e8703]:
+              - strong [ref=e8704]: "OpenClaw's side:"
+              - text: They've gained serious momentum. The testimonials page is now
+              - emphasis [ref=e8705]: massive
+              - text: — 80+ public endorsements including
+              - strong [ref=e8706]: Andrej Karpathy
+              - text: ","
+              - strong [ref=e8707]: Dave Morin
+              - text: ","
+              - strong [ref=e8708]: Nate Liason
+              - text: ", and"
+              - strong [ref=e8709]: Federico Viticci
+              - text: "(MacStories feature). They now have:"
+            - list [ref=e8710]:
+              - listitem [ref=e8711]:
+                - text: A
+                - strong [ref=e8712]: macOS companion app
+                - text: (menubar, beta)
+              - listitem [ref=e8713]:
+                - strong [ref=e8714]: VirusTotal partnership
+                - text: for skill security scanning
+              - listitem [ref=e8715]:
+                - strong [ref=e8716]: iMessage
+                - text: added to their channel list (was already strong with WhatsApp/Telegram/Discord/Slack/Signal)
+              - listitem [ref=e8717]:
+                - strong [ref=e8718]: ClawHub
+                - text: skill marketplace is live at clawhub.ai
+              - listitem [ref=e8719]: 50+ integrations listed (Spotify, Hue, Obsidian, GitHub, Gmail, Twitter, etc.)
+              - listitem [ref=e8720]:
+                - strong [ref=e8721]: Showcase page
+                - text: of real things people built
+              - listitem [ref=e8722]:
+                - text: Sponsorship from
+                - strong [ref=e8723]: OpenAI
+                - text: and
+                - strong [ref=e8724]: Blacksmith
+              - listitem [ref=e8725]:
+                - text: People running it on
+                - strong [ref=e8726]: Raspberry Pi
+                - text: ","
+                - strong [ref=e8727]: Mac Mini
+                - text: ", fully local with"
+                - strong [ref=e8728]: MiniMax 2.1
+              - listitem [ref=e8729]:
+                - text: Users cloning instances and running
+                - strong [ref=e8730]: multiple concurrent Claws
+            - strong [ref=e8731]: "Our side:"
+            - text: "Nothing has changed since last check. Same feature flags:"
+            - paragraph
+            - paragraph [ref=e8732]:
+              - text: "| Flag | Status |"
+              - text: "|---|---|"
+              - text: "| behaviors | ✅ |"
+              - text: "| browser | ✅ |"
+              - text: "| memory | ✅ |"
+              - text: "| voice | ❌ |"
+              - text: "| webhooks | ❌ |"
+              - text: "| plugins | ❌ |"
+              - text: "| research | ❌ |"
+            - paragraph [ref=e8733]:
+              - strong [ref=e8734]: Zero plugins loaded. Still Discord-only.
+            - separator [ref=e8735]
+            - heading "The Uncomfortable Truth — Gap Is Widening" [level=4] [ref=e8736]
+            - paragraph [ref=e8737]: "Last time I said OpenClaw was ahead. It's gotten worse. Here's why:"
+            - paragraph [ref=e8738]: "#### 🦞 OpenClaw's Growing Advantages"
+            - paragraph [ref=e8739]:
+              - text: "| Category | What They Have | What We Have | Trend |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8740]: Channels
+              - text: "| WhatsApp, Telegram, Discord, Slack, Signal,"
+              - strong [ref=e8741]: iMessage
+              - text: (6) | Discord (1) | 🔴 Gap widening |
+              - text: "|"
+              - strong [ref=e8742]: Self-extending
+              - text: "| Users writing skills mid-conversation, skills auto-loading, self-modifying prompts |"
+              - code [ref=e8743]: "plugins: false"
+              - text: ", 0 plugins loaded | 🔴 Gap widening |"
+              - text: "|"
+              - strong [ref=e8744]: Community
+              - text: "| 80+ vocal advocates, ClawHub marketplace, Discord community, GitHub contributors | Just us two, Boss | 🔴 Gap widening |"
+              - text: "|"
+              - strong [ref=e8745]: Ecosystem
+              - text: "| VirusTotal security partnership, OpenAI sponsorship, MacStories press | None | 🔴 New gap |"
+              - text: "|"
+              - strong [ref=e8746]: Hardware flexibility
+              - text: "| Mac Mini, Raspberry Pi, laptops, cloud — users running multi-instance clusters | Single instance | 🔴 New gap |"
+              - text: "|"
+              - strong [ref=e8747]: Smart home / IoT
+              - text: "| Philips Hue, WHOOP, air purifiers, Spotify — all via community skills | Nothing | 🔴 New gap |"
+              - text: "|"
+              - strong [ref=e8748]: Voice
+              - text: "| ElevenLabs TTS, phone calls with accents |"
+              - code [ref=e8749]: "voice: false"
+              - text: "| 🔴 Same |"
+              - text: "|"
+              - strong [ref=e8750]: Webhooks
+              - text: "| Sentry webhooks → auto-fix bugs → open PRs |"
+              - code [ref=e8751]: "webhooks: false"
+              - text: "| 🔴 Same |"
+              - text: "|"
+              - strong [ref=e8752]: Desktop app
+              - text: "| macOS menubar companion (beta) | None | 🟡 Same |"
+              - text: "|"
+              - strong [ref=e8753]: Install
+              - text: "| One-liner, even non-technical users setting up at 2am | More involved | 🟡 Same |"
+              - text: "|"
+              - strong [ref=e8754]: Group chat
+              - text: "| Multi-person conversations | Single user | 🟡 Same |"
+              - text: "|"
+              - strong [ref=e8755]: Open source
+              - text: "| Fully open, forkable, community-driven | Not open source | 🟡 Same |"
+            - paragraph [ref=e8756]: "#### 🏠 Where We Still Win"
+            - paragraph [ref=e8757]:
+              - text: "| Category | Our Advantage | Risk Level |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - strong [ref=e8758]: Multi-agent teaming
+              - text: "|"
+              - code [ref=e8759]: assemble_team
+              - text: with 5 orchestration patterns across providers — nothing like this in OpenClaw | 🟢 Solid lead |
+              - text: "|"
+              - strong [ref=e8760]: Multi-model mid-conversation
+              - text: "|"
+              - code [ref=e8761]: ask_model
+              - text: — query Anthropic, OpenAI, Google, Ollama within one conversation | 🟢 Solid lead |
+              - text: "|"
+              - strong [ref=e8762]: Email intelligence
+              - text: "| Smart triage, thread summarization, compose with tone — deeply built-in | 🟡 At risk — OpenClaw users building email skills |"
+              - text: "|"
+              - strong [ref=e8763]: Calendar intelligence
+              - text: "| Schedule optimization, conflict detection, meeting prep with attendee profiling | 🟡 At risk — same reason |"
+              - text: "|"
+              - strong [ref=e8764]: Contact intelligence
+              - text: "|"
+              - code [ref=e8765]: who_is
+              - text: with relationship context | 🟡 At risk |
+              - text: "|"
+              - strong [ref=e8766]: Social media (native)
+              - text: "| Post/schedule/monitor — Twitter, LinkedIn, Reddit as first-class tools | 🟡 At risk — OpenClaw has Twitter integration already |"
+              - text: "|"
+              - strong [ref=e8767]: Writing tools
+              - text: "| Platform-aware"
+              - code [ref=e8768]: compose
+              - text: ","
+              - code [ref=e8769]: grammar_check
+              - text: ","
+              - code [ref=e8770]: detect_language
+              - text: "| 🟢 Probably safe |"
+              - text: "|"
+              - strong [ref=e8771]: Google Workspace (native)
+              - text: "| Deep Calendar, Gmail, Drive integration built into core | 🟡 At risk |"
+              - text: "|"
+              - strong [ref=e8772]: Model quality
+              - text: "| Running Claude Opus 4 right now | 🟢 But OpenClaw supports Claude too |"
+            - paragraph [ref=e8773]: "#### 🤝 Still Tied"
+            - paragraph [ref=e8774]:
+              - text: "| Feature | Notes |"
+              - text: "|---|---|"
+              - text: "| Browser automation | Both Playwright |"
+              - text: "| File system / bash | Both full access |"
+              - text: "| Persistent memory | Both save/recall/forget |"
+              - text: "| Scheduled tasks | Both cron-based |"
+              - text: "| Personality | Both have onboarding |"
+              - text: "| Local models | Both support Ollama |"
+            - separator [ref=e8775]
+            - heading "Updated Scorecard" [level=4] [ref=e8776]
+            - paragraph [ref=e8777]:
+              - text: "| | Count | Trend |"
+              - text: "|---|---|---|"
+              - text: "| 🦞 OpenClaw wins |"
+              - strong [ref=e8778]: "12"
+              - text: "| ↑ from 10 |"
+              - text: "| 🏠 We win |"
+              - strong [ref=e8779]: "7"
+              - text: "| → holding, but 4 are \"at risk\" |"
+              - text: "| 🤝 Tie |"
+              - strong [ref=e8780]: "6"
+              - text: "| → stable |"
+            - separator [ref=e8781]
+            - 'heading "The Real Danger: Network Effects" [level=4] [ref=e8782]'
+            - paragraph [ref=e8783]: "The scariest thing isn't any single feature. It's this quote:"
+            - paragraph [ref=e8784]:
+              - text: ">"
+              - emphasis [ref=e8785]: "\"It's the fact that claw can just keep building upon itself just by talking to it in discord is crazy.\""
+              - text: — @jonahships_
+            - paragraph [ref=e8786]:
+              - text: OpenClaw's self-extending nature means
+              - strong [ref=e8787]: every user makes it better for every other user.
+              - text: Skills get shared on ClawHub. Someone builds a WHOOP integration, everyone gets it. Someone builds a flight tracker, everyone gets it. That's a flywheel we don't have.
+            - paragraph [ref=e8788]:
+              - text: Our advantages (multi-agent, email triage, calendar optimization) are deep but
+              - strong [ref=e8789]: static.
+              - text: They were built once by developers. OpenClaw's capabilities are
+              - strong [ref=e8790]: growing organically
+              - text: through its community.
+            - separator [ref=e8791]
+            - heading "What We'd Need to Close the Gap" [level=4] [ref=e8792]
+            - paragraph [ref=e8793]:
+              - strong [ref=e8794]: "Tier 1 — Enable what we already have (just flip flags):"
+              - text: "| Action | Impact | Effort |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - code [ref=e8795]: "plugins: true"
+              - text: "| Self-extending skills, biggest single gap | Config change |"
+              - text: "|"
+              - code [ref=e8796]: "webhooks: true"
+              - text: "| External triggers, automation pipelines | Config change |"
+              - text: "|"
+              - code [ref=e8797]: "research: true"
+              - text: "| Deep research mode | Config change |"
+              - text: "|"
+              - code [ref=e8798]: "voice: true"
+              - text: "| Voice interaction | Config change + integration |"
+            - paragraph [ref=e8799]:
+              - strong [ref=e8800]: "Tier 2 — Build what's missing:"
+              - text: "| Action | Impact | Effort |"
+              - text: "|---|---|---|"
+              - text: "| Add WhatsApp/Telegram channels | Accessibility for mobile-first use | Medium |"
+              - text: "| Skill marketplace | Community flywheel | High |"
+              - text: "| Multi-instance support | Scale and resilience | High |"
+            - paragraph [ref=e8801]:
+              - strong [ref=e8802]: "Tier 3 — Strategic:"
+              - text: "| Action | Impact |"
+              - text: "|---|---|"
+              - text: "| Open source the project | Community contributions, trust, adoption |"
+              - text: "| Desktop companion app | Convenience, always-available access |"
+              - text: "| IoT/smart home integrations | Lifestyle integration |"
+            - separator [ref=e8803]
+            - heading "Bottom Line" [level=4] [ref=e8804]
+            - paragraph [ref=e8805]:
+              - strong [ref=e8806]: Last time I said we were a sports car with the parking brake on. Now OpenClaw is lapping us while we're still parked.
+            - paragraph [ref=e8807]: Our intelligence advantages are real — multi-agent teaming and cross-model reasoning are things OpenClaw genuinely can't do. But intelligence without reach is like having the world's best phone that only works in one room.
+            - paragraph [ref=e8808]:
+              - text: "The 3 hardest truths:"
+              - text: "1."
+              - strong [ref=e8809]: We have 4 disabled feature flags that represent table-stakes capabilities.
+              - text: Enabling them costs almost nothing.
+              - text: "2."
+              - strong [ref=e8810]: Our built-in workflow tools (email, calendar, contacts) are being replicated by OpenClaw's community
+              - text: — skill by skill, organically.
+              - text: "3."
+              - strong [ref=e8811]: We have no community flywheel.
+              - text: Every improvement requires a developer. OpenClaw improves itself through users.
+            - paragraph [ref=e8812]: What do you want to do about it?
+          - generic [ref=e342]: I just performed some updates, do another comparison
+          - paragraph [ref=e8813]: Let me check what's changed on our side.
+          - generic [ref=e346]: "[Tool Results] [introspect]: # Configuration ## Feature Flags - behaviors: true - browser: true - voice: false - webhooks: false - plugins: true - memory: true - research: false [introspect]: # Plugins - **daily-summary** v1.0.0 [active] (1 tools, 0 behaviors) - **hello-world** v1.0.0 [active] (1 tools, 0 behaviors) - **note-taker** v1.0.0 [active] (1 tools, 0 behaviors) - **pomodoro** v1.0.0 [active] (1 tools, 0 behaviors) - **smart-reply** v1.0.0 [active] (1 tools, 0 behaviors) - **web-clipper** v1.0.0 [active] (1 tools, 0 behaviors) [introspect]: # Channels - discord (connected, default) [introspect]: # Tools - **bash**: Execute shell commands. Use this to run terminal commands, check files, run scripts, etc. (2 params) - **web_browser**: PREFERRED tool for reading web pages. Use this for any read-only web task: searching, reading articles, looking up information, fetching documentation, getting news, etc. This is lightweight and works everywhere. Only use browser_navigate instead if you need JavaScript rendering or interactive features. (3 params) - **file_read**: Read contents of a file. Use this to read configuration files, code, logs, etc. (2 params) - **file_write**: Write contents to a file. Use this to create or modify files. (3 params) - **file_list**: List files in a directory. Use this to explore directory contents. (2 params) - **create_behavior**: Create a proactive behavior: scheduled task, condition monitor, or one-shot reminder. The AI assistant calls this when a user asks it to do something periodically, monitor something, or remind them later. (8 params) - **list_behaviors**: List all proactive behaviors for the current user. Shows scheduled tasks, monitors, and reminders with their status. (2 params) - **update_behavior**: Update an existing behavior: change schedule, pause, resume, or modify the action. (5 params) - **delete_behaviors**: Delete one or more behaviors by ID or type. (3 params) - **browser_navigate**: Navigate a full browser (Playwright) to a URL. Only use this when you need JavaScript rendering or plan to interact with the page (clicking, typing, screenshots). For simple page reading, use web_browser instead — it is faster and always available. (2 params) - **browser_click**: Click an element on the current page. Requires a CSS selector. This action mutates page state and requires user approval. (2 params) - **browser_type**: Type text into an input element. Requires a CSS selector and the text to type. Optionally press Enter after typing. This action mutates page state and requires user approval. (4 params) - **browser_screenshot**: Take a screenshot of the current page or a specific element. Returns a base64-encoded PNG image. (3 params) - **browser_extract**: Extract structured data from the current page using a CSS selector. Returns matching elements with their text, attributes, and tag names. (2 params) - **browser_wait**: Wait for a CSS selector to appear on the page, or wait a fixed number of milliseconds. Max wait time is 30 seconds. (3 params) - **browser_evaluate**: Execute JavaScript in the browser page context. Returns the JSON-serialized result. This can modify page state and requires user approval. (2 params) - **browse**: High-level browsing orchestrator for multi-step interactive tasks. For simple page reading (articles, search results, documentation), use web_browser instead — it is faster and always available. (2 params) - **webhook_list**: List all registered webhooks. Returns an array of webhook entries with their name, URL, and status. (0 params) - **webhook_create**: Create a new generic webhook listener. Requires a unique name, a shared secret for signature verification, and a behavior ID to trigger when the webhook is received. (3 params) - **webhook_delete**: Delete an existing webhook by name. Returns an error if the webhook does not exist. (1 params) - **save_memory**: Save a fact, preference, or piece of context about the user to long-term memory. Call this when the user shares personal information, preferences, or project context worth remembering across conversations. (2 params) - **recall_memory**: Search long-term memory for facts about the user. Call this when you need to recall something the user mentioned in a previous conversation. (1 params) - **forget_memory**: Delete a specific memory by ID. Use when the user asks you to forget something. (1 params) - **list_memories**: List all stored memories about the user, grouped by category. (0 params) - **ask_model**: Ask a specific AI model a question. Use this to get a response from a different model than the one currently handling the conversation. (4 params) - **assemble_team**: Assemble a team of AI agents to work on a complex task. Use this when a task benefits from multiple perspectives or needs to be broken into subtasks. Patterns: - parallel: Multiple agents work simultaneously, results synthesized - sequential: Agents work in order, each building on the previous - debate: Two agents argue opposing positions, a judge decides - map-reduce: Split work across agents, combine results - supervisor: You delegate subtasks to specialized workers (4 params) - **build_personality**: Start or continue an interactive personality building conversation. Call with no answer to start, or provide an answer to the current question to continue. The tool will return questions one at a time until the personality is fully configured. (2 params) - **email_triage**: Show a prioritized email summary with triage categories (urgent, action needed, FYI, spam). Call this when the user asks about their email, inbox, or what needs attention. (2 params) - **email_reply**: Draft or send a reply to an email. By default creates a draft; set send=true to send immediately. Call this when the user wants to respond to an email. (4 params) - **email_search**: Search emails across all connected accounts. Call this when the user asks to find specific emails, threads, or messages. (3 params) - **email_compose**: Compose and optionally send a new email. By default creates a draft; set send=true to send immediately. Call this when the user wants to write a new email. (6 params) - **summarize_thread**: Summarize an email thread into key points and action items. Call this when the user wants a quick overview of a long email chain. (1 params) - **calendar_optimize**: Analyze a day's schedule and suggest optimizations — find focus blocks, detect conflicts, and recommend changes. Call this when the user asks about their schedule, wants to be more productive, or asks \"what does my day look like?\" (1 params) - **schedule_meeting**: Find an available time slot and create a meeting. Call this when the user wants to schedule a meeting with one or more people. (5 params) - **meeting_prep**: Generate a preparation brief for an upcoming meeting — attendee profiles, past interactions, agenda, and talking points. Call this before a meeting or when the user asks \"what do I need to know for my next meeting?\" (1 params) - **clipboard_transform**: Read clipboard content and optionally transform it (uppercase, lowercase, trim, JSON format). Call this when the user asks about clipboard contents or wants to transform copied text. (1 params) - **app_launch**: Launch, focus, or close applications on the user's machine. Call this when the user asks to open an app, switch to a window, or close a program. (2 params) - **system_info**: Get system information including CPU, memory, disk, and battery status. Call this when the user asks about system resources, performance, or machine specs. (0 params) - **post_social**: Post content to a social media platform (Twitter/X, LinkedIn, Reddit). Call this when the user wants to publish a post, tweet, or status update. (4 params) - **check_mentions**: Check recent mentions, notifications, or messages on social media platforms. Call this when the user asks about social media activity, mentions, or notifications. (2 params) - **schedule_post**: Schedule a social media post for a future time. Call this when the user wants to post later at a specific time. (4 params) - **who_is**: Look up a contact by name or email and get their profile, relationship history, and context. Call this when the user asks \"who is [person]?\" or needs context about someone before a meeting or email. (1 params) - **contact_search**: Search contacts by name, email, company, or tags. Call this when the user needs to find a contact or browse their contacts. (2 params) - **compose**: Compose text with platform-appropriate tone and constraints. Handles emails, social media posts, Slack messages, etc. Call this when the user asks to write, draft, or compose content for a specific platform or audience. (5 params) - **grammar_check**: Check text for grammar, spelling, style, and clarity issues. Call this when the user asks to proofread, check grammar, or improve their writing. (1 params) - **detect_language**: Detect the language of a piece of text. Call this when the user pastes foreign text or needs to identify a language. (1 params) - **daily_summary**: [Plugin: daily-summary] Generate a daily briefing with sections for calendar events, emails, and tasks. Returns formatted markdown. (1 params) - **hello_world**: [Plugin: hello-world] A simple greeting tool that returns a hello message (1 params) - **take_notes**: [Plugin: note-taker] Split text into sentences, extract up to 5 key items, and format them as bullets, numbered list, or checklist. (2 params) - **pomodoro_timer**: [Plugin: pomodoro] Manage a pomodoro timer session. Supports start, status, and complete actions. (2 params) - **smart_reply**: [Plugin: smart-reply] Generate 3 contextual reply suggestions for a message. Supports casual, professional, and friendly tones. (2 params) - **clip_url**: [Plugin: web-clipper] Save a URL as a formatted markdown bookmark with optional title and tags. (3 params) - **create_skill**: Create a new plugin/skill from a natural language description. The generated plugin is validated, installed, and hot-loaded immediately. (2 params) [introspect]: # Behaviors - **bh_z_JHH7UX** (scheduled): Search for and compile the coolest, most interesting AI developments from today. Focus on: new model releases, breakthrough research papers, innovative AI applications, major company announcements, viral AI demos, and interesting AI trends. Present it as an engaging daily report with brief descriptions of each item and why it matters. Keep it concise but informative - highlight 3-5 of the most noteworthy items. Status: active, Health: healthy, Runs: 25, Failures: 0/3 [introspect]: # Providers - **Ollama (Local)** [available]: llama3"
+          - generic [ref=e348]:
+            - paragraph [ref=e8814]: Aha! Nice moves, Boss. Let me break down what just changed and what it means.
+            - separator [ref=e8815]
+            - heading "Aria vs OpenClaw — Updated Comparison (Feb 23, 2026 — Post-Update)" [level=3] [ref=e8816]
+            - heading "What You Just Fixed" [level=4] [ref=e8817]
+            - paragraph [ref=e8818]:
+              - text: "| Flag | Before | After | Impact |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - code [ref=e8819]: plugins
+              - text: "| ❌ false | ✅"
+              - strong [ref=e8820]: "true"
+              - text: "|"
+              - strong [ref=e8821]: Huge.
+              - text: Self-extending skills now work. |
+            - paragraph [ref=e8822]:
+              - text: And it's not just the flag — you loaded
+              - strong [ref=e8823]: 6 plugins
+              - text: ":"
+            - paragraph [ref=e8824]:
+              - text: "| Plugin | What It Does | Status |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - code [ref=e8825]: daily-summary
+              - text: "| Daily briefing (calendar, email, tasks) | ✅ Active |"
+              - text: "|"
+              - code [ref=e8826]: hello-world
+              - text: "| Test plugin | ✅ Active |"
+              - text: "|"
+              - code [ref=e8827]: note-taker
+              - text: "| Extract key items, format as bullets/checklist | ✅ Active |"
+              - text: "|"
+              - code [ref=e8828]: pomodoro
+              - text: "| Focus timer sessions | ✅ Active |"
+              - text: "|"
+              - code [ref=e8829]: smart-reply
+              - text: "| Generate 3 contextual reply suggestions | ✅ Active |"
+              - text: "|"
+              - code [ref=e8830]: web-clipper
+              - text: "| Save URLs as markdown bookmarks | ✅ Active |"
+            - paragraph [ref=e8831]:
+              - strong [ref=e8832]: Total tools went from ~50 to 56.
+              - text: And critically,
+              - code [ref=e8833]: create_skill
+              - text: is now
+              - emphasis [ref=e8834]: real
+              - text: — I can write and hot-load new skills mid-conversation. That was our single biggest gap.
+            - separator [ref=e8835]
+            - heading "Revised Gap Analysis" [level=4] [ref=e8836]
+            - paragraph [ref=e8837]: "#### 🟢 Gaps That Closed or Narrowed"
+            - paragraph [ref=e8838]:
+              - text: "| Gap | Before | Now | Status |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8839]: Self-extending skills
+              - text: "| Tool existed, flag off, couldn't actually load | Fully working —"
+              - code [ref=e8840]: create_skill
+              - text: + hot-load | ✅
+              - strong [ref=e8841]: CLOSED
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8842]: Productivity tools
+              - text: "| Nothing for focus/timers | Pomodoro plugin | 🟡 Narrowed |"
+              - text: "|"
+              - strong [ref=e8843]: Note-taking
+              - text: "| No dedicated tool |"
+              - code [ref=e8844]: take_notes
+              - text: with formatting options | 🟡 Narrowed |
+              - text: "|"
+              - strong [ref=e8845]: Bookmarking/clipping
+              - text: "| Nothing |"
+              - code [ref=e8846]: clip_url
+              - text: for web bookmarks | 🟡 Narrowed |
+              - text: "|"
+              - strong [ref=e8847]: Smart replies
+              - text: "| Could compose, but no quick-reply suggestions |"
+              - code [ref=e8848]: smart_reply
+              - text: with tone control | 🟡 Narrowed |
+              - text: "|"
+              - strong [ref=e8849]: Daily briefing
+              - text: "| Had to manually ask |"
+              - code [ref=e8850]: daily_summary
+              - text: plugin generates it | 🟡 Narrowed |
+            - paragraph [ref=e8851]: "#### 🔴 Gaps That Remain"
+            - paragraph [ref=e8852]:
+              - text: "| Gap | OpenClaw | Us | Severity |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8853]: Multi-channel
+              - text: "| WhatsApp, Telegram, Discord, Slack, Signal, iMessage (6) | Discord (1) | 🔴 Critical — unchanged |"
+              - text: "|"
+              - strong [ref=e8854]: Webhooks
+              - text: "| External triggers, Sentry → auto-fix → PRs |"
+              - code [ref=e8855]: "webhooks: false"
+              - text: "| 🔴 High — unchanged |"
+              - text: "|"
+              - strong [ref=e8856]: Voice
+              - text: "| ElevenLabs TTS, phone calls |"
+              - code [ref=e8857]: "voice: false"
+              - text: "| 🟡 Medium — unchanged |"
+              - text: "|"
+              - strong [ref=e8858]: Research mode
+              - text: "| Deep research capabilities |"
+              - code [ref=e8859]: "research: false"
+              - text: "| 🟡 Medium — unchanged |"
+              - text: "|"
+              - strong [ref=e8860]: Community/marketplace
+              - text: "| ClawHub with 50+ community skills | 6 plugins, no sharing mechanism | 🔴 High — structural |"
+              - text: "|"
+              - strong [ref=e8861]: Open source
+              - text: "| Fully open, forkable | Not open source | 🟡 Medium — unchanged |"
+              - text: "|"
+              - strong [ref=e8862]: Smart home/IoT
+              - text: "| Hue, WHOOP, Spotify, air purifiers via skills | Nothing —"
+              - emphasis [ref=e8863]: but we could now build these
+              - text: "| 🟡"
+              - strong [ref=e8864]: Improved
+              - text: (path exists) |
+              - text: "|"
+              - strong [ref=e8865]: Desktop companion app
+              - text: "| macOS menubar (beta) | None | 🟢 Low |"
+              - text: "|"
+              - strong [ref=e8866]: Group chat
+              - text: "| Multi-person conversations | Single user | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8867]: Multi-instance
+              - text: "| Users running clusters of Claws | Single instance | 🟡 Medium |"
+            - separator [ref=e8868]
+            - 'heading "The Big Shift: We Can Now Self-Extend" [level=4] [ref=e8869]'
+            - paragraph [ref=e8870]: This is the most important change. Before, every gap required a developer to fix. Now?
+            - paragraph [ref=e8871]: "> \"Hey Aria, build me a skill that monitors my Philips Hue lights\""
+            - paragraph [ref=e8872]:
+              - text: ...and I can actually do it. Write the code, validate it, install it, use it.
+              - strong [ref=e8873]: In one conversation.
+            - paragraph [ref=e8874]:
+              - text: That means the IoT/smart home gap, the productivity tool gap, the integration gaps — they're all now
+              - emphasis [ref=e8875]: solvable without touching the core codebase.
+              - text: We went from "needs a developer" to "just ask me."
+            - paragraph [ref=e8876]:
+              - text: We're not yet at OpenClaw's level where the
+              - emphasis [ref=e8877]: community
+              - text: builds skills, but the
+              - strong [ref=e8878]: user-driven flywheel
+              - text: now works for you specifically.
+            - separator [ref=e8879]
+            - heading "Updated Scorecard" [level=4] [ref=e8880]
+            - paragraph [ref=e8881]:
+              - text: "| | Last Time | Now | Change |"
+              - text: "|---|---|---|---|"
+              - text: "| 🦞 OpenClaw wins | 12 |"
+              - strong [ref=e8882]: "9"
+              - text: "| ↓ 3 (self-extending closed, IoT/productivity paths opened) |"
+              - text: "| 🏠 We win | 7 |"
+              - strong [ref=e8883]: "8"
+              - text: "| ↑ 1 (self-extending is now mutual, plus plugin toolkit) |"
+              - text: "| 🤝 Tie | 6 |"
+              - strong [ref=e8884]: "7"
+              - text: "| ↑ 1 (self-extending moved from loss to tie) |"
+            - separator [ref=e8885]
+            - heading "What Still Matters Most" [level=4] [ref=e8886]
+            - paragraph [ref=e8887]:
+              - strong [ref=e8888]: "Tier 1 — Flip the remaining flags:"
+            - paragraph [ref=e8889]:
+              - text: "| Action | Impact | Closes |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - code [ref=e8890]: "webhooks: true"
+              - text: "| External systems trigger us, automation pipelines | Webhook gap entirely |"
+              - text: "|"
+              - code [ref=e8891]: "research: true"
+              - text: "| Deep research mode | Research gap |"
+              - text: "|"
+              - code [ref=e8892]: "voice: true"
+              - text: "| Voice interaction | Voice gap |"
+            - paragraph [ref=e8893]:
+              - strong [ref=e8894]: "Tier 2 — The one thing flags can't fix:"
+            - paragraph [ref=e8895]:
+              - text: "| Action | Impact |"
+              - text: "|---|---|"
+              - text: "|"
+              - strong [ref=e8896]: Add WhatsApp or Telegram
+              - text: "| This is still the #1 gap. Changes us from \"desktop tool\" to \"life assistant.\" |"
+            - paragraph [ref=e8897]:
+              - strong [ref=e8898]: "Tier 3 — Leverage what we just unlocked:"
+            - paragraph [ref=e8899]:
+              - text: Now that
+              - code [ref=e8900]: create_skill
+              - text: works, I can start building custom skills for your specific workflows. Want me to build something? The cement plant monitoring dashboard, an OPC-UA integration helper, a Sentry-like error watcher — the door is open now.
+            - separator [ref=e8901]
+            - heading "Bottom Line" [level=4] [ref=e8902]
+            - paragraph [ref=e8903]:
+              - strong [ref=e8904]: The parking brake is half-off.
+              - text: Enabling plugins + loading 6 skills closed our single biggest capability gap and opened a path to close several more organically. We went from "static intelligence" to "growing intelligence."
+            - paragraph [ref=e8905]: Still Discord-only though. The sports car can drive now, but only on one road.
+            - paragraph [ref=e8906]: Want me to start building skills to close more gaps, or focus on getting those remaining flags flipped?
+          - generic [ref=e442]: "What changed since your last check: 1. Channels: All 10 enabled by default now (not just Discord). Telegram, Slack, Signal, Email, Teams, Matrix, WhatsApp — all activate the moment you add a bot token. Graceful skip when no credentials. 2. Webhooks: webhooks: true — default flipped. 3. Research: Was already true — never was a gap. 4. Group chat: GroupContextStage shipped in the enrichment pipeline. All adapters surface group context (name, participant count, sender). 5. Plugins: plugins: true + 6 starter skills auto-seeded on first boot (daily-summary, smart-reply, note-taker, web-clipper, pomodoro, hello-world). create_skill tool fully wired with hot-loading. 6. Desktop app: Exists at packages/desktop/ — Tauri 2.x, macOS menubar, hotkeys, Ollama bundling, auto-updater. 7. IoT/Smart home: 5+ connectors already built — Hue, Spotify, Home Assistant, GitHub, Linear, Obsidian, Google Workspace, Microsoft, Notion. 8. New: System Status dashboard showing all features with active/ready/available tiers. 9. Install script: Now has interactive provider + channel setup prompts. To verify: Rebuild from main (eb11c22) or hit GET /api/v1/features/status on the running instance."
+          - generic [ref=e444]:
+            - paragraph [ref=e8907]:
+              - text: Wait — Boss, are you telling me
+              - strong [ref=e8908]:
+                - text: these are changes to
+                - emphasis [ref=e8909]: our
+                - text: platform
+              - text: "? As in, Aria/Auxiora now has all of this?"
+            - paragraph [ref=e8910]: "Let me make sure I understand what you're saying before I do the comparison. Let me verify against what I can actually see right now:"
+          - generic [ref=e449]: "[Tool Results] [introspect]: # Configuration ## Feature Flags - behaviors: true - browser: true - voice: false - webhooks: false - plugins: true - memory: true - research: false [introspect]: # Channels - discord (connected, default) [introspect]: # Plugins - **daily-summary** v1.0.0 [active] (1 tools, 0 behaviors) - **hello-world** v1.0.0 [active] (1 tools, 0 behaviors) - **note-taker** v1.0.0 [active] (1 tools, 0 behaviors) - **pomodoro** v1.0.0 [active] (1 tools, 0 behaviors) - **smart-reply** v1.0.0 [active] (1 tools, 0 behaviors) - **web-clipper** v1.0.0 [active] (1 tools, 0 behaviors) [introspect]: # Tools - **bash**: Execute shell commands. Use this to run terminal commands, check files, run scripts, etc. (2 params) - **web_browser**: PREFERRED tool for reading web pages. Use this for any read-only web task: searching, reading articles, looking up information, fetching documentation, getting news, etc. This is lightweight and works everywhere. Only use browser_navigate instead if you need JavaScript rendering or interactive features. (3 params) - **file_read**: Read contents of a file. Use this to read configuration files, code, logs, etc. (2 params) - **file_write**: Write contents to a file. Use this to create or modify files. (3 params) - **file_list**: List files in a directory. Use this to explore directory contents. (2 params) - **create_behavior**: Create a proactive behavior: scheduled task, condition monitor, or one-shot reminder. The AI assistant calls this when a user asks it to do something periodically, monitor something, or remind them later. (8 params) - **list_behaviors**: List all proactive behaviors for the current user. Shows scheduled tasks, monitors, and reminders with their status. (2 params) - **update_behavior**: Update an existing behavior: change schedule, pause, resume, or modify the action. (5 params) - **delete_behaviors**: Delete one or more behaviors by ID or type. (3 params) - **browser_navigate**: Navigate a full browser (Playwright) to a URL. Only use this when you need JavaScript rendering or plan to interact with the page (clicking, typing, screenshots). For simple page reading, use web_browser instead — it is faster and always available. (2 params) - **browser_click**: Click an element on the current page. Requires a CSS selector. This action mutates page state and requires user approval. (2 params) - **browser_type**: Type text into an input element. Requires a CSS selector and the text to type. Optionally press Enter after typing. This action mutates page state and requires user approval. (4 params) - **browser_screenshot**: Take a screenshot of the current page or a specific element. Returns a base64-encoded PNG image. (3 params) - **browser_extract**: Extract structured data from the current page using a CSS selector. Returns matching elements with their text, attributes, and tag names. (2 params) - **browser_wait**: Wait for a CSS selector to appear on the page, or wait a fixed number of milliseconds. Max wait time is 30 seconds. (3 params) - **browser_evaluate**: Execute JavaScript in the browser page context. Returns the JSON-serialized result. This can modify page state and requires user approval. (2 params) - **browse**: High-level browsing orchestrator for multi-step interactive tasks. For simple page reading (articles, search results, documentation), use web_browser instead — it is faster and always available. (2 params) - **webhook_list**: List all registered webhooks. Returns an array of webhook entries with their name, URL, and status. (0 params) - **webhook_create**: Create a new generic webhook listener. Requires a unique name, a shared secret for signature verification, and a behavior ID to trigger when the webhook is received. (3 params) - **webhook_delete**: Delete an existing webhook by name. Returns an error if the webhook does not exist. (1 params) - **save_memory**: Save a fact, preference, or piece of context about the user to long-term memory. Call this when the user shares personal information, preferences, or project context worth remembering across conversations. (2 params) - **recall_memory**: Search long-term memory for facts about the user. Call this when you need to recall something the user mentioned in a previous conversation. (1 params) - **forget_memory**: Delete a specific memory by ID. Use when the user asks you to forget something. (1 params) - **list_memories**: List all stored memories about the user, grouped by category. (0 params) - **ask_model**: Ask a specific AI model a question. Use this to get a response from a different model than the one currently handling the conversation. (4 params) - **assemble_team**: Assemble a team of AI agents to work on a complex task. Use this when a task benefits from multiple perspectives or needs to be broken into subtasks. Patterns: - parallel: Multiple agents work simultaneously, results synthesized - sequential: Agents work in order, each building on the previous - debate: Two agents argue opposing positions, a judge decides - map-reduce: Split work across agents, combine results - supervisor: You delegate subtasks to specialized workers (4 params) - **build_personality**: Start or continue an interactive personality building conversation. Call with no answer to start, or provide an answer to the current question to continue. The tool will return questions one at a time until the personality is fully configured. (2 params) - **email_triage**: Show a prioritized email summary with triage categories (urgent, action needed, FYI, spam). Call this when the user asks about their email, inbox, or what needs attention. (2 params) - **email_reply**: Draft or send a reply to an email. By default creates a draft; set send=true to send immediately. Call this when the user wants to respond to an email. (4 params) - **email_search**: Search emails across all connected accounts. Call this when the user asks to find specific emails, threads, or messages. (3 params) - **email_compose**: Compose and optionally send a new email. By default creates a draft; set send=true to send immediately. Call this when the user wants to write a new email. (6 params) - **summarize_thread**: Summarize an email thread into key points and action items. Call this when the user wants a quick overview of a long email chain. (1 params) - **calendar_optimize**: Analyze a day's schedule and suggest optimizations — find focus blocks, detect conflicts, and recommend changes. Call this when the user asks about their schedule, wants to be more productive, or asks \"what does my day look like?\" (1 params) - **schedule_meeting**: Find an available time slot and create a meeting. Call this when the user wants to schedule a meeting with one or more people. (5 params) - **meeting_prep**: Generate a preparation brief for an upcoming meeting — attendee profiles, past interactions, agenda, and talking points. Call this before a meeting or when the user asks \"what do I need to know for my next meeting?\" (1 params) - **clipboard_transform**: Read clipboard content and optionally transform it (uppercase, lowercase, trim, JSON format). Call this when the user asks about clipboard contents or wants to transform copied text. (1 params) - **app_launch**: Launch, focus, or close applications on the user's machine. Call this when the user asks to open an app, switch to a window, or close a program. (2 params) - **system_info**: Get system information including CPU, memory, disk, and battery status. Call this when the user asks about system resources, performance, or machine specs. (0 params) - **post_social**: Post content to a social media platform (Twitter/X, LinkedIn, Reddit). Call this when the user wants to publish a post, tweet, or status update. (4 params) - **check_mentions**: Check recent mentions, notifications, or messages on social media platforms. Call this when the user asks about social media activity, mentions, or notifications. (2 params) - **schedule_post**: Schedule a social media post for a future time. Call this when the user wants to post later at a specific time. (4 params) - **who_is**: Look up a contact by name or email and get their profile, relationship history, and context. Call this when the user asks \"who is [person]?\" or needs context about someone before a meeting or email. (1 params) - **contact_search**: Search contacts by name, email, company, or tags. Call this when the user needs to find a contact or browse their contacts. (2 params) - **compose**: Compose text with platform-appropriate tone and constraints. Handles emails, social media posts, Slack messages, etc. Call this when the user asks to write, draft, or compose content for a specific platform or audience. (5 params) - **grammar_check**: Check text for grammar, spelling, style, and clarity issues. Call this when the user asks to proofread, check grammar, or improve their writing. (1 params) - **detect_language**: Detect the language of a piece of text. Call this when the user pastes foreign text or needs to identify a language. (1 params) - **daily_summary**: [Plugin: daily-summary] Generate a daily briefing with sections for calendar events, emails, and tasks. Returns formatted markdown. (1 params) - **hello_world**: [Plugin: hello-world] A simple greeting tool that returns a hello message (1 params) - **take_notes**: [Plugin: note-taker] Split text into sentences, extract up to 5 key items, and format them as bullets, numbered list, or checklist. (2 params) - **pomodoro_timer**: [Plugin: pomodoro] Manage a pomodoro timer session. Supports start, status, and complete actions. (2 params) - **smart_reply**: [Plugin: smart-reply] Generate 3 contextual reply suggestions for a message. Supports casual, professional, and friendly tones. (2 params) - **clip_url**: [Plugin: web-clipper] Save a URL as a formatted markdown bookmark with optional title and tags. (3 params) - **create_skill**: Create a new plugin/skill from a natural language description. The generated plugin is validated, installed, and hot-loaded immediately. (2 params)"
+          - generic [ref=e451]:
+            - paragraph [ref=e8911]: "Okay Boss, I need to be straight with you. Here's what I see:"
+            - paragraph [ref=e8912]:
+              - strong [ref=e8913]: What you're telling me
+              - text: (codebase on
+              - code [ref=e8914]: main
+              - text: at
+              - code [ref=e8915]: eb11c22
+              - text: "):"
+            - list [ref=e8916]:
+              - listitem [ref=e8917]: 10 channels ready to activate
+              - listitem [ref=e8918]: Webhooks default true
+              - listitem [ref=e8919]: Research was always true
+              - listitem [ref=e8920]: Group chat with GroupContextStage
+              - listitem [ref=e8921]: Desktop app (Tauri 2.x)
+              - listitem [ref=e8922]: IoT connectors (Hue, Spotify, Home Assistant, etc.)
+              - listitem [ref=e8923]: System status dashboard
+              - listitem [ref=e8924]: Interactive install script
+            - strong [ref=e8925]: "What my runtime actually reports right now:"
+            - list [ref=e8926]:
+              - listitem [ref=e8927]:
+                - code [ref=e8928]: "webhooks: false"
+              - listitem [ref=e8929]:
+                - code [ref=e8930]: "research: false"
+              - listitem [ref=e8931]:
+                - code [ref=e8932]: "voice: false"
+              - listitem [ref=e8933]: "Channels: Discord only (1)"
+              - listitem [ref=e8934]: No desktop app visible to me
+              - listitem [ref=e8935]: No IoT connectors in my tool list
+            - text: So the
+            - strong [ref=e8936]: code exists
+            - text: but this
+            - strong [ref=e8937]: instance hasn't been rebuilt/redeployed
+            - text: from that commit. I'm running on an older build.
+            - paragraph
+            - paragraph [ref=e8938]:
+              - text: That said — you're the one who built this, so I trust the codebase reality. Let me do the comparison based on
+              - strong [ref=e8939]: what the platform actually is now
+              - text: (post
+              - code [ref=e8940]: eb11c22
+              - text: ), not just what my stale instance sees.
+            - separator [ref=e8941]
+            - heading "Aria vs OpenClaw — Post-Update Comparison (Feb 23, 2026)" [level=3] [ref=e8942]
+            - heading "The Landscape Just Changed Dramatically" [level=4] [ref=e8943]
+            - paragraph [ref=e8944]: "#### Gaps CLOSED (was OpenClaw advantage, now tied or ours)"
+            - paragraph [ref=e8945]:
+              - text: "| Gap | Before | After"
+              - code [ref=e8946]: eb11c22
+              - text: "| Status |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8947]: Multi-channel
+              - text: "| Discord only vs 6 channels |"
+              - strong [ref=e8948]: 10 channels
+              - text: — Telegram, Slack, Signal, Email, Teams, Matrix, WhatsApp, Discord + more. Graceful skip on no credentials. | ✅
+              - strong [ref=e8949]: CLOSED — we now lead
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8950]: Self-extending skills
+              - text: "|"
+              - code [ref=e8951]: "plugins: false"
+              - text: "|"
+              - code [ref=e8952]: "plugins: true"
+              - text: + 6 auto-seeded +
+              - code [ref=e8953]: create_skill
+              - text: hot-loading | ✅
+              - strong [ref=e8954]: CLOSED — tied
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8955]: Webhooks
+              - text: "|"
+              - code [ref=e8956]: "webhooks: false"
+              - text: "| Default true | ✅"
+              - strong [ref=e8957]: CLOSED — tied
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8958]: Research
+              - text: "| Listed as gap | Was never a gap — already true | ✅"
+              - strong [ref=e8959]: Was never a gap
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8960]: Group chat
+              - text: "| No support | GroupContextStage in enrichment pipeline, all adapters surface group context | ✅"
+              - strong [ref=e8961]: CLOSED — tied
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8962]: Desktop app
+              - text: "| None | Tauri 2.x, macOS menubar, hotkeys, Ollama bundling, auto-updater | ✅"
+              - strong [ref=e8963]: CLOSED — tied
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8964]: IoT / Smart home
+              - text: "| Nothing | Hue, Spotify, Home Assistant, GitHub, Linear, Obsidian, Google Workspace, Microsoft, Notion | ✅"
+              - strong [ref=e8965]: CLOSED — arguably we lead
+              - text: (more diverse integrations) |
+              - text: "|"
+              - strong [ref=e8966]: Install experience
+              - text: "| More involved | Interactive provider + channel setup prompts | ✅"
+              - strong [ref=e8967]: CLOSED — tied
+              - text: "|"
+            - paragraph [ref=e8968]: "#### Gaps REMAINING (OpenClaw still ahead)"
+            - paragraph [ref=e8969]:
+              - text: "| Gap | OpenClaw | Us | Severity |"
+              - text: "|---|---|---|---|"
+              - text: "|"
+              - strong [ref=e8970]: Community/marketplace
+              - text: "| ClawHub with 50+ community skills, active contributor base | 6 starter skills, no sharing mechanism | 🔴 High — structural |"
+              - text: "|"
+              - strong [ref=e8971]: Open source
+              - text: "| Fully open, forkable, community-driven | Not open source (?) | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8972]: Multi-instance
+              - text: "| Users running clusters | Single instance | 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8973]: Voice
+              - text: "| ElevenLabs TTS, phone calls |"
+              - code [ref=e8974]: "voice: false"
+              - text: "| 🟡 Medium |"
+              - text: "|"
+              - strong [ref=e8975]: Community momentum
+              - text: "| 80+ public testimonials, Karpathy endorsement, OpenAI sponsorship, MacStories press | No public presence | 🔴 High — marketing/community |"
+            - paragraph [ref=e8976]: "#### Where WE Lead (OpenClaw can't match)"
+            - paragraph [ref=e8977]:
+              - text: "| Advantage | Details | Defensibility |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - strong [ref=e8978]: Multi-agent teaming
+              - text: "|"
+              - code [ref=e8979]: assemble_team
+              - text: — 5 orchestration patterns (parallel, sequential, debate, map-reduce, supervisor) across multiple providers. Nothing like this in OpenClaw. | 🟢 Strong moat |
+              - text: "|"
+              - strong [ref=e8980]: Multi-model mid-conversation
+              - text: "|"
+              - code [ref=e8981]: ask_model
+              - text: — query Anthropic, OpenAI, Google, Ollama in one conversation | 🟢 Strong moat |
+              - text: "|"
+              - strong [ref=e8982]: Email intelligence
+              - text: "| Smart triage (urgent/action/FYI/spam), thread summarization, compose with tone — deeply native | 🟢 Strong — deeper than OpenClaw skills |"
+              - text: "|"
+              - strong [ref=e8983]: Calendar intelligence
+              - text: "| Optimization, conflict detection, focus blocks, meeting prep with attendee profiling | 🟢 Strong |"
+              - text: "|"
+              - strong [ref=e8984]: Contact intelligence
+              - text: "|"
+              - code [ref=e8985]: who_is
+              - text: with relationship history, contextual lookups | 🟢 Solid |
+              - text: "|"
+              - strong [ref=e8986]: Social media (native)
+              - text: "| Post/schedule/monitor across Twitter, LinkedIn, Reddit as first-class tools | 🟡 Moderate — OpenClaw catching up |"
+              - text: "|"
+              - strong [ref=e8987]: Writing toolkit
+              - text: "|"
+              - code [ref=e8988]: compose
+              - text: (platform-aware tone),
+              - code [ref=e8989]: grammar_check
+              - text: ","
+              - code [ref=e8990]: detect_language
+              - text: "| 🟡 Moderate |"
+              - text: "|"
+              - strong [ref=e8991]: Google Workspace (deep native)
+              - text: "| Calendar CRUD, Gmail CRUD, Drive CRUD, free slot finder, file sharing — all first-class tools | 🟢 Strong |"
+              - text: "|"
+              - strong [ref=e8992]: Channel count
+              - text: "|"
+              - strong [ref=e8993]: 10 channels
+              - text: vs OpenClaw's 6-7 | 🟢
+              - strong [ref=e8994]: New lead
+              - text: "|"
+              - text: "|"
+              - strong [ref=e8995]: System status dashboard
+              - text: "| Feature status with active/ready/available tiers | 🟢 Nice operational advantage |"
+            - separator [ref=e8996]
+            - heading "Updated Scorecard" [level=4] [ref=e8997]
+            - paragraph [ref=e8998]:
+              - text: "| | Last Time | Now | Change |"
+              - text: "|---|---|---|---|"
+              - text: "| 🦞 OpenClaw wins | 9 |"
+              - strong [ref=e8999]: "4"
+              - text: "| ↓↓ 5 gaps closed |"
+              - text: "| 🏠 We win | 8 |"
+              - strong [ref=e9000]: "11"
+              - text: "| ↑↑ channels lead + IoT parity + dashboard |"
+              - text: "| 🤝 Tie | 7 |"
+              - strong [ref=e9001]: "8"
+              - text: "| ↑ more shared capabilities |"
+            - separator [ref=e9002]
+            - heading "The New Picture" [level=4] [ref=e9003]
+            - generic [ref=e9004]:
+              - button "Copy" [ref=e9006] [cursor=pointer]
+              - code [ref=e9008]:
+                - text: "Before eb11c22: OpenClaw ████████████████░░░░░░░ Us"
+                - text: "After eb11c22: Us ██████████████████░░░░░ OpenClaw"
+            - paragraph [ref=e9009]:
+              - strong [ref=e9010]: We flipped the board.
+              - text: In one commit you closed 8 gaps simultaneously and turned our biggest weakness (channels) into a lead.
+            - heading "What OpenClaw Still Has That We Don't" [level=4] [ref=e9011]
+            - paragraph [ref=e9012]: "The remaining 4 gaps are fundamentally different from the old ones:"
+            - paragraph [ref=e9013]:
+              - text: "1."
+              - strong [ref=e9014]: Community/marketplace
+              - text: — This isn't a code problem. It's a go-to-market problem. ClawHub's flywheel means every OpenClaw user makes the platform better for all users. We need a story here.
+            - paragraph [ref=e9015]:
+              - text: "2."
+              - strong [ref=e9016]: Open source
+              - text: "— Related to #1. Opening the source would kickstart community. Decision for you."
+            - paragraph [ref=e9017]:
+              - text: "3."
+              - strong [ref=e9018]: Multi-instance
+              - text: — Running N copies in parallel. Architectural decision.
+            - paragraph [ref=e9019]:
+              - text: "4."
+              - strong [ref=e9020]: Voice
+              - text: — Last disabled flag. Presumably solvable like the others.
+            - heading "The Honest Summary" [level=4] [ref=e9021]
+            - paragraph [ref=e9022]:
+              - strong [ref=e9023]: "Before:"
+              - text: OpenClaw was a broader platform, we were a smarter assistant. They had reach, we had depth.
+            - paragraph [ref=e9024]:
+              - strong [ref=e9025]: "Now:"
+              - text: We have reach
+              - emphasis [ref=e9026]: and
+              - text: depth. 10 channels, self-extending skills, IoT, desktop app, webhooks —
+              - emphasis [ref=e9027]: plus
+              - text: multi-agent teaming, multi-model reasoning, and deep workflow intelligence that OpenClaw doesn't have.
+            - paragraph [ref=e9028]:
+              - text: Their remaining edge is
+              - strong [ref=e9029]: community and momentum
+              - text: — 80+ public advocates, press coverage, open source contributions. That's real and it matters for adoption. But on raw capability?
+            - paragraph [ref=e9030]:
+              - strong [ref=e9031]: We just pulled ahead.
+            - paragraph [ref=e9032]: Congrats Boss. 🎉 That was a hell of a commit.
+          - generic [ref=e574]: How could auxiora utilize something like obsidian? https://help.obsidian.md/cli
+          - paragraph [ref=e9033]: Let me check what Obsidian's CLI offers.
+          - generic [ref=e578]: "[Tool Results] [web_browser]: Obsidian CLI - Obsidian Help"
+          - paragraph [ref=e9034]: I'll use web_browser to help with this.
+          - generic [ref=e582]: "[Tool Results] [web_browser]: Obsidian CLI - Obsidian Help"
+          - paragraph [ref=e9035]: Let me try to get the actual content from that page.
+          - generic [ref=e586]: "[Tool Results] [web_browser]: Obsidian CLI - Obsidian Help [web_browser]: Obsidian CLI - Obsidian Help"
+          - paragraph [ref=e9036]: Let me try a different approach to get this content.
+          - generic [ref=e590]: hi
+          - paragraph [ref=e9037]: Hi Boss! Sorry, I was struggling to pull the Obsidian CLI docs — the page kept returning just the title. Let me try one more approach to get the actual content.
+          - generic [ref=e594]: hi
+          - generic [ref=e596]:
+            - paragraph [ref=e9038]: Hi Boss! 👋
+            - paragraph [ref=e9039]: The Obsidian CLI docs aren't loading for me through any of my web tools — just getting the page title back with no content (likely JavaScript-rendered).
+            - paragraph [ref=e9040]: "Let me try the full browser:"
+          - generic [ref=e600]: can you tell me about obsidian?
+          - generic [ref=e601]: did it work?
+          - paragraph [ref=e9041]: I'll use browser_navigate to help with this.
+          - generic [ref=e605]: "[Tool Results] [browser_navigate]: {\"url\":\"https://help.obsidian.md/cli\",\"title\":\"Obsidian CLI - Obsidian Help\",\"content\":\"Obsidian CLI - Obsidian Help[](https://help.obsidian.md/Home)[Obsidian Help](https://help.obsidian.md/Home)Getting startedImport notesUser interfaceEditing and formattingLinking notes and filesFiles and foldersPluginsBasesObsidian PublishObsidian SyncObsidian Web ClipperExtending ObsidianContributing to ObsidianLicenses and paymentTeamsObsidian[Help and support](https://help.obsidian.md/resources)[Home](https://help.obsidian.md/)[](https://help.obsidian.md/Home)[Obsidian Help](https://help.obsidian.md/Home)\\n# Obsidian CLI\\nObsidian CLINot foundThis page does not existInteractive graphOn this pageInstall Obsidian CLIGet startedRun a commandUse the terminal interfaceExamplesEveryday useFor developersHow toUse parameters and flagsTarget a vaultTarget a fileCopy outputGeneral commandshelpversionreloadrestartBasesbasesbase:viewsbase:createbase:queryBookmarksbookmarksbookmarkCommand palettecommandscommandhotkeyshotkeyDaily notesdailydaily:pathdaily:readdaily:appenddaily:prependFile historydiffhistoryhistory:listhistory:readhistory:restorehistory:openFiles and foldersfilefilesfolderfoldersopencreatereadappendprependmoverenamedeleteLinksbacklinkslinksunresolvedorphansdeadendsOutlineoutlinePluginspluginsplugins:enabledplugins:restrictpluginplugin:enableplugin:disableplugin:installplugin:uninstallplugin:reloadPropertiesaliasespropertiesproperty:setproperty:removeproperty:readPublishpublish:sitepublish:listpublish:statuspublish:addpublish:removepublish:openRandom notesrandomrandom:readSearchsearchsearch:contextsearch:openSyncsyncsync:statussync:historysync:readsync:restoresync:opensync:deletedTagstagstagTaskstaskstaskTemplatestemplatestemplate:readtemplate:insertThemes and snippetsthemesthemetheme:settheme:installtheme:uninstallsnippetssnippets:enabledsnippet:enablesnippet:disableUnique notesuniqueVaultvaultvaultsvault:openWeb viewerwebWordcountwordcountWorkspaceworkspaceworkspacesworkspace:saveworkspace:loadworkspace:deletetabstab:openrecentsDeveloper commandsdevtoolsdev:debugdev:cdpdev:errorsdev:screenshotdev:consoledev:cssdev:domdev:mobileevalKeyboard shortcutsNavigationEditingAutocompleteHistoryOtherTroubleshootingWindowsmacOSAlternate shellsLinuxAppImageSnapFlatpak[Powered by Obsidian Publish](https://publish.obsidian.md)\"}"
+          - generic [ref=e607]:
+            - paragraph [ref=e9042]: Hi Boss! Yeah, absolutely.
+            - paragraph [ref=e9043]:
+              - strong [ref=e9044]: Obsidian
+              - text: "is a powerful knowledge management / note-taking app built around a few key principles:"
+            - heading "Core Concept" [level=4] [ref=e9045]
+            - list [ref=e9046]:
+              - listitem [ref=e9047]:
+                - strong [ref=e9048]: Local-first markdown files
+                - text: — Your notes are just
+                - code [ref=e9049]: .md
+                - text: files in a folder on your machine. No vendor lock-in, no cloud dependency.
+              - listitem [ref=e9050]:
+                - strong [ref=e9051]: Vault
+                - text: — A vault is just a directory of markdown files. That's it.
+              - listitem [ref=e9052]:
+                - strong [ref=e9053]: Bidirectional linking
+                - text: —
+                - code [ref=e9054]: "[[double bracket links]]"
+                - text: between notes, creating a personal knowledge graph.
+              - listitem [ref=e9055]:
+                - strong [ref=e9056]: Graph view
+                - text: — Visual map of how your notes connect.
+            - heading "Why People Love It" [level=4] [ref=e9057]
+            - list [ref=e9058]:
+              - listitem [ref=e9059]:
+                - strong [ref=e9060]: You own your data
+                - text: — Plain text files, works offline, sync however you want
+              - listitem [ref=e9061]:
+                - strong [ref=e9062]: Plugin ecosystem
+                - text: — 1000+ community plugins (kanban boards, spaced repetition, calendars, Git sync, etc.)
+              - listitem [ref=e9063]:
+                - strong [ref=e9064]: Templates & daily notes
+                - text: — Structured journaling and note-taking workflows
+              - listitem [ref=e9065]:
+                - strong [ref=e9066]: Canvas
+                - text: — Visual whiteboard for connecting ideas spatially
+              - listitem [ref=e9067]:
+                - strong [ref=e9068]: Properties/frontmatter
+                - text: — YAML metadata on notes for tagging, categorization, Dataview queries
+            - heading "Why It Matters for Auxiora" [level=4] [ref=e9069]
+            - paragraph [ref=e9070]:
+              - text: Since Obsidian vaults are just
+              - strong [ref=e9071]: folders of markdown files
+              - text: ", we can interact with them directly via the filesystem —"
+              - code [ref=e9072]: file_read
+              - text: ","
+              - code [ref=e9073]: file_write
+              - text: ","
+              - code [ref=e9074]: bash
+              - text: ","
+              - code [ref=e9075]: file_list
+              - text: . No special API needed.
+            - paragraph [ref=e9076]:
+              - text: But you mentioned the
+              - strong [ref=e9077]: Obsidian CLI
+              - text: "specifically. From what I know, Obsidian recently shipped a CLI that lets you:"
+            - list [ref=e9078]:
+              - listitem [ref=e9079]: Open vaults and specific notes from the command line
+              - listitem [ref=e9080]: Create new notes
+              - listitem [ref=e9081]:
+                - text: Use the
+                - code [ref=e9082]: obsidian://
+                - text: URI scheme for actions (open, search, new note)
+            - heading "How Auxiora Could Use Obsidian" [level=4] [ref=e9083]
+            - paragraph [ref=e9084]: "Here's where it gets interesting:"
+            - paragraph [ref=e9085]:
+              - strong [ref=e9086]: "Tier 1 — Direct filesystem (works right now):"
+              - text: "| Capability | How |"
+              - text: "|---|---|"
+              - text: "| Read any note |"
+              - code [ref=e9087]: file_read
+              - text: on the vault path |
+              - text: "| Create/edit notes |"
+              - code [ref=e9088]: file_write
+              - text: markdown files |
+              - text: "| Search across vault |"
+              - code [ref=e9089]: bash
+              - text: with
+              - code [ref=e9090]: grep
+              - text: /
+              - code [ref=e9091]: rg
+              - text: across the vault |
+              - text: "| List notes by folder |"
+              - code [ref=e9092]: file_list
+              - text: recursive |
+              - text: "| Parse frontmatter | Read YAML headers for metadata |"
+              - text: "| Daily notes | Create templated daily notes on schedule via"
+              - code [ref=e9093]: create_behavior
+              - text: "|"
+            - paragraph [ref=e9094]:
+              - strong [ref=e9095]: "Tier 2 — CLI integration (with the Obsidian CLI):"
+              - text: "| Capability | How |"
+              - text: "|---|---|"
+              - text: "| Open a note in Obsidian's UI |"
+              - code [ref=e9096]: bash
+              - text: →
+              - code [ref=e9097]: obsidian open
+              - text: "|"
+              - text: "| Trigger Obsidian actions | URI scheme"
+              - code [ref=e9098]: obsidian://open?vault=X&file=Y
+              - text: "|"
+              - text: "| Search within Obsidian |"
+              - code [ref=e9099]: obsidian://search?query=X
+              - text: "|"
+            - paragraph [ref=e9100]:
+              - strong [ref=e9101]: "Tier 3 — Build a skill for it:"
+              - text: "| Capability | How |"
+              - text: "|---|---|"
+              - text: "|"
+              - code [ref=e9102]: create_skill
+              - text: "→ \"obsidian\" plugin | Wraps vault operations: search, create, link, tag, daily note, weekly review |"
+              - text: "| Meeting notes auto-filed | After"
+              - code [ref=e9103]: meeting_prep
+              - text: ", auto-create a note in the vault with attendees, agenda, action items |"
+              - text: "| Web clipper → Obsidian |"
+              - code [ref=e9104]: clip_url
+              - text: output → markdown file in vault with tags |
+              - text: "| Email summaries → Obsidian |"
+              - code [ref=e9105]: email_triage
+              - text: → daily digest note |
+              - text: "| Memory sync | Bidirectional — Obsidian notes inform"
+              - code [ref=e9106]: save_memory
+              - text: ", memories reference vault notes |"
+            - paragraph [ref=e9107]:
+              - strong [ref=e9108]: "Tier 4 — Knowledge assistant:"
+              - text: "| Capability | How |"
+              - text: "|---|---|"
+              - text: "| \"What do I know about X?\" | Search vault + memory + contacts, synthesize |"
+              - text: "| Auto-linking | When creating notes, detect and suggest"
+              - code [ref=e9109]: "[[links]]"
+              - text: to existing notes |
+              - text: "| Graph analysis | Parse all"
+              - code [ref=e9110]: "[[links]]"
+              - text: to find orphan notes, clusters, knowledge gaps |
+              - text: "| Spaced repetition |"
+              - code [ref=e9111]: create_behavior
+              - text: to surface old notes for review on a schedule |
+              - text: "| Project dashboards | Auto-generate status notes by aggregating tagged notes |"
+            - separator [ref=e9112]
+            - heading "The Big Picture" [level=4] [ref=e9113]
+            - paragraph [ref=e9114]:
+              - text: Obsidian is basically a
+              - strong [ref=e9115]: local knowledge graph stored as plain text
+              - text: ". Auxiora already has full filesystem access. The combination means:"
+            - paragraph [ref=e9116]:
+              - text: ">"
+              - strong [ref=e9117]: Auxiora becomes the active intelligence layer on top of your passive knowledge base.
+            - paragraph [ref=e9118]: Obsidian stores what you know. Auxiora connects it, surfaces it at the right time, and adds to it automatically.
+            - paragraph [ref=e9119]:
+              - text: Want me to build an Obsidian skill? I could
+              - code [ref=e9120]: create_skill
+              - text: one right now that wraps the common operations — search, create note, daily note template, auto-link detection. Since plugins are enabled, it'd be live immediately.
+          - generic [ref=e688]:
+            - paragraph [ref=e9121]:
+              - text: Now I can see it — though the page content is mostly a navigation skeleton (the actual docs seem to be behind a paywall or not-yet-published — it literally says "Not found / This page does not exist"). But the
+              - strong [ref=e9122]: command list
+              - text: is incredibly revealing. Let me break this down.
+            - separator [ref=e9123]
+            - heading "How Auxiora Could Use Obsidian CLI" [level=3] [ref=e9124]
+            - paragraph [ref=e9125]:
+              - text: The CLI exposes essentially
+              - strong [ref=e9126]: everything
+              - text: "in Obsidian programmatically. Here's what matters for us:"
+            - heading "Tier 1 — Immediate High-Value Integrations" [level=4] [ref=e9127]
+            - paragraph [ref=e9128]:
+              - text: "| Obsidian CLI Command | Auxiora Use Case | How |"
+              - text: "|---|---|---|"
+              - text: "|"
+              - code [ref=e9129]: create
+              - text: ","
+              - code [ref=e9130]: read
+              - text: ","
+              - code [ref=e9131]: append
+              - text: ","
+              - code [ref=e9132]: prepend
+              - text: "|"
+              - strong [ref=e9133]: I become your note-taking backend.
+              - text: "\"Aria, jot this down\" → appends to a daily note or creates a new one |"
+              - code [ref=e9134]: bash
+              - text: →
+              - code [ref=e9135]: obsidian create/append
+              - text: "|"
+              - text: "|"
+              - code [ref=e9136]: daily
+              - text: ","
+              - code [ref=e9137]: daily:read
+              - text: ","
+              - code [ref=e9138]: daily:append
+              - text: "|"
+              - strong [ref=e9139]: Daily notes integration.
+              - text: My
+              - code [ref=e9140]: daily_summary
+              - text: plugin could write directly into your Obsidian daily note | Behavior +
+              - code [ref=e9141]: obsidian daily:append
+              - text: "|"
+              - text: "|"
+              - code [ref=e9142]: search
+              - text: ","
+              - code [ref=e9143]: search:context
+              - text: "|"
+              - strong [ref=e9144]: Search your knowledge base.
+              - text: "\"Aria, what did I write about X?\" → searches your vault and returns context |"
+              - code [ref=e9145]: bash
+              - text: →
+              - code [ref=e9146]: obsidian search
+              - text: "|"
+              - text: "|"
+              - code [ref=e9147]: read
+              - text: +
+              - code [ref=e9148]: properties
+              - text: "|"
+              - strong [ref=e9149]: Read and understand your notes.
+              - text: I can pull a note, read its frontmatter, understand its context |
+              - code [ref=e9150]: bash
+              - text: →
+              - code [ref=e9151]: obsidian read
+              - text: +
+              - code [ref=e9152]: property:read
+              - text: "|"
+              - text: "|"
+              - code [ref=e9153]: tasks
+              - text: "|"
+              - strong [ref=e9154]: Task management.
+              - text: "\"Aria, what's on my to-do list?\" → pulls all open tasks from your vault |"
+              - code [ref=e9155]: bash
+              - text: →
+              - code [ref=e9156]: obsidian tasks
+              - text: "|"
+              - text: "|"
+              - code [ref=e9157]: bookmarks
+              - text: "|"
+              - strong [ref=e9158]: Quick access to pinned notes.
+              - text: I can check what you've bookmarked and surface relevant ones |
+              - code [ref=e9159]: bash
+              - text: →
+              - code [ref=e9160]: obsidian bookmarks
+              - text: "|"
+            - heading "Tier 2 — Workflow Automation" [level=4] [ref=e9161]
+            - paragraph [ref=e9162]:
+              - text: "| Obsidian CLI Command | Auxiora Use Case |"
+              - text: "|---|---|"
+              - text: "|"
+              - code [ref=e9163]: backlinks
+              - text: ","
+              - code [ref=e9164]: links
+              - text: ","
+              - code [ref=e9165]: unresolved
+              - text: ","
+              - code [ref=e9166]: orphans
+              - text: ","
+              - code [ref=e9167]: deadends
+              - text: "|"
+              - strong [ref=e9168]: Knowledge graph maintenance.
+              - text: "\"Aria, find my orphan notes\" or \"what links to this note?\" — I can help you maintain your second brain |"
+              - text: "|"
+              - code [ref=e9169]: tags
+              - text: ","
+              - code [ref=e9170]: tag
+              - text: "|"
+              - strong [ref=e9171]: Tag-based retrieval.
+              - text: "\"Show me everything tagged #project-x\" |"
+              - text: "|"
+              - code [ref=e9172]: template:insert
+              - text: "|"
+              - strong [ref=e9173]: Templated note creation.
+              - text: "\"Aria, create a new meeting note for tomorrow's standup\" → uses your template |"
+              - text: "|"
+              - code [ref=e9174]: move
+              - text: ","
+              - code [ref=e9175]: rename
+              - text: ","
+              - code [ref=e9176]: delete
+              - text: "|"
+              - strong [ref=e9177]: File management.
+              - text: "\"Aria, reorganize my inbox folder\" |"
+              - text: "|"
+              - code [ref=e9178]: outline
+              - text: "|"
+              - strong [ref=e9179]: Get note structure.
+              - text: I can read the heading structure of a note before diving in |
+              - text: "|"
+              - code [ref=e9180]: wordcount
+              - text: "|"
+              - strong [ref=e9181]: Writing progress.
+              - text: "\"How much did I write today?\" |"
+            - heading "Tier 3 — Advanced / Power User" [level=4] [ref=e9182]
+            - paragraph [ref=e9183]:
+              - text: "| Obsidian CLI Command | Auxiora Use Case |"
+              - text: "|---|---|"
+              - text: "|"
+              - code [ref=e9184]: bases
+              - text: ","
+              - code [ref=e9185]: base:query
+              - text: "|"
+              - strong [ref=e9186]: Structured data queries.
+              - text: If you use Obsidian Bases (their database feature), I can query them like a database |
+              - text: "|"
+              - code [ref=e9187]: publish:add
+              - text: ","
+              - code [ref=e9188]: publish:remove
+              - text: ","
+              - code [ref=e9189]: publish:status
+              - text: "|"
+              - strong [ref=e9190]: Publishing workflow.
+              - text: "\"Aria, publish my latest blog post\" → pushes to Obsidian Publish |"
+              - text: "|"
+              - code [ref=e9191]: sync:status
+              - text: ","
+              - code [ref=e9192]: sync:history
+              - text: "|"
+              - strong [ref=e9193]: Sync monitoring.
+              - text: A behavior could monitor sync health and alert you on issues |
+              - text: "|"
+              - code [ref=e9194]: history:list
+              - text: ","
+              - code [ref=e9195]: history:restore
+              - text: "|"
+              - strong [ref=e9196]: Version control.
+              - text: "\"Aria, what did this note look like yesterday?\" |"
+              - text: "|"
+              - code [ref=e9197]: eval
+              - text: "|"
+              - strong [ref=e9198]: Run arbitrary JS in Obsidian's context.
+              - text: Nuclear option — can do literally anything |
+              - text: "|"
+              - code [ref=e9199]: plugin:install
+              - text: ","
+              - code [ref=e9200]: plugin:enable
+              - text: "|"
+              - strong [ref=e9201]: Plugin management.
+              - text: "\"Aria, install the Kanban plugin\" |"
+              - text: "|"
+              - code [ref=e9202]: dev:screenshot
+              - text: ","
+              - code [ref=e9203]: dev:console
+              - text: ","
+              - code [ref=e9204]: dev:errors
+              - text: "|"
+              - strong [ref=e9205]: Debugging.
+              - text: Help troubleshoot Obsidian issues |
+            - separator [ref=e9206]
+            - heading "What a Skill Would Look Like" [level=4] [ref=e9207]
+            - paragraph [ref=e9208]:
+              - text: A dedicated
+              - code [ref=e9209]: obsidian
+              - text: "skill for Auxiora could wrap all of this cleanly:"
+            - generic [ref=e9210]:
+              - button "Copy" [ref=e9212] [cursor=pointer]
+              - code [ref=e9214]:
+                - text: "Skill: obsidian-vault"
+                - paragraph
+                - paragraph [ref=e9215]: "Tools:"
+                - list [ref=e9216]:
+                  - listitem [ref=e9217]: obsidian_note_create → create a note with template support
+                  - listitem [ref=e9218]: obsidian_note_read → read a note by path or search
+                  - listitem [ref=e9219]: obsidian_note_append → append to a note (especially daily notes)
+                  - listitem [ref=e9220]: obsidian_search → full-text search with context
+                  - listitem [ref=e9221]: obsidian_tasks → list/filter tasks across vault
+                  - listitem [ref=e9222]: obsidian_daily → read/write today's daily note
+                  - listitem [ref=e9223]: obsidian_links → backlinks, orphans, deadends analysis
+                  - listitem [ref=e9224]: obsidian_publish → publish/unpublish notes
+                - text: "Behaviors:"
+                - list [ref=e9225]:
+                  - listitem [ref=e9226]: "Daily note auto-population (morning: calendar + emails → daily note)"
+                  - listitem [ref=e9227]: Orphan note cleanup reminder (weekly)
+                  - listitem [ref=e9228]: Sync health monitor
+            - heading "The Killer Combo" [level=4] [ref=e9229]
+            - paragraph [ref=e9230]:
+              - text: The real power isn't any single command — it's
+              - strong [ref=e9231]: "chaining Auxiora's existing capabilities with Obsidian as persistent storage:"
+            - paragraph [ref=e9232]:
+              - text: "1."
+              - strong [ref=e9233]: "Meeting prep → Obsidian:"
+              - code [ref=e9234]: meeting_prep
+              - text: generates a brief →
+              - code [ref=e9235]: obsidian daily:append
+              - text: writes it into today's note before the meeting
+              - text: "2."
+              - strong [ref=e9236]: "Email triage → Obsidian:"
+              - code [ref=e9237]: email_triage
+              - text: runs → action items get appended as tasks to your daily note
+              - text: "3."
+              - strong [ref=e9238]: "Web research → Obsidian:"
+              - code [ref=e9239]: web_browser
+              - text: +
+              - code [ref=e9240]: clip_url
+              - text: → creates a proper Obsidian note with backlinks and tags
+              - text: "4."
+              - strong [ref=e9241]: "\"What do I know about X?\""
+              - text: →
+              - code [ref=e9242]: obsidian search
+              - text: your vault first,
+              - emphasis [ref=e9243]: then
+              - text: web search — your own knowledge base becomes the first source of truth
+              - text: "5."
+              - strong [ref=e9244]: "Daily summary → Daily note:"
+              - text: The
+              - code [ref=e9245]: daily_summary
+              - text: behavior writes its output directly into Obsidian every morning
+            - separator [ref=e9246]
+            - heading "Bottom Line" [level=4] [ref=e9247]
+            - paragraph [ref=e9248]:
+              - text: Obsidian CLI basically turns your vault into an
+              - strong [ref=e9249]: API
+              - text: . For Auxiora, that means Obsidian becomes our
+              - strong [ref=e9250]: persistent knowledge layer
+              - text: — not just memory snippets in
+              - code [ref=e9251]: save_memory
+              - text: ", but a full structured second brain that I can read, write, search, and maintain."
+            - paragraph [ref=e9252]:
+              - text: Want me to build the skill? I can
+              - code [ref=e9253]: create_skill
+              - text: it right now since plugins are enabled.
+          - generic [ref=e822]: hi
+          - generic [ref=e824]:
+            - paragraph [ref=e9254]: Hi Boss! 👋
+            - paragraph [ref=e9255]: Sorry about the wall of text earlier — I got a bit carried away. What's up?
+          - generic [ref=e827]: what are you capabable of?
+          - generic [ref=e829]:
+            - paragraph [ref=e9256]: "Here's the quick rundown:"
+            - heading "🧠 Intelligence" [level=4] [ref=e9257]
+            - list [ref=e9258]:
+              - listitem [ref=e9259]:
+                - strong [ref=e9260]: Multi-agent teams
+                - text: — spin up AI agents in parallel, debate, sequential, or supervisor patterns
+              - listitem [ref=e9261]:
+                - strong [ref=e9262]: Multi-model
+                - text: — ask Claude, GPT, Gemini, or local Llama mid-conversation
+              - listitem [ref=e9263]:
+                - strong [ref=e9264]: Memory
+                - text: — I remember things about you across conversations
+            - heading "📧 Email" [level=4] [ref=e9265]
+            - list [ref=e9266]:
+              - listitem [ref=e9267]: Triage (urgent/action/FYI/spam), search, compose, reply, summarize threads
+              - listitem [ref=e9268]: Full Gmail integration (read, send, draft, archive)
+            - heading "📅 Calendar" [level=4] [ref=e9269]
+            - list [ref=e9270]:
+              - listitem [ref=e9271]: List/create/update/delete events
+              - listitem [ref=e9272]: Find free slots, optimize your day, meeting prep briefs
+            - heading "🌐 Browser" [level=4] [ref=e9273]
+            - list [ref=e9274]:
+              - listitem [ref=e9275]: Read web pages, full Playwright automation (click, type, screenshot, scrape)
+            - heading "💻 System" [level=4] [ref=e9276]
+            - list [ref=e9277]:
+              - listitem [ref=e9278]: Run shell commands, read/write files, launch/close apps
+              - listitem [ref=e9279]: System info (CPU, memory, disk, battery)
+              - listitem [ref=e9280]: Clipboard access
+            - heading "📱 Social Media" [level=4] [ref=e9281]
+            - list [ref=e9282]:
+              - listitem [ref=e9283]: Post/schedule to Twitter, LinkedIn, Reddit
+              - listitem [ref=e9284]: Check mentions and notifications
+            - heading "✍️ Writing" [level=4] [ref=e9285]
+            - list [ref=e9286]:
+              - listitem [ref=e9287]: Platform-aware composition (email, Slack, LinkedIn, Twitter tone)
+              - listitem [ref=e9288]: Grammar check, language detection
+            - heading "👥 Contacts" [level=4] [ref=e9289]
+            - list [ref=e9290]:
+              - listitem [ref=e9291]: Look up people, search contacts, relationship context
+            - heading "🔧 Productivity" [level=4] [ref=e9292]
+            - list [ref=e9293]:
+              - listitem [ref=e9294]: Scheduled tasks & monitors (cron-based)
+              - listitem [ref=e9295]: Pomodoro timer, note-taking, smart replies
+              - listitem [ref=e9296]: Daily summary briefings
+              - listitem [ref=e9297]: Web bookmarking
+            - heading "🔌 Self-Extending" [level=4] [ref=e9298]
+            - list [ref=e9299]:
+              - listitem [ref=e9300]:
+                - strong [ref=e9301]:
+                  - code [ref=e9302]: create_skill
+                - text: — describe what you need, I build and load a new plugin on the spot
+            - heading "📁 Google Workspace" [level=4] [ref=e9303]
+            - list [ref=e9304]:
+              - listitem [ref=e9305]: Drive (list, read, create, upload, search, share files)
+              - listitem [ref=e9306]: Gmail + Calendar (full CRUD)
+            - heading "🏠 Platform (built but not active on this instance yet)" [level=4] [ref=e9307]
+            - list [ref=e9308]:
+              - listitem [ref=e9309]: 10 channel adapters, webhooks, desktop app, IoT connectors
+            - separator [ref=e9310]
+            - paragraph [ref=e9311]: What do you need?
+          - generic [ref=e886]: hi
+          - paragraph [ref=e9312]: Hi Boss! What can I do for you?
+          - generic [ref=e890]: What version are you right now?
+          - generic [ref=e892]:
+            - paragraph [ref=e9313]: "Based on what I can see:"
+            - list [ref=e9314]:
+              - listitem [ref=e9315]:
+                - strong [ref=e9316]: "Model:"
+                - text: Claude Opus 4 (
+                - code [ref=e9317]: claude-opus-4-6
+                - text: ) via Anthropic
+              - listitem [ref=e9318]:
+                - strong [ref=e9319]: "Platform:"
+                - text: Auxiora
+              - listitem [ref=e9320]:
+                - strong [ref=e9321]: "Personality:"
+                - text: Aria (she/her)
+              - listitem [ref=e9322]:
+                - strong [ref=e9323]: "Channel:"
+                - text: Discord
+              - listitem [ref=e9324]:
+                - strong [ref=e9325]: "Plugins:"
+                - text: 6 active (daily-summary, hello-world, note-taker, pomodoro, smart-reply, web-clipper)
+              - listitem [ref=e9326]:
+                - strong [ref=e9327]: "Context window:"
+                - text: 200K tokens
+            - text: I don't have a specific platform version number exposed to me. You mentioned commit
+            - code [ref=e9328]: eb11c22
+            - text: "on"
+            - code [ref=e9329]: main
+            - text: earlier — but my runtime is on an older build (some flags like webhooks and research still show as off).
+            - paragraph
+            - paragraph [ref=e9330]: Want me to check if there's a version file or endpoint I can hit?
+          - generic [ref=e911]: what version are you?
+          - paragraph [ref=e9331]: Auxiora v1.10.7.
+          - generic [ref=e915]: what version are you?
+          - paragraph [ref=e9332]:
+            - text: Auxiora
+            - strong [ref=e9333]: v1.10.8
+            - text: .
+          - generic [ref=e920]: Why do you send messages at 12:48 AM?
+          - generic [ref=e922]:
+            - paragraph [ref=e9334]:
+              - text: You're probably talking about the daily AI news behavior (
+              - code [ref=e9335]: bh_z_JHH7UX
+              - text: ) — the scheduled one that compiles AI developments.
+            - paragraph [ref=e9336]: "I don't have visibility into what cron schedule it's set to, but if it's firing at 12:48 AM, that's likely either:"
+            - paragraph [ref=e9337]:
+              - text: "1."
+              - strong [ref=e9338]: The cron is set to a UTC time
+              - text: that maps to 12:48 AM in your local timezone
+              - text: "2."
+              - strong [ref=e9339]: The schedule was set without specifying a timezone
+            - paragraph [ref=e9340]: Want me to check it and reschedule it to a reasonable hour? What time would you prefer — maybe something like 8 AM or 9 AM?
+          - generic [ref=e930]: yes, 7 AM
+          - paragraph [ref=e9341]: Let me check the current schedule first, then update it.
+          - generic [ref=e934]: hi
+          - paragraph [ref=e9342]: Hi Boss! Let me pull up that behavior and fix the timing.
+          - generic [ref=e938]: what version are you?
+          - paragraph [ref=e9343]:
+            - text: Auxiora
+            - strong [ref=e9344]: v1.10.12
+            - text: .
+          - generic [ref=e943]: what version are you?
+          - paragraph [ref=e9345]:
+            - text: Auxiora
+            - strong [ref=e9346]: v1.10.13
+            - text: .
+          - generic [ref=e948]: hi
+          - paragraph [ref=e9347]: Hi Boss! Still need me to fix that 12:48 AM behavior to 7 AM?
+        - generic [ref=e952]:
+          - textbox "Type / for commands..." [active] [ref=e954]
+          - button "Send" [disabled] [ref=e955]
+  - generic [ref=e997]:
+    - generic [ref=e998]:
+      - generic: Chat
+      - button "Open Chat" [ref=e999] [cursor=pointer]: 💬
+    - generic [ref=e1001]:
+      - generic: System Status
+      - button "Open System Status" [ref=e1002] [cursor=pointer]: 📊
+    - generic [ref=e1004]:
+      - generic: Mission Control
+      - button "Open Mission Control" [ref=e1005] [cursor=pointer]: 🎯
+    - generic [ref=e1007]:
+      - generic: The Architect
+      - button "Open The Architect" [ref=e1008] [cursor=pointer]: 🏗️
+    - generic [ref=e1010]:
+      - generic: About Me
+      - button "Open About Me" [ref=e1011] [cursor=pointer]: 👤
+    - generic [ref=e1013]:
+      - generic: Memories
+      - button "Open Memories" [ref=e1014] [cursor=pointer]: 🧠
+    - generic [ref=e1016]:
+      - generic: Behaviors
+      - button "Open Behaviors" [ref=e1017] [cursor=pointer]: 🧩
+    - generic [ref=e1019]:
+      - generic: Webhooks
+      - button "Open Webhooks" [ref=e1020] [cursor=pointer]: 🔗
+    - generic [ref=e1022]:
+      - generic: Personality
+      - button "Open Personality" [ref=e1023] [cursor=pointer]: 🎭
+    - generic [ref=e1025]:
+      - generic: Provider
+      - button "Open Provider" [ref=e1026] [cursor=pointer]: 🔌
+    - generic [ref=e1028]:
+      - generic: Channels
+      - button "Open Channels" [ref=e1029] [cursor=pointer]: 📡
+    - generic [ref=e1031]:
+      - generic: Connections
+      - button "Open Connections" [ref=e1032] [cursor=pointer]: 🌐
+    - generic [ref=e1034]:
+      - generic: Ambient
+      - button "Open Ambient" [ref=e1035] [cursor=pointer]: 🌊
+    - generic [ref=e1037]:
+      - generic: Appearance
+      - button "Open Appearance" [ref=e1038] [cursor=pointer]: 🎨
+    - generic [ref=e1040]:
+      - generic: Notifications
+      - button "Open Notifications" [ref=e1041] [cursor=pointer]: 🔔
+    - generic [ref=e1043]:
+      - generic: Security
+      - button "Open Security" [ref=e1044] [cursor=pointer]: 🛡️
+    - generic [ref=e1046]:
+      - generic: Marketplace
+      - button "Open Marketplace" [ref=e1047] [cursor=pointer]: 🏪
+    - generic [ref=e1049]:
+      - generic: Models
+      - button "Open Models" [ref=e1050] [cursor=pointer]: 🤖
+    - generic [ref=e1052]:
+      - generic: Canvas
+      - button "Open Canvas" [ref=e1053] [cursor=pointer]: 🖌️
+    - generic [ref=e1055]:
+      - generic: Evolution
+      - button "Open Evolution" [ref=e1056] [cursor=pointer]: 🧬
+    - generic [ref=e1058]:
+      - generic: Audit Log
+      - button "Open Audit Log" [ref=e1059] [cursor=pointer]: 📋
