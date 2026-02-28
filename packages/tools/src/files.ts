@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { getWorkspacePath } from '@auxiora/core';
 import type { Tool, ToolParameter, ExecutionContext, ToolResult } from './index.js';
@@ -33,21 +34,35 @@ function isWithinWorkspace(filePath: string): boolean {
 }
 
 /**
+ * Expand ~ to home directory (Node's path.resolve doesn't do this)
+ */
+function expandTilde(filePath: string): string {
+  if (filePath === '~') return os.homedir();
+  if (filePath.startsWith('~/') || filePath.startsWith('~\\')) {
+    return path.join(os.homedir(), filePath.slice(2));
+  }
+  return filePath;
+}
+
+/**
  * Resolve file path relative to workspace
  */
 function resolveFilePath(filePath: string, allowOutsideWorkspace: boolean = false): string {
   const workspace = getWorkspacePath();
 
+  // Expand ~ to home directory before any other resolution
+  const expanded = expandTilde(filePath);
+
   // If path is absolute, check if it's allowed
-  if (path.isAbsolute(filePath)) {
-    if (!allowOutsideWorkspace && !isWithinWorkspace(filePath)) {
-      throw new Error(`Access denied: ${filePath} is outside workspace`);
+  if (path.isAbsolute(expanded)) {
+    if (!allowOutsideWorkspace && !isWithinWorkspace(expanded)) {
+      throw new Error(`Access denied: ${expanded} is outside workspace`);
     }
-    return filePath;
+    return expanded;
   }
 
   // Resolve relative to workspace
-  const resolved = path.resolve(workspace, filePath);
+  const resolved = path.resolve(workspace, expanded);
 
   if (!allowOutsideWorkspace && !isWithinWorkspace(resolved)) {
     throw new Error(`Access denied: ${filePath} resolves to ${resolved} which is outside workspace`);

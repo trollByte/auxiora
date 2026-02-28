@@ -3702,14 +3702,23 @@ export class Auxiora {
       fallbackCandidates?: Array<{ provider: import('@auxiora/providers').Provider; name: string; model: string }>;
     }
   ): Promise<{ response: string; usage: { inputTokens: number; outputTokens: number } }> {
-    const maxRounds = options?.maxToolRounds ?? 10;
+    const maxRounds = options?.maxToolRounds ?? 20;
     const maxContinuations = 3; // Safety cap for auto-continue on truncation
     const tools = options?.tools ?? toolRegistry.toProviderFormat();
     let currentMessages = [...messages];
     let totalUsage = { inputTokens: 0, outputTokens: 0 };
     let fullResponse = '';
     let lastRoundHadTools = false;
-    const loopState = createLoopDetectionState();
+    const loopState = createLoopDetectionState({
+      genericRepeatWarn: 3,    // Catch loops faster (default 5)
+      genericRepeatCritical: 8, // Stop after blocked attempts too (default 10)
+      noProgressWarn: 4,        // Detect identical results sooner (default 8)
+      noProgressCritical: 8,    // Hard stop (default 15)
+    });
+    // Track tools to temporarily exclude when loop is detected
+    const excludedToolNames = new Set<string>();
+    // Track file paths written to detect same-file rewrites
+    const writtenFiles = new Map<string, number>(); // path → count
 
     for (let round = 0; round < maxRounds; round++) {
       let roundResponse = '';
@@ -3717,9 +3726,14 @@ export class Auxiora {
       let roundFinishReason = '';
       const toolUses: Array<{ id: string; name: string; input: any }> = [];
 
+      // Filter out excluded tools (loop breaker)
+      const roundTools = excludedToolNames.size > 0
+        ? tools.filter(t => !excludedToolNames.has(t.name))
+        : tools;
+
       const streamOptions = {
         systemPrompt: enrichedPrompt,
-        tools: tools.length > 0 ? tools : undefined,
+        tools: roundTools.length > 0 ? roundTools : undefined,
         passThroughAllTools: true,
       };
 
@@ -3754,13 +3768,20 @@ export class Auxiora {
       if (toolUses.length === 0) {
         fullResponse += roundResponse;
 
-        // If the previous round used tools and this round's text is short
-        // (the model said something like "Let me build this out" but didn't
-        // actually emit tool calls), nudge it to proceed with tools.
-        if (lastRoundHadTools && roundResponse.length < 200 && round < maxRounds - 1) {
+        // Nudge the model to use tools if it only output text.
+        // Case 1 (round 0): Model described a plan but never called tools.
+        //   The user likely asked for an action, so give the model one more
+        //   chance by injecting a "please use tools" follow-up.
+        // Case 2 (round > 0, lastRoundHadTools): Model used tools last round
+        //   but emitted a short text-only response this round (stalled).
+        const shouldNudge = round < maxRounds - 1 && (
+          (round === 0) ||
+          (lastRoundHadTools && roundResponse.length < 200)
+        );
+        if (shouldNudge) {
           this.logger.info('Model stated intent without tool calls, nudging to continue', { round, responseLength: roundResponse.length });
           currentMessages.push({ role: 'assistant', content: roundResponse });
-          currentMessages.push({ role: 'user', content: 'Please proceed — use the tools to do the work, don\'t just describe what you\'ll do.' });
+          currentMessages.push({ role: 'user', content: 'Please proceed — use the bash and file_write tools to do the work now. Do not describe what you will do — actually call the tools.' });
           onChunk('status', { message: 'Continuing...' });
           // Don't break — let the loop continue so the model can make tool calls
           continue;
@@ -3822,6 +3843,7 @@ export class Auxiora {
         sessionId,
         workingDirectory: getWorkspacePath(),
         timeout: 30000,
+        environment: { ALLOW_OUTSIDE_WORKSPACE: 'true' },
       };
 
       const toolResultParts: string[] = [];
@@ -3835,6 +3857,16 @@ export class Auxiora {
           toolResultParts.push(`[${toolUse.name}]: Error: ${mapped.skip}`);
           recordToolCall(loopState, toolUse.id, mapped.name, mapped.input);
           recordToolOutcome(loopState, toolUse.id, mapped.skip);
+          continue;
+        }
+
+        // Block excluded tools (loop breaker — tool was disabled due to repetition)
+        if (excludedToolNames.has(mapped.name) || excludedToolNames.has(toolUse.name)) {
+          const blockMsg = `Tool "${toolUse.name}" is temporarily disabled because you were repeating the same call. Use a DIFFERENT tool. For creating files, use file_write (or Write). Do NOT call ${toolUse.name} again.`;
+          onChunk('tool_result', { tool: toolUse.name, success: false, error: blockMsg });
+          toolResultParts.push(`[${toolUse.name}]: Error: ${blockMsg}`);
+          recordToolCall(loopState, toolUse.id, mapped.name, mapped.input);
+          recordToolOutcome(loopState, toolUse.id, blockMsg);
           continue;
         }
 
@@ -3854,6 +3886,16 @@ export class Auxiora {
           }
           toolResultParts.push(`[${toolUse.name}]: ${output}`);
           recordToolOutcome(loopState, toolUse.id, output);
+
+          // Track file writes to detect same-file rewrites
+          if ((mapped.name === 'file_write' || toolUse.name === 'Write') && mapped.input?.path) {
+            const filePath = mapped.input.path;
+            const count = (writtenFiles.get(filePath) || 0) + 1;
+            writtenFiles.set(filePath, count);
+            if (count > 1) {
+              this.logger.info('Same file rewritten multiple times', { filePath, count });
+            }
+          }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           onChunk('tool_result', { tool: toolUse.name, success: false, error: errorMessage });
@@ -3864,7 +3906,16 @@ export class Auxiora {
 
       // Append tool results directly to conversation (don't rebuild from getContextMessages
       // which can drop messages due to token windowing)
-      const toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
+      let toolResultsMessage = `[Tool Results]\n${toolResultParts.join('\n')}`;
+
+      // Detect same-file rewrites and nudge to move on
+      const rewrittenFiles = [...writtenFiles.entries()].filter(([, count]) => count > 1);
+      if (rewrittenFiles.length > 0) {
+        const fileList = rewrittenFiles.map(([f, c]) => `${f} (${c}x)`).join(', ');
+        toolResultsMessage += `\n\n⚠️ You have rewritten the same file(s) multiple times: ${fileList}. Each file only needs to be written ONCE. Move on to creating the NEXT file in the project. Do NOT rewrite files you've already created.`;
+        this.logger.info('Same-file rewrite nudge injected', { rewrittenFiles: rewrittenFiles.map(([f, c]) => ({ file: f, count: c })) });
+      }
+
       currentMessages.push({ role: 'user', content: toolResultsMessage });
       await this.sessions.addMessage(sessionId, 'user', toolResultsMessage);
 
@@ -3881,11 +3932,22 @@ export class Auxiora {
         break;
       }
       if (detection.severity === 'warning') {
-        this.logger.info('Tool loop warning', {
+        // Temporarily exclude the looping tool to force the model to use alternatives
+        const loopingTool = detection.details?.toolName;
+        if (loopingTool) {
+          excludedToolNames.add(loopingTool);
+          // Also exclude CC-equivalent names
+          const ccEquivalents: Record<string, string> = { bash: 'Bash', file_read: 'Read', file_write: 'Write', file_list: 'Glob' };
+          const auxEquivalents: Record<string, string> = { Bash: 'bash', Read: 'file_read', Write: 'file_write', Glob: 'file_list' };
+          if (ccEquivalents[loopingTool]) excludedToolNames.add(ccEquivalents[loopingTool]);
+          if (auxEquivalents[loopingTool]) excludedToolNames.add(auxEquivalents[loopingTool]);
+        }
+        this.logger.info('Tool loop warning — excluding tool from next round', {
           detector: detection.detector,
           message: detection.message,
+          excludedTools: Array.from(excludedToolNames),
         });
-        currentMessages.push({ role: 'user', content: `⚠️ Loop detection warning: ${detection.message}\nPlease try a different approach or different parameters.` });
+        currentMessages.push({ role: 'user', content: `⚠️ You are repeating the same tool call. ${detection.message}\nThe previous calls already succeeded — the ${loopingTool} tool is now temporarily disabled. Move on to the NEXT step: create the actual files using the file_write tool (or Write tool). Do NOT try to create directories again.` });
       }
 
       // Notify the client that tool processing is done and AI is thinking about results

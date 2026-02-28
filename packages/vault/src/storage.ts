@@ -33,13 +33,16 @@ export async function writeVaultFile(vaultFile: VaultFile, customPath?: string):
   // Create parent directories if needed
   await fs.mkdir(vaultDir, { recursive: true });
 
-  // Write the file
-  await fs.writeFile(vaultPath, JSON.stringify(vaultFile, null, 2), 'utf-8');
+  // Atomic write: write to temp file, then rename (rename is atomic on POSIX)
+  const tmpPath = vaultPath + '.tmp';
+  await fs.writeFile(tmpPath, JSON.stringify(vaultFile, null, 2), 'utf-8');
 
-  // Set permissions to 0600 on Unix
+  // Set permissions to 0600 on Unix before rename
   if (!isWindows()) {
-    await fs.chmod(vaultPath, 0o600);
+    await fs.chmod(tmpPath, 0o600);
   }
+
+  await fs.rename(tmpPath, vaultPath);
 }
 
 export async function deleteVaultFile(customPath?: string): Promise<void> {
