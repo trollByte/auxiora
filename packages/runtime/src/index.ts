@@ -2864,6 +2864,8 @@ export class Auxiora {
 
     // Append tool usage guidance
     this.standardPrompt += '\n\n---\n\n## Tool Usage\n'
+      + '- IMPORTANT: When the user asks you to create files, generate projects, write code, or perform actions on the filesystem, you MUST use the `bash` and `file_write` tools to actually do the work. Do not just describe what you would do — execute it.\n'
+      + '- Use `bash` to run shell commands (mkdir, npm init, git init, etc.) and `file_write` to create files with content.\n'
       + '- For reading web pages, searching, fetching articles, or looking up information, use the `web_browser` tool. It is fast, lightweight, and always available.\n'
       + '- Only use `browser_navigate` and other browser_* tools when you need JavaScript rendering or interactive features (clicking buttons, filling forms, taking screenshots).\n'
       + '- Never expose raw tool errors to the user. If a tool fails, explain the situation naturally.';
@@ -3748,9 +3750,21 @@ export class Auxiora {
       totalUsage.inputTokens += roundUsage.inputTokens;
       totalUsage.outputTokens += roundUsage.outputTokens;
 
-      // No tool calls — check if response was truncated
+      // No tool calls — check if we should nudge the model to continue
       if (toolUses.length === 0) {
         fullResponse += roundResponse;
+
+        // If the previous round used tools and this round's text is short
+        // (the model said something like "Let me build this out" but didn't
+        // actually emit tool calls), nudge it to proceed with tools.
+        if (lastRoundHadTools && roundResponse.length < 200 && round < maxRounds - 1) {
+          this.logger.info('Model stated intent without tool calls, nudging to continue', { round, responseLength: roundResponse.length });
+          currentMessages.push({ role: 'assistant', content: roundResponse });
+          currentMessages.push({ role: 'user', content: 'Please proceed — use the tools to do the work, don\'t just describe what you\'ll do.' });
+          onChunk('status', { message: 'Continuing...' });
+          // Don't break — let the loop continue so the model can make tool calls
+          continue;
+        }
 
         // Auto-continue if response was cut off by token limit
         const wasTruncated = roundFinishReason === 'max_tokens' || roundFinishReason === 'length';

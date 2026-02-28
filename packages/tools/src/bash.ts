@@ -201,11 +201,12 @@ export const BashTool: Tool = {
         ? path.resolve(workingDir)
         : context.workingDirectory || process.cwd();
 
-      // Execute command with timeout
+      // Execute command with timeout (use bash, not sh/dash, for brace expansion etc.)
       const { stdout, stderr } = await execAsync(command, {
         cwd,
         timeout,
         maxBuffer: MAX_OUTPUT_LENGTH,
+        shell: '/bin/bash',
         env: {
           ...process.env,
           ...context.environment,
