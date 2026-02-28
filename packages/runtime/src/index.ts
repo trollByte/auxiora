@@ -4324,11 +4324,10 @@ export class Auxiora {
 
     const channelAgentId = `channel:${inbound.channelType}:${inbound.channelId}:${Date.now()}`;
 
-    // 4-minute timeout for the entire LLM response cycle.
-    // Increased from 2min to accommodate auto-continuations (max_tokens → "Continue")
-    // and tool round-trips. If the provider stream hangs (network issue, overloaded API),
-    // this ensures the user gets an error message instead of infinite "typing…".
-    const CHANNEL_RESPONSE_TIMEOUT_MS = 240_000;
+    // 10-minute timeout for the entire LLM response cycle.
+    // Agentic tool loops can take many rounds (up to 20), each requiring a full LLM
+    // call + tool execution. A multi-file generation task easily takes 5+ minutes.
+    const CHANNEL_RESPONSE_TIMEOUT_MS = 600_000;
 
     let draftLoop: DraftStreamLoop | null = null;
     let draftMessageId: string | null = null;
@@ -4435,7 +4434,7 @@ export class Auxiora {
           { tools, fallbackCandidates },
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 4 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
+          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 10 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
         ),
       ]);
 
