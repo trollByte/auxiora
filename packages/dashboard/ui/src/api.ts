@@ -316,7 +316,7 @@ export const api = {
 
   // User Model
   getUserModel: () =>
-    fetch('/api/v1/user-model', { credentials: 'include' }).then(async r => {
+    fetch('/api/v1/personality/user-model', { credentials: 'include' }).then(async r => {
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${r.status}`);

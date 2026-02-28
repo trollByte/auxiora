@@ -308,7 +308,7 @@ logger.info('Built-in tools registered', {
 
 // Export built-in tools
 export { BashTool } from './bash.js';
-export { WebBrowserTool } from './web.js';
+export { WebBrowserTool, setWebBrowserManager } from './web.js';
 export { FileReadTool, FileWriteTool, FileListTool } from './files.js';
 
 // Import and register behavior tools

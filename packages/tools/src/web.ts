@@ -2,7 +2,8 @@
  * WebBrowserTool - Fetch and parse web pages
  *
  * Features:
- * - HTTP GET/POST requests
+ * - Playwright-first browsing (renders JS, bypasses bot detection)
+ * - Fallback to HTTP fetch when Playwright unavailable
  * - HTML to markdown conversion
  * - Rate limiting per domain
  * - Timeout enforcement
@@ -17,6 +18,14 @@ import { getLogger } from '@auxiora/logger';
 const AUTO_APPROVE = 'auto_approve' as any;
 const USER_APPROVAL = 'user_approval' as any;
 import { validateUrl } from '@auxiora/ssrf-guard';
+
+// BrowserManager injected by runtime (same instance as browser.ts tools)
+let browserManager: any = null;
+
+export function setWebBrowserManager(manager: any): void {
+  browserManager = manager;
+  logger.info('Playwright browser connected to web_browser tool');
+}
 
 const logger = getLogger('tools:web');
 
@@ -188,12 +197,49 @@ export const WebBrowserTool: Tool = {
         };
       }
 
-      // Create abort controller for timeout
+      // Try Playwright for GET requests — renders JS, uses real browser UA,
+      // bypasses bot detection that blocks raw fetch
+      if (browserManager && method.toUpperCase() === 'GET') {
+        try {
+          const sessionId = context.sessionId || 'web_browser';
+          const pageInfo = await browserManager.navigate(sessionId, url);
+          let output = pageInfo.content || '';
+
+          // Truncate if too long
+          if (output.length > MAX_CONTENT_LENGTH) {
+            output = output.substring(0, MAX_CONTENT_LENGTH)
+              + `\n\n[... content truncated]`;
+          }
+
+          logger.info('URL fetched via Playwright', {
+            url,
+            contentLength: output.length,
+            title: pageInfo.title,
+          });
+
+          return {
+            success: true,
+            output: pageInfo.title ? `# ${pageInfo.title}\n\n${output}` : output,
+            metadata: {
+              url: pageInfo.url || url,
+              contentLength: output.length,
+              engine: 'playwright',
+            },
+          };
+        } catch (playwrightErr: any) {
+          // Playwright failed — fall through to fetch
+          logger.warn('Playwright browse failed, falling back to fetch', {
+            url,
+            error: playwrightErr.message,
+          });
+        }
+      }
+
+      // Fallback: plain HTTP fetch
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
-        // Fetch URL
         const response = await fetch(url, {
           method: method.toUpperCase(),
           headers: {
@@ -207,78 +253,46 @@ export const WebBrowserTool: Tool = {
 
         clearTimeout(timeoutId);
 
-        // Check response status
         if (!response.ok) {
           return {
             success: false,
             error: `HTTP ${response.status}: ${response.statusText}`,
-            metadata: {
-              url,
-              status: response.status,
-              statusText: response.statusText,
-            },
+            metadata: { url, status: response.status, statusText: response.statusText },
           };
         }
 
-        // Get content type
         const contentType = response.headers.get('content-type') || '';
-
-        // Read response
         const text = await response.text();
 
-        // Truncate if too long
         if (text.length > MAX_CONTENT_LENGTH) {
           const truncated = text.substring(0, MAX_CONTENT_LENGTH);
           return {
             success: true,
             output: truncated + `\n\n[... content truncated (${text.length - MAX_CONTENT_LENGTH} bytes omitted)]`,
-            metadata: {
-              url,
-              contentType,
-              contentLength: text.length,
-              truncated: true,
-            },
+            metadata: { url, contentType, contentLength: text.length, truncated: true },
           };
         }
 
-        // Convert HTML to markdown if it's HTML
         let output = text;
         if (contentType.includes('text/html')) {
           output = htmlToMarkdown(text);
         }
 
-        // Detect JavaScript-rendered SPAs: large HTML but tiny extracted text
-        // means the page needs a real browser to render
+        // Detect SPAs that need JS rendering
         if (contentType.includes('text/html') && text.length > 512 && output.length < 100) {
           return {
             success: true,
             output: `This page appears to be a JavaScript-rendered application (SPA). The server returned ${text.length} bytes of HTML but almost no readable text content. To read this page, use the browser_navigate tool instead, which can execute JavaScript and render the full page.`,
-            metadata: {
-              url,
-              contentType,
-              contentLength: text.length,
-              extractedLength: output.length,
-              status: response.status,
-              spaDetected: true,
-            },
+            metadata: { url, contentType, contentLength: text.length, extractedLength: output.length, status: response.status, spaDetected: true },
           };
         }
 
-        logger.info('URL fetched successfully', {
-          url,
-          contentLength: text.length,
-          contentType,
-        });
+        logger.info('URL fetched successfully', { url, contentLength: text.length, contentType });
 
         return {
           success: true,
           output,
-          metadata: {
-            url,
-            contentType,
-            contentLength: text.length,
-            status: response.status,
-          },
+          metadata: { url, contentType, contentLength: text.length, status: response.status, engine: 'fetch' },
         };
       } finally {
         clearTimeout(timeoutId);
@@ -286,7 +300,6 @@ export const WebBrowserTool: Tool = {
     } catch (error: any) {
       logger.error('Failed to fetch URL', { url, error: error.message });
 
-      // Handle abort (timeout)
       if (error.name === 'AbortError') {
         return {
           success: false,

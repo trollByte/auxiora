@@ -40,6 +40,8 @@ export { FeedbackStore } from './feedback-store.js';
 export type { FeedbackRating, FeedbackEntry, FeedbackInsight } from './feedback-store.js';
 export { UserModelSynthesizer } from './user-model-synthesizer.js';
 export type { UserModel, DomainProfile, CommunicationStyle, SatisfactionProfile, CorrectionSummary } from './user-model-synthesizer.js';
+export { PersonalizationIntensity } from './personalization-intensity.js';
+export type { IntensityLevel, IntensityConfig } from './personalization-intensity.js';
 type Message = {
     role: string;
     content: string;

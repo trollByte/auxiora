@@ -308,9 +308,13 @@ export class TheArchitect {
     const modifier = assemblePromptModifier(adjustedMix, context);
     const sources = getActiveSources(adjustedMix);
 
-    // Fire-and-forget persistence of usage
-    if (this.persistence) {
-      this.persistence.recordUsage(context.domain).catch(() => {});
+    // Persist usage and update in-memory copy so getUserModel() sees current data
+    if (this.persistence && this.preferences) {
+      this.preferences.contextUsageHistory[context.domain] =
+        (this.preferences.contextUsageHistory[context.domain] ?? 0) + 1;
+      this.preferences.totalInteractions++;
+      this.preferences.lastUsed = Date.now();
+      this.persistence.save(this.preferences).catch(() => {});
     }
 
     // Check for recommendations (only when no manual override is active)

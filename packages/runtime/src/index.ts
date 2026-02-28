@@ -25,6 +25,7 @@ import {
   initializeToolExecutor,
   ToolPermission,
   setBrowserManager,
+  setWebBrowserManager,
   setWebhookManager,
   setBehaviorManager,
   setProviderFactory,
@@ -853,6 +854,7 @@ export class Auxiora {
       },
     });
     setBrowserManager(this.browserManager);
+    setWebBrowserManager(this.browserManager);
 
     // Initialize OS bridge
     const clipboardMonitor = new ClipboardMonitor();
