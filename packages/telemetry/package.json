@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/telemetry",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

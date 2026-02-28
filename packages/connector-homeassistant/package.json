@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-homeassistant",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "description": "Home Assistant connector: Devices, Scenes, Automations",
   "type": "module",
   "main": "dist/index.js",

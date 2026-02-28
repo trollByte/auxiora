@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/connector-hue",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "description": "Philips Hue connector: lights, scenes, rooms",
   "type": "module",
   "main": "dist/index.js",

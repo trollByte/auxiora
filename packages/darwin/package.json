@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/darwin",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,8 +10,15 @@
       "import": "./dist/index.js"
     }
   },
-  "scripts": { "build": "tsc", "test": "vitest run", "typecheck": "tsc --noEmit", "clean": "rm -rf dist" },
-  "engines": { "node": ">=22.0.0" },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@auxiora/benchmark": "workspace:*",
     "@auxiora/event-bus": "workspace:*",
@@ -28,5 +35,7 @@
     "express": "^5.1.0",
     "supertest": "^7.0.0"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

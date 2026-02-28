@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/audit",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "description": "Tamper-evident audit logging with chained hashes",
   "type": "module",
   "main": "dist/index.js",

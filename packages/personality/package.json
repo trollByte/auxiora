@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/personality",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "description": "Personality templates and SOUL.md management for Auxiora",
   "type": "module",
   "main": "dist/index.js",

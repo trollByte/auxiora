@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/job-queue",
-  "version": "1.10.15",
+  "version": "1.10.16",
   "description": "SQLite-backed durable job queue for Auxiora",
   "type": "module",
   "main": "dist/index.js",
