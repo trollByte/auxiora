@@ -145,6 +145,17 @@ export class SessionDatabase {
     return messages;
   }
 
+  /**
+   * Remove all messages in a chat added after a given timestamp.
+   * Used to roll back orphaned messages from interrupted agentic loops.
+   */
+  removeMessagesAfter(chatId: string, afterTimestamp: number): number {
+    const result = this.db.prepare(
+      'DELETE FROM messages WHERE chat_id = ? AND timestamp > ?',
+    ).run(chatId, afterTimestamp);
+    return (result as { changes: number }).changes;
+  }
+
   clearMessages(chatId: string): void {
     this.db.prepare('DELETE FROM messages WHERE chat_id = ?').run(chatId);
     this.db.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').run(Date.now(), chatId);

@@ -99,6 +99,82 @@ describe('SessionManager', () => {
     });
   });
 
+  describe('getMessageCount', () => {
+    it('should return 0 for empty session', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+      expect(manager.getMessageCount(session.id)).toBe(0);
+    });
+
+    it('should return correct count after adding messages', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+      await manager.addMessage(session.id, 'user', 'Hello');
+      await manager.addMessage(session.id, 'assistant', 'Hi!');
+      expect(manager.getMessageCount(session.id)).toBe(2);
+    });
+
+    it('should return 0 for unknown session', () => {
+      expect(manager.getMessageCount('nonexistent')).toBe(0);
+    });
+  });
+
+  describe('rollbackMessages', () => {
+    it('should remove messages added after snapshot', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+
+      // User sends a message
+      await manager.addMessage(session.id, 'user', 'Build me a website');
+      const snapshot = manager.getMessageCount(session.id); // 1
+
+      // Tool loop adds intermediate messages
+      await manager.addMessage(session.id, 'assistant', "I'll use bash to help with this.");
+      await manager.addMessage(session.id, 'user', '[Tool Results]\n[bash]: done');
+      await manager.addMessage(session.id, 'assistant', "I'll use file_write to help with this.");
+      await manager.addMessage(session.id, 'user', '[Tool Results]\n[file_write]: Success');
+
+      expect(manager.getMessageCount(session.id)).toBe(5);
+
+      // Rollback to snapshot
+      const removed = manager.rollbackMessages(session.id, snapshot);
+      expect(removed).toBe(4);
+      expect(manager.getMessageCount(session.id)).toBe(1);
+
+      // Only the original user message remains
+      const messages = manager.getMessages(session.id);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Build me a website');
+    });
+
+    it('should also remove from database', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+      await manager.addMessage(session.id, 'user', 'Hello');
+      const snapshot = manager.getMessageCount(session.id);
+
+      await manager.addMessage(session.id, 'assistant', 'Tool announce');
+      await manager.addMessage(session.id, 'user', '[Tool Results]\ndata');
+
+      manager.rollbackMessages(session.id, snapshot);
+
+      // Check DB directly
+      const dbMessages = manager.getChatMessages(session.id);
+      expect(dbMessages).toHaveLength(1);
+      expect(dbMessages[0].content).toBe('Hello');
+    });
+
+    it('should return 0 when nothing to rollback', async () => {
+      const session = await manager.create({ channelType: 'webchat' });
+      await manager.addMessage(session.id, 'user', 'Hello');
+      const snapshot = manager.getMessageCount(session.id);
+
+      const removed = manager.rollbackMessages(session.id, snapshot);
+      expect(removed).toBe(0);
+    });
+
+    it('should return 0 for unknown session', () => {
+      const removed = manager.rollbackMessages('nonexistent', 0);
+      expect(removed).toBe(0);
+    });
+  });
+
   describe('getOrCreate', () => {
     it('should create new session if none exists', async () => {
       const session = await manager.getOrCreate('key1', {

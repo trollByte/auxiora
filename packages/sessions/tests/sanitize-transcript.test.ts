@@ -110,6 +110,70 @@ describe('sanitizeTranscript', () => {
     });
   });
 
+  describe('orphaned tool-loop sequences (interrupted agentic loops)', () => {
+    it('should drop orphaned tool chain after last real user message', () => {
+      // Simulates: user asked a question → tool loop started → loop interrupted
+      // → user sends new question (which triggers sanitize on the old messages)
+      const messages = [
+        msg('user', 'Build me a website'),
+        msg('assistant', "I'll use bash to help with this."),
+        msg('user', '[Tool Results]\n[bash]: mkdir created'),
+        msg('assistant', "I'll use file_write to help with this."),
+        msg('user', '[Tool Results]\n[file_write]: Success'),
+        // Loop was interrupted here — no final assistant synthesis
+      ];
+      const result = sanitizeTranscript(messages);
+      // All tool-loop debris after "Build me a website" should be removed
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('Build me a website');
+    });
+
+    it('should preserve completed tool loops with final assistant response', () => {
+      const messages = [
+        msg('user', 'Build me a website'),
+        msg('assistant', "I'll use bash to help with this."),
+        msg('user', '[Tool Results]\n[bash]: mkdir created'),
+        msg('assistant', 'I created the website for you!'), // This is a real response, not a tool announce
+      ];
+      const result = sanitizeTranscript(messages);
+      expect(result).toHaveLength(4);
+    });
+
+    it('should drop orphaned nudge messages from interrupted loops', () => {
+      const messages = [
+        msg('user', 'Create a project'),
+        msg('assistant', "I'll use bash to help with this."),
+        msg('user', '[Tool Results]\n[bash]: done'),
+        msg('user', 'Please proceed — use the bash and file_write tools to do the work now. Do not describe what you will do — actually call the tools.'),
+        msg('assistant', "I'll use file_write to help with this."),
+        msg('user', '[Tool Results]\n[file_write]: Success'),
+      ];
+      const result = sanitizeTranscript(messages);
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('Create a project');
+    });
+
+    it('should handle new user message after orphaned tool loop', () => {
+      // When the user sends a new message after an orphaned tool loop,
+      // the rollback mechanism in runtime should have already cleaned
+      // the orphaned messages. But even if it didn't, sanitizeTranscript
+      // ensures the new question ends up in the last user message position.
+      const messages = [
+        msg('user', 'Build me a website'),
+        msg('assistant', "I'll use bash to help with this."),
+        msg('user', '[Tool Results]\n[bash]: done'),
+        msg('assistant', "I'll use file_write to help with this."),
+        msg('user', '[Tool Results]\n[file_write]: Success'),
+        msg('user', 'What is the weather today?'), // New real user message
+      ];
+      const result = sanitizeTranscript(messages);
+      // The new question appears in the result (merged with tool results by mergeSameRole)
+      const lastMsg = result[result.length - 1];
+      expect(lastMsg.role).toBe('user');
+      expect(lastMsg.content).toContain('What is the weather today?');
+    });
+  });
+
   describe('combined patterns', () => {
     it('should handle multiple broken patterns in one transcript', () => {
       const messages = [

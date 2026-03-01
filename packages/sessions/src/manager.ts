@@ -356,6 +356,43 @@ export class SessionManager {
     return existed;
   }
 
+  /**
+   * Get the current message count for a session.
+   * Used to snapshot state before an agentic loop so orphaned messages
+   * can be rolled back on failure.
+   */
+  getMessageCount(sessionId: string): number {
+    const session = this.sessions.get(sessionId);
+    return session ? session.messages.length : 0;
+  }
+
+  /**
+   * Remove messages added after a snapshot point (by count).
+   * Rolls back both in-memory and SQLite state.
+   * Returns the number of messages removed.
+   */
+  rollbackMessages(sessionId: string, snapshotCount: number): number {
+    const session = this.sessions.get(sessionId);
+    if (!session) return 0;
+
+    const currentCount = session.messages.length;
+    if (currentCount <= snapshotCount) return 0;
+
+    // Get the timestamp of the last message at the snapshot boundary
+    // All messages added after this timestamp should be removed from DB
+    const cutoffTimestamp = snapshotCount > 0
+      ? session.messages[snapshotCount - 1].timestamp
+      : 0;
+
+    // Trim in-memory messages
+    const removed = session.messages.splice(snapshotCount);
+
+    // Remove from DB
+    this.db.removeMessagesAfter(sessionId, cutoffTimestamp);
+
+    return removed.length;
+  }
+
   async clear(sessionId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) return;

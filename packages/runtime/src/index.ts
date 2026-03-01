@@ -3265,6 +3265,9 @@ export class Auxiora {
       content: m.content,
     }));
 
+    // Snapshot message count before agentic loop so we can rollback on failure
+    let messageCountSnapshot: number | undefined;
+
     try {
       // Get tool definitions from registry
       const tools = toolRegistry.toProviderFormat();
@@ -3334,6 +3337,8 @@ export class Auxiora {
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const toolsUsed: Array<{ name: string; success: boolean }> = [];
       let streamChunkCount = 0;
+      // Snapshot message count so we can rollback orphaned messages if the loop fails
+      messageCountSnapshot = this.sessions.getMessageCount(session.id);
       const { response: fullResponse, usage } = await this.executeWithTools(
         session.id,
         chatMessages,
@@ -3509,6 +3514,19 @@ export class Auxiora {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       audit('channel.error', { sessionId: session.id, error: errorMessage });
+
+      // Rollback orphaned messages from interrupted agentic tool loops.
+      // executeWithTools saves intermediate messages (tool announces + tool results)
+      // incrementally — if it throws, those partial messages pollute the next request.
+      if (typeof messageCountSnapshot === 'number') {
+        const rolled = this.sessions.rollbackMessages(session.id, messageCountSnapshot);
+        if (rolled > 0) {
+          this.logger.info('Rolled back orphaned messages from interrupted tool loop', {
+            sessionId: session.id,
+            rolledBack: rolled,
+          });
+        }
+      }
 
       this.sendToClient(client, {
         type: 'error',
@@ -4324,13 +4342,15 @@ export class Auxiora {
 
     const channelAgentId = `channel:${inbound.channelType}:${inbound.channelId}:${Date.now()}`;
 
-    // 10-minute timeout for the entire LLM response cycle.
+    // 30-minute timeout for the entire LLM response cycle.
     // Agentic tool loops can take many rounds (up to 20), each requiring a full LLM
-    // call + tool execution. A multi-file generation task easily takes 5+ minutes.
-    const CHANNEL_RESPONSE_TIMEOUT_MS = 600_000;
+    // call (30-90s) + tool execution. A multi-file generation task easily takes 10-20 minutes.
+    const CHANNEL_RESPONSE_TIMEOUT_MS = 1_800_000;
 
     let draftLoop: DraftStreamLoop | null = null;
     let draftMessageId: string | null = null;
+    // Snapshot message count before agentic loop so we can rollback on failure
+    let channelMessageSnapshot: number | undefined;
 
     try { // outer try — finally block guarantees stopTyping() runs
     try {
@@ -4413,6 +4433,8 @@ export class Auxiora {
 
       const fallbackCandidates = this.providers.resolveFallbackCandidates();
       const channelToolsUsed: Array<{ name: string; success: boolean }> = [];
+      // Snapshot message count so we can rollback orphaned messages on timeout/error
+      channelMessageSnapshot = this.sessions.getMessageCount(session.id);
       const { response: channelResponse, usage: channelUsage } = await Promise.race([
         this.executeWithTools(
           session.id,
@@ -4434,7 +4456,7 @@ export class Auxiora {
           { tools, fallbackCandidates },
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Response timed out — the AI provider did not respond within 10 minutes. Please try again.')), CHANNEL_RESPONSE_TIMEOUT_MS),
+          setTimeout(() => reject(new Error('Response timed out — the task did not complete within 30 minutes. Try breaking it into smaller steps.')), CHANNEL_RESPONSE_TIMEOUT_MS),
         ),
       ]);
 
@@ -4515,6 +4537,19 @@ export class Auxiora {
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       audit('channel.error', { sessionId: session.id, error: errorMessage });
+
+      // Rollback orphaned messages from interrupted agentic tool loops.
+      // This is critical for channel messages where timeouts are common (30-min limit).
+      if (typeof channelMessageSnapshot === 'number') {
+        const rolled = this.sessions.rollbackMessages(session.id, channelMessageSnapshot);
+        if (rolled > 0) {
+          this.logger.info('Rolled back orphaned channel messages from interrupted tool loop', {
+            sessionId: session.id,
+            channelType: inbound.channelType,
+            rolledBack: rolled,
+          });
+        }
+      }
 
       if (this.channels) {
         const errorContent = `Error: ${errorMessage}`;
