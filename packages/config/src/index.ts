@@ -117,7 +117,9 @@ const ProviderConfigSchema = z.object({
 const SessionConfigSchema = z.object({
   maxContextTokens: z.number().int().positive().default(100000),
   /** Maximum user/assistant turn pairs for non-webchat channel sessions (0 = unlimited). */
-  maxChannelTurns: z.number().int().nonnegative().default(50),
+  maxChannelTurns: z.number().int().nonnegative().default(20),
+  /** Max characters per message in channel context (longer messages are truncated). */
+  maxChannelMessageChars: z.number().int().positive().default(4000),
   ttlMinutes: z.number().int().positive().default(1440), // 24 hours
   autoSave: z.boolean().default(true),
   compactionEnabled: z.boolean().default(true),

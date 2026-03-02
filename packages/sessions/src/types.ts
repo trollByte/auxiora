@@ -35,6 +35,8 @@ export interface SessionConfig {
   maxContextTokens: number;
   /** Maximum user/assistant turn pairs for non-webchat channel sessions (0 = unlimited). */
   maxChannelTurns?: number;
+  /** Maximum characters per message for channel context degradation (default 4000). */
+  maxChannelMessageChars?: number;
   ttlMinutes: number;
   autoSave: boolean;
   compactionEnabled: boolean;

@@ -289,7 +289,10 @@ export class SessionManager {
         selected.unshift(msg);
         tokenCount += msgTokens;
       }
-      const degraded = degradeContext(session.messages, selected, effectiveBudget);
+      const maxMsgChars = options?.isChannel
+        ? (this.config.maxChannelMessageChars ?? 4000)
+        : 8000;
+      const degraded = degradeContext(session.messages, selected, effectiveBudget, maxMsgChars);
 
       // Auto-compaction: fire-and-forget when too many messages dropped
       this.maybeAutoCompact(sessionId, session.messages, selected);

@@ -451,6 +451,8 @@ export class Auxiora {
     // Initialize sessions
     this.sessions = new SessionManager({
       maxContextTokens: this.config.session.maxContextTokens,
+      maxChannelTurns: this.config.session.maxChannelTurns,
+      maxChannelMessageChars: this.config.session.maxChannelMessageChars,
       ttlMinutes: this.config.session.ttlMinutes,
       autoSave: this.config.session.autoSave,
       compactionEnabled: this.config.session.compactionEnabled,
