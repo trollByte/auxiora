@@ -102,11 +102,24 @@ describe('CostTracker', () => {
   });
 
   it('should not count old records in today spend', () => {
-    // Record from yesterday
-    const yesterday = Date.now() - 86400000 * 2;
-    tracker.record({ timestamp: yesterday, provider: 'anthropic', model: 'claude', inputTokens: 1000, outputTokens: 500, cost: 1.00 });
+    // Record from earlier this month (but not today) so it counts in month but not today.
+    // Use the 1st of the current month at midnight to guarantee it's within this month.
+    const now = new Date();
+    const earlierThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).getTime();
+    // If today IS the 1st, push it back 1ms so it's still "today" but use a different approach:
+    // just subtract 1 hour — it's still today on the 1st but let's use a safe date instead.
+    // We only need: not today + same month. If it's the 1st, there's no earlier day in the month,
+    // so skip the month assertion in that edge case.
+    const isFirstOfMonth = now.getDate() === 1;
+    const timestamp = isFirstOfMonth
+      ? Date.now() - 86400000 // yesterday (different month, skip month check)
+      : earlierThisMonth;     // 1st of this month at midnight (same month, not today)
+
+    tracker.record({ timestamp, provider: 'anthropic', model: 'claude', inputTokens: 1000, outputTokens: 500, cost: 1.00 });
 
     expect(tracker.getTodaySpend()).toBe(0);
-    expect(tracker.getMonthSpend()).toBeCloseTo(1.00);
+    if (!isFirstOfMonth) {
+      expect(tracker.getMonthSpend()).toBeCloseTo(1.00);
+    }
   });
 });
