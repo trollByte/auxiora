@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/email-intelligence",
-  "version": "1.10.18",
+  "version": "1.10.19",
   "description": "Email intelligence: triage, smart reply, follow-up tracking, thread summarization",
   "type": "module",
   "main": "dist/index.js",

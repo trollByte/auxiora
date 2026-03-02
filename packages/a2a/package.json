@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/a2a",
-  "version": "1.10.18",
+  "version": "1.10.19",
   "description": "Agent-to-Agent protocol for cross-system agent collaboration",
   "type": "module",
   "main": "dist/index.js",

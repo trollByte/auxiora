@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { createVaultCommand } from './commands/vault.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createAuditCommand } from './commands/audit.js';
@@ -29,12 +32,15 @@ import { createWorkflowCommand } from './commands/workflow.js';
 import { createAmbientCommand } from './commands/ambient.js';
 import { createUpdateCommand } from './commands/update.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const cliPkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+
 const program = new Command();
 
 program
   .name('auxiora')
   .description('Secure AI Assistant Platform')
-  .version('1.0.0');
+  .version(cliPkg.version);
 
 // Core commands
 program.addCommand(createInitCommand());

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/mcp-server",
-  "version": "1.10.18",
+  "version": "1.10.19",
   "description": "MCP server exposing Auxiora capabilities as tools for external AI agents",
   "type": "module",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/image-gen",
-  "version": "1.10.18",
+  "version": "1.10.19",
   "description": "Image generation with multi-provider support",
   "type": "module",
   "main": "dist/index.js",
