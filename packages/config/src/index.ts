@@ -373,6 +373,12 @@ const GuardrailsConfigSchema = z.object({
   scanOutput: z.boolean().default(true),
 });
 
+const QueueConfigSchema = z.object({
+  mode: z.enum(['followup']).default('followup'),
+  cap: z.number().int().positive().default(20),
+  debounceMs: z.number().int().min(0).default(0),
+});
+
 export const ConfigSchema = z.object({
   gateway: GatewayConfigSchema.default({}),
   auth: AuthConfigSchema.default({}),
@@ -402,6 +408,7 @@ export const ConfigSchema = z.object({
   cloud: CloudConfigSchema.default({}),
   mcp: McpConfigSchema.default({}),
   guardrails: GuardrailsConfigSchema.default({}),
+  queue: QueueConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -412,6 +419,7 @@ export type TrustConfig = z.infer<typeof TrustConfigSchema>;
 export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 export type ModesConfig = z.infer<typeof ModesConfigSchema>;
 export type GuardrailsConfig = z.infer<typeof GuardrailsConfigSchema>;
+export type QueueConfig = z.infer<typeof QueueConfigSchema>;
 
 const ENV_PREFIX = 'AUXIORA_';
 
