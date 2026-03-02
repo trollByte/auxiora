@@ -95,6 +95,7 @@ GitHub | Notion | Linear | Google Workspace (Calendar, Gmail, Drive) | Microsoft
 - **Personality System** — SOUL.md with 8 interaction modes, tone controls, voice profiles. Plus **The Architect**: 29-trait context-aware engine grounded in historical methodologies (Munger, Musk, Grove, Bezos, Voss, etc.) with 17 domains, emotional tracking, correction learning, custom weight presets, and full provenance.
 - **Memory** — Semantic, temporal, and entity-based partitions with pattern detection.
 - **Behaviors** — Scheduled tasks (cron), monitors (conditional polling), and one-shot reminders.
+- **Message Queue** — Per-session queuing prevents race conditions when messages arrive during active tasks. Follow-up messages are processed sequentially after the current task finishes.
 - **Ambient Mode** — Proactive briefings, pattern anticipation, and quiet notifications.
 - **Browser Control** — Headless Chromium automation with SSRF protection.
 - **Voice Mode** — STT (Whisper), TTS (OpenAI, ElevenLabs), wake-word detection, real-time conversation.
@@ -299,7 +300,7 @@ pnpm test
 pnpm typecheck
 ```
 
-The monorepo uses pnpm workspaces with 87 packages under `packages/`.
+The monorepo uses pnpm workspaces with 100+ packages under `packages/`.
 
 ---
 
@@ -323,6 +324,7 @@ The monorepo uses pnpm workspaces with 87 packages under `packages/`.
 - [x] Trust/autonomy system
 - [x] Desktop app (Tauri)
 - [x] Multi-chat system
+- [x] Message queue (per-session race condition prevention)
 - [ ] Easy cross-platform installation (npm, Homebrew, apt)
 - [x] The Architect personality engine (29 traits, 17 domains, provenance)
 - [ ] Plugin marketplace

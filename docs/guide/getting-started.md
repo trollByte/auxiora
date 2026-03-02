@@ -114,7 +114,27 @@ Anthropic works well as a primary provider. If you added `ANTHROPIC_API_KEY` in 
 
 You can also configure this through **Settings > Provider** in the dashboard.
 
-### 6. Connect a Channel (Optional)
+### 6. Configure Message Queuing (Optional)
+
+When you send a follow-up message while Auxiora is still working on a previous task, the message queue holds it and processes it after the current task completes. This is enabled by default with sensible defaults. To customize:
+
+```json
+{
+  "queue": {
+    "mode": "followup",
+    "cap": 20,
+    "debounceMs": 0
+  }
+}
+```
+
+- `mode` -- Only `followup` is supported today (process queued messages one at a time).
+- `cap` -- Maximum queued messages per session (default 20). Oldest messages are dropped on overflow.
+- `debounceMs` -- Debounce delay before draining (default 0).
+
+See [Message Queue](../features/message-queue.md) for details.
+
+### 7. Connect a Channel (Optional)
 
 Channels let you talk to Auxiora from Discord, Telegram, Slack, and 9 other platforms. Here is a quick Discord example:
 
@@ -243,6 +263,7 @@ See [Vault & Security](../features/vault-and-security.md) for full details on se
 - [Security & Vault](../features/vault-and-security.md) -- Trust levels, audit logs, encryption, sealed auto-unseal
 - [AI Providers](../features/providers.md) -- Model routing, cost tracking, 10+ providers
 - [Messaging Channels](../features/channels.md) -- Connect Discord, Telegram, Slack, and 9 more
+- [Message Queue](../features/message-queue.md) -- Per-session queuing for race-free message handling
 - [Service Connectors](../features/connectors.md) -- GitHub, Notion, Home Assistant, and 8 more
 - [Personality System](../features/personality.md) -- The Architect, SOUL.md, custom presets
 - [Memory](../features/memory.md) -- How Auxiora remembers and learns about you

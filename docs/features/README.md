@@ -16,6 +16,7 @@ New to Auxiora? Start here: **[Getting Started Guide](../guide/getting-started.m
 ### Communication
 
 - **[Messaging Channels](channels.md)** -- 12 platform adapters including Discord, Telegram, Slack, WhatsApp, and more
+- **[Message Queue](message-queue.md)** -- Per-session message queuing that prevents race conditions during long-running tasks
 - **[Service Connectors](connectors.md)** -- 11 integrations for GitHub, Notion, Home Assistant, Spotify, and more
 
 ### Intelligence

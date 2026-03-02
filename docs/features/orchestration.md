@@ -217,6 +217,7 @@ You ask: "Survey the state of WebAssembly adoption across 10 programming languag
 
 ## Related Documentation
 
+- [Message Queue](message-queue.md) -- Per-session queuing prevents race conditions when new messages arrive during long-running tasks
 - [Research Agent](research.md) -- Research workflows often use orchestration patterns for parallel sub-topic investigation
 - [Behaviors](behaviors.md) -- Scheduled behaviors execute through the job queue for crash recovery
 - [AI Providers](providers.md) -- Cost tracking and budget limits integrate with provider configuration

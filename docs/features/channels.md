@@ -257,4 +257,4 @@ Connect Discord for your gaming group, email for professional context, and BlueB
 
 ---
 
-See also: [Service Connectors](connectors.md) | [Personality System](personality.md) | [Getting Started](../guide/getting-started.md)
+See also: [Service Connectors](connectors.md) | [Message Queue](message-queue.md) | [Personality System](personality.md) | [Getting Started](../guide/getting-started.md)

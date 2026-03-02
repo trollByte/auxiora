@@ -130,7 +130,7 @@ These flags work with any command:
 | Flag | Description |
 |------|-------------|
 | `--help` | Show help for any command or subcommand |
-| `--version` | Show the current Auxiora version |
+| `--version` | Show the current Auxiora version (reads from package.json) |
 | `--verbose` | Enable verbose output for debugging |
 
 ## Examples
