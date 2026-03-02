@@ -363,6 +363,22 @@ export class Auxiora {
     timestamp: number;
   }> = [];
 
+  /** Per-session run state for message queueing. */
+  private sessionRunStates = new Map<string, {
+    running: boolean;
+    queue: Array<{
+      content: string;
+      enqueuedAt: number;
+      client?: ClientConnection;
+      requestId?: string;
+      chatId?: string;
+      modelOverride?: string;
+      providerOverride?: string;
+      inbound?: InboundMessage;
+    }>;
+    lastRunStartedAt: number;
+  }>();
+
   async initialize(options: AuxioraOptions = {}): Promise<void> {
     // Read version from package.json
     try {
@@ -4144,6 +4160,114 @@ export class Auxiora {
       // WebSocket.OPEN
       client.ws.send(JSON.stringify(message));
     }
+  }
+
+  private acquireSessionRun(sessionId: string): boolean {
+    let state = this.sessionRunStates.get(sessionId);
+    if (!state) {
+      state = { running: false, queue: [], lastRunStartedAt: 0 };
+      this.sessionRunStates.set(sessionId, state);
+    }
+    if (state.running) return false;
+    state.running = true;
+    state.lastRunStartedAt = Date.now();
+    return true;
+  }
+
+  private releaseSessionRun(sessionId: string): void {
+    const state = this.sessionRunStates.get(sessionId);
+    if (state) {
+      state.running = false;
+    }
+  }
+
+  private getSessionRunState(sessionId: string) {
+    let state = this.sessionRunStates.get(sessionId);
+    if (!state) {
+      state = { running: false, queue: [], lastRunStartedAt: 0 };
+      this.sessionRunStates.set(sessionId, state);
+    }
+    return state;
+  }
+
+  private enqueueMessage(
+    sessionId: string,
+    pending: {
+      content: string;
+      enqueuedAt: number;
+      client?: ClientConnection;
+      requestId?: string;
+      chatId?: string;
+      modelOverride?: string;
+      providerOverride?: string;
+      inbound?: InboundMessage;
+    },
+  ): void {
+    const state = this.getSessionRunState(sessionId);
+    const cap = this.config.queue?.cap ?? 20;
+
+    state.queue.push(pending);
+
+    if (state.queue.length > cap) {
+      const dropped = state.queue.shift();
+      this.logger.warn('Message queue overflow — dropped oldest message', {
+        sessionId,
+        droppedContent: dropped?.content.slice(0, 80),
+        queueLength: state.queue.length,
+      });
+    }
+  }
+
+  private async drainSessionQueue(sessionId: string): Promise<void> {
+    const state = this.sessionRunStates.get(sessionId);
+    if (!state) return;
+
+    while (state.queue.length > 0) {
+      const pending = state.queue.shift()!;
+
+      // Skip webchat messages if the client disconnected
+      if (pending.client && !pending.inbound && pending.client.ws.readyState !== 1) {
+        this.logger.info('Skipping queued webchat message — client disconnected', { sessionId });
+        continue;
+      }
+
+      // Skip if session was destroyed
+      const session = await this.sessions.get(sessionId);
+      if (!session) {
+        this.logger.info('Skipping queued messages — session destroyed', { sessionId });
+        state.queue.length = 0;
+        break;
+      }
+
+      try {
+        // Release the lock so the re-entrant call can acquire it
+        state.running = false;
+
+        if (pending.inbound) {
+          await this.handleChannelMessage(pending.inbound);
+        } else if (pending.client) {
+          const wsMessage: WsMessage = {
+            id: pending.requestId ?? `queued-${Date.now()}`,
+            type: 'message',
+            payload: {
+              content: pending.content,
+              sessionId,
+              chatId: pending.chatId,
+              model: pending.modelOverride,
+              provider: pending.providerOverride,
+            },
+          };
+          await this.handleMessage(pending.client, wsMessage);
+        }
+      } catch (err) {
+        this.logger.error('Error processing queued message', {
+          sessionId,
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
+      }
+    }
+
+    state.running = false;
   }
 
   /** Load persisted channel targets from disk so behavior delivery survives restarts. */
