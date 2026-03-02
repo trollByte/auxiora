@@ -3232,6 +3232,27 @@ export class Auxiora {
       });
     }
 
+    // ── Message queue gate ─────────────────────────────────────────
+    if (!this.acquireSessionRun(session.id)) {
+      this.enqueueMessage(session.id, {
+        content: (payload as any)?.content ?? '',
+        enqueuedAt: Date.now(),
+        client,
+        requestId,
+        chatId: (payload as any)?.chatId,
+        modelOverride: (payload as any)?.model,
+        providerOverride: (payload as any)?.provider,
+      });
+
+      this.sendToClient(client, {
+        type: 'queued',
+        requestId,
+        position: this.getSessionRunState(session.id).queue.length,
+      });
+      return;
+    }
+
+    try {
     // Apply redaction if guardrails flagged PII
     let processedContent = content;
     if (inputScan?.action === 'redact' && inputScan.redactedContent) {
@@ -3549,6 +3570,13 @@ export class Auxiora {
         id: requestId,
         payload: { message: `Error: ${errorMessage}` },
       });
+    }
+    } finally {
+      try {
+        await this.drainSessionQueue(session.id);
+      } finally {
+        this.releaseSessionRun(session.id);
+      }
     }
   }
 
@@ -4391,6 +4419,24 @@ export class Auxiora {
       return;
     }
 
+    // ── Message queue gate ─────────────────────────────────────────
+    if (!this.acquireSessionRun(session.id)) {
+      this.enqueueMessage(session.id, {
+        content: inbound.content,
+        enqueuedAt: Date.now(),
+        inbound,
+      });
+
+      if (this.channels) {
+        await this.channels.send(inbound.channelType, inbound.channelId, {
+          content: "Got it — I'll get to that after I finish the current task.",
+          replyToId: inbound.id,
+        });
+      }
+      return;
+    }
+
+    try {
     // Process media attachments and add user message
     let messageContent = inbound.content;
     if (inbound.attachments && inbound.attachments.length > 0 && this.mediaProcessor) {
@@ -4703,6 +4749,13 @@ export class Auxiora {
     }
     } finally {
       stopTyping();
+    }
+    } finally {
+      try {
+        await this.drainSessionQueue(session.id);
+      } finally {
+        this.releaseSessionRun(session.id);
+      }
     }
     }); // end runWithRequestId
   }
@@ -5054,6 +5107,7 @@ export class Auxiora {
       } catch { /* best-effort — don't block shutdown */ }
     }
     this.consciousness?.shutdown();
+    this.sessionRunStates.clear();
     this.sessions.destroy();
     this.vault.lock();
     this.running = false;
