@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/gateway",
-  "version": "1.10.17",
+  "version": "1.10.18",
   "description": "WebSocket and HTTP gateway for Auxiora",
   "type": "module",
   "main": "dist/index.js",
