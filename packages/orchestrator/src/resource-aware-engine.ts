@@ -1,6 +1,6 @@
 import type { ResourceProbeLike, ResourceSnapshotLike, MachineProfileLike } from './resource-types.js';
 import type { AgentEvent, OrchestrationResult, Workflow, OrchestrationEngineLike, AgentTask, AgentResult } from './types.js';
-import { ResourceBreakers, type BreakerThresholds } from './resource-breakers.js';
+import { ResourceBreakers, type BreakerThresholds, type ResourceAction } from './resource-breakers.js';
 import { buildWaves } from './dag-scheduler.js';
 
 export interface ResourceAwareConfig {
@@ -68,7 +68,7 @@ export class ResourceAwareEngine implements OrchestrationEngineLike {
       yield { type: 'resource_warning', workflowId: workflow.id, action: 'pause', reasons: breakerResult.reasons };
       // Wait and re-probe up to 3 times
       let retries = 0;
-      let currentAction = breakerResult.action;
+      let currentAction: ResourceAction = breakerResult.action;
       while (currentAction === 'pause' && retries < 3) {
         await this.delay(5000);
         retries++;

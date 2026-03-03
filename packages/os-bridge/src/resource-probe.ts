@@ -154,7 +154,7 @@ export class ResourceProbe {
     return { totalMB: 0, usedMB: 0, usedPercent: 0 };
   }
 
-  async readGpu(): Promise<GpuInfo | null> {
+  private async readGpu(): Promise<GpuInfo | null> {
     const now = Date.now();
     if (this.gpuCache && now - this.gpuCache.timestamp < this.gpuCacheTtlMs) {
       return this.gpuCache.result;

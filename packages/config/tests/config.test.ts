@@ -287,7 +287,7 @@ describe('Config', () => {
       expect(config.orchestration.defaultTimeout).toBe(60000);
       expect(config.orchestration.totalTimeout).toBe(300000);
       expect(config.orchestration.allowedPatterns).toEqual([
-        'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor',
+        'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor', 'dag',
       ]);
       expect(config.orchestration.costMultiplierWarning).toBe(3);
     });

@@ -108,10 +108,10 @@ describe('ResourceProbe', () => {
 
   describe('GPU caching', () => {
     it('caches GPU result for subsequent calls', async () => {
-      const result1 = await probe.readGpu();
-      const result2 = await probe.readGpu();
-      // Both should be the same (cached)
-      expect(result1).toEqual(result2);
+      const result1 = await probe.probe();
+      const result2 = await probe.probe();
+      // Both should return the same GPU value (cached)
+      expect(result1.gpu).toEqual(result2.gpu);
     });
   });
 

@@ -8,7 +8,6 @@ export type {
   OrchestrationEngineLike,
   WorkflowCheckpoint,
   WorkflowCheckpointHandler,
-  OrchestrationEngineLike,
 } from './types.js';
 
 export { OrchestrationEngine } from './engine.js';
