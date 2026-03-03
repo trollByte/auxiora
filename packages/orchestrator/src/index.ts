@@ -5,6 +5,7 @@ export type {
   AgentEvent,
   AgentResult,
   OrchestrationResult,
+  OrchestrationEngineLike,
   WorkflowCheckpoint,
   WorkflowCheckpointHandler,
   OrchestrationEngineLike,

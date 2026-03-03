@@ -1,10 +1,10 @@
-import type { OrchestrationEngine, AgentTask, AgentEvent, OrchestrationPattern } from '@auxiora/orchestrator';
+import type { OrchestrationEngineLike, AgentTask, AgentEvent, OrchestrationPattern } from '@auxiora/orchestrator';
 import type { Tool, ToolResult, ExecutionContext } from './index.js';
 import { ToolPermission } from './index.js';
 
-let orchestrationEngine: OrchestrationEngine | undefined;
+let orchestrationEngine: OrchestrationEngineLike | undefined;
 
-export function setOrchestrationEngine(engine: OrchestrationEngine): void {
+export function setOrchestrationEngine(engine: OrchestrationEngineLike): void {
   orchestrationEngine = engine;
 }
 
@@ -27,12 +27,13 @@ Patterns:
 - sequential: Agents work in order, each building on the previous
 - debate: Two agents argue opposing positions, a judge decides
 - map-reduce: Split work across agents, combine results
-- supervisor: You delegate subtasks to specialized workers`,
+- supervisor: You delegate subtasks to specialized workers
+- dag: Tasks with explicit dependencies, executed in dependency waves`,
   parameters: [
     {
       name: 'pattern',
       type: 'string',
-      description: 'Orchestration pattern: parallel, sequential, debate, map-reduce, supervisor',
+      description: 'Orchestration pattern: parallel, sequential, debate, map-reduce, supervisor, dag',
       required: true,
     },
     {
@@ -82,7 +83,7 @@ Patterns:
       };
     }
 
-    const validPatterns = ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor'];
+    const validPatterns = ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor', 'dag'];
     if (!validPatterns.includes(params.pattern)) {
       return {
         success: false,
