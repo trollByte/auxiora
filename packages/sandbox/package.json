@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/sandbox",
-  "version": "1.10.19",
+  "version": "1.10.20",
   "description": "Docker-based session sandboxing for isolated tool execution",
   "type": "module",
   "main": "dist/index.js",

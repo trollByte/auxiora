@@ -1,6 +1,6 @@
 {
   "name": "auxiora-monorepo",
-  "version": "1.10.19",
+  "version": "1.10.20",
   "private": true,
   "description": "Personal AI assistant with encrypted credential vault",
   "license": "Apache-2.0",

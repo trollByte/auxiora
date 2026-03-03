@@ -1,6 +1,6 @@
 {
   "name": "@auxiora/social",
-  "version": "1.10.19",
+  "version": "1.10.20",
   "description": "Multi-user identity, roles, and permissions management",
   "type": "module",
   "main": "dist/index.js",
