@@ -420,6 +420,54 @@ export const api = {
     fetch('/api/v1/darwin/resume', { method: 'POST', credentials: 'include' }).then(r => r.json()),
 };
 
+// Resource orchestration
+const ORCHESTRATION_BASE = '/api/v1/orchestration';
+
+async function fetchOrchestration<T>(path: string): Promise<T> {
+  const res = await fetch(`${ORCHESTRATION_BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (res.status === 401) {
+    window.location.href = '/dashboard/login';
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export interface ResourceSnapshot {
+  cpu: { cores: number; utilization: number; loadAvg1m: number };
+  memory: { totalMB: number; freeMB: number; availableMB: number; usedPercent: number };
+  swap: { usedPercent: number };
+  timestamp: number;
+}
+
+export interface MachineProfile {
+  machineClass: string;
+  hasGpu: boolean;
+  recommendedMaxAgents: number;
+  cpuCeiling: number;
+  ramCeiling: number;
+}
+
+export interface BreakerStatus {
+  action: string;
+  reasons: string[];
+  snapshot: ResourceSnapshot;
+}
+
+export async function getResourceStatus(): Promise<{ snapshot: ResourceSnapshot; profile: MachineProfile }> {
+  return fetchOrchestration('/resources');
+}
+
+export async function getBreakerStatus(): Promise<BreakerStatus> {
+  return fetchOrchestration('/breakers');
+}
+
 export type { PluginListing, PersonalityListing };
 
 export interface FeatureStatus {
