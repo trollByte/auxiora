@@ -1,4 +1,6 @@
-export type OrchestrationPattern = 'parallel' | 'sequential' | 'debate' | 'map-reduce' | 'supervisor';
+import type { ResourceSnapshotLike } from './resource-types.js';
+
+export type OrchestrationPattern = 'parallel' | 'sequential' | 'debate' | 'map-reduce' | 'supervisor' | 'dag';
 
 /** An agent task within a workflow */
 export interface AgentTask {
@@ -36,6 +38,10 @@ export type AgentEvent =
   | { type: 'synthesis_chunk'; workflowId: string; content: string }
   | { type: 'task_progress'; workflowId: string; taskId: string; name: string; completedTasks: number; totalTasks: number; elapsedMs: number }
   | { type: 'checkpoint_saved'; workflowId: string; completedTaskIds: string[]; savedAt: number }
+  | { type: 'resource_snapshot'; workflowId: string; snapshot: ResourceSnapshotLike; safeSlots: number; machineClass: string }
+  | { type: 'wave_started'; workflowId: string; waveIndex: number; taskIds: string[]; slots: number }
+  | { type: 'wave_completed'; workflowId: string; waveIndex: number; completedTaskIds: string[] }
+  | { type: 'resource_warning'; workflowId: string; action: string; reasons: string[] }
   | { type: 'workflow_completed'; workflowId: string; finalResult: string; totalUsage: { inputTokens: number; outputTokens: number }; totalCost: number };
 
 /** Result of a single agent's execution */
@@ -63,6 +69,11 @@ export interface WorkflowCheckpoint {
 export interface WorkflowCheckpointHandler {
   save(checkpoint: WorkflowCheckpoint): Promise<void>;
   load(workflowId: string): Promise<WorkflowCheckpoint | undefined>;
+}
+
+/** Interface for orchestration engine implementations */
+export interface OrchestrationEngineLike {
+  execute(workflow: Workflow): AsyncGenerator<AgentEvent, OrchestrationResult, unknown>;
 }
 
 /** Full orchestration result */
