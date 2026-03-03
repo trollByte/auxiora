@@ -46,6 +46,7 @@ import {
 import { ResearchEngine, ResearchIntentDetector, DeepResearchOrchestrator, ReportGenerator } from '@auxiora/research';
 import type { ResearchJob, ResearchProgressEvent } from '@auxiora/research';
 import { OrchestrationEngine } from '@auxiora/orchestrator';
+import type { OrchestrationEngineLike } from '@auxiora/orchestrator';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -252,7 +253,7 @@ export class Auxiora {
   private trustGate?: TrustGate;
   private intentParser?: IntentParser;
   private actionPlanner?: ActionPlanner;
-  private orchestrationEngine?: OrchestrationEngine;
+  private orchestrationEngine?: OrchestrationEngineLike;
   private jobQueue?: JobQueue;
   private modelRegistry?: import('@auxiora/model-registry').ModelRegistry;
   private modelRefreshTimer?: ReturnType<typeof setInterval>;
@@ -480,12 +481,20 @@ export class Auxiora {
 
     // Initialize orchestration engine (if enabled and providers available)
     if (this.providers && this.config.orchestration?.enabled !== false) {
-      this.orchestrationEngine = new OrchestrationEngine(
-        this.providers,
-        this.config.orchestration ?? { enabled: true, maxConcurrentAgents: 5, defaultTimeout: 60000, totalTimeout: 300000, allowedPatterns: ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor'], costMultiplierWarning: 3 },
-      );
+      const orchConfig = this.config.orchestration ?? { enabled: true, maxConcurrentAgents: 5, defaultTimeout: 60000, totalTimeout: 300000, allowedPatterns: ['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor', 'dag'] as const, costMultiplierWarning: 3, resourceAware: { enabled: false, cpuCeiling: 0.8, ramCeiling: 0.8, reprobeIntervalMs: 2000, fallbackMaxAgents: 3, breakers: { ramPausePercent: 85, ramKillPercent: 90, cpuThrottlePercent: 90, swapEmergencyPercent: 50 } } };
+      const innerEngine = new OrchestrationEngine(this.providers, orchConfig);
+
+      if (this.config.orchestration?.resourceAware?.enabled) {
+        const { ResourceProbe } = await import('@auxiora/os-bridge');
+        const { ResourceAwareEngine } = await import('@auxiora/orchestrator');
+        const probe = new ResourceProbe();
+        this.orchestrationEngine = new ResourceAwareEngine(innerEngine, probe, this.config.orchestration.resourceAware);
+        this.logger.info('Resource-aware orchestration engine initialized');
+      } else {
+        this.orchestrationEngine = innerEngine;
+        this.logger.info('Orchestration engine initialized');
+      }
       setOrchestrationEngine(this.orchestrationEngine);
-      this.logger.info('Orchestration engine initialized');
     }
 
     // Initialize research engine (if Brave API key available)
@@ -2525,7 +2534,7 @@ export class Auxiora {
     return this.modelRegistry;
   }
 
-  getOrchestrationEngine(): OrchestrationEngine | undefined {
+  getOrchestrationEngine(): OrchestrationEngineLike | undefined {
     return this.orchestrationEngine;
   }
 

@@ -268,15 +268,30 @@ const MemoryConfigSchema = z.object({
   importanceDecay: z.number().min(0).max(1).default(0.01),
 });
 
+const ResourceAwareConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  cpuCeiling: z.number().min(0.1).max(1.0).default(0.8),
+  ramCeiling: z.number().min(0.1).max(1.0).default(0.8),
+  reprobeIntervalMs: z.number().int().positive().default(2000),
+  fallbackMaxAgents: z.number().int().min(1).max(20).default(3),
+  breakers: z.object({
+    ramPausePercent: z.number().min(50).max(99).default(85),
+    ramKillPercent: z.number().min(50).max(99).default(90),
+    cpuThrottlePercent: z.number().min(50).max(99).default(90),
+    swapEmergencyPercent: z.number().min(10).max(90).default(50),
+  }).default({}),
+}).default({});
+
 const OrchestrationConfigSchema = z.object({
   enabled: z.boolean().default(true),
   maxConcurrentAgents: z.number().int().min(1).max(10).default(5),
   defaultTimeout: z.number().int().positive().default(60000),
   totalTimeout: z.number().int().positive().default(300000),
   allowedPatterns: z.array(z.enum([
-    'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor',
-  ])).default(['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor']),
+    'parallel', 'sequential', 'debate', 'map-reduce', 'supervisor', 'dag',
+  ])).default(['parallel', 'sequential', 'debate', 'map-reduce', 'supervisor', 'dag']),
   costMultiplierWarning: z.number().positive().default(3),
+  resourceAware: ResourceAwareConfigSchema,
 });
 
 const UserPreferencesSchema = z.object({

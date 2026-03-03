@@ -1,4 +1,4 @@
-export type OrchestrationPattern = 'parallel' | 'sequential' | 'debate' | 'map-reduce' | 'supervisor';
+export type OrchestrationPattern = 'parallel' | 'sequential' | 'debate' | 'map-reduce' | 'supervisor' | 'dag';
 
 /** An agent task within a workflow */
 export interface AgentTask {
@@ -74,4 +74,9 @@ export interface OrchestrationResult {
   totalUsage: { inputTokens: number; outputTokens: number };
   totalCost: number;
   totalDuration: number;
+}
+
+/** Structural interface for anything that can execute workflows (OrchestrationEngine, ResourceAwareEngine, etc.) */
+export interface OrchestrationEngineLike {
+  execute(workflow: Workflow): AsyncGenerator<AgentEvent, OrchestrationResult, unknown>;
 }
