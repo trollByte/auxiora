@@ -55,6 +55,32 @@ export interface SystemState {
   } | null;
 }
 
+export interface GpuInfo {
+  name: string;
+  memoryTotalMB: number;
+  memoryUsedMB: number;
+  utilizationPercent: number;
+}
+
+export interface ResourceSnapshot {
+  cpu: { cores: number; model: string; loadAvg1m: number; loadAvg5m: number; utilization: number };
+  memory: { totalMB: number; freeMB: number; availableMB: number; usedPercent: number };
+  swap: { totalMB: number; usedMB: number; usedPercent: number };
+  gpu: GpuInfo | null;
+  disk: { totalMB: number; freeMB: number; usedPercent: number } | null;
+  timestamp: number;
+}
+
+export type MachineClass = 'minimal' | 'light' | 'standard' | 'workstation' | 'server';
+
+export interface MachineProfile {
+  machineClass: MachineClass;
+  hasGpu: boolean;
+  recommendedMaxAgents: number;
+  cpuCeiling: number;
+  ramCeiling: number;
+}
+
 export interface OsBridgeConfig {
   watchDirs?: string[];
   clipboardPollMs?: number;
