@@ -14,3 +14,5 @@ export { mountOpenAICompatRoutes } from './openai-compat-routes.js';
 export type { OpenAICompatDeps, CompletionResult } from './openai-compat-routes.js';
 export { mountApprovalRoutes } from './approval-routes.js';
 export type { ApprovalRoutesDeps } from './approval-routes.js';
+export { mountResourceRoutes } from './resource-routes.js';
+export type { ResourceRoutesDeps } from './resource-routes.js';
