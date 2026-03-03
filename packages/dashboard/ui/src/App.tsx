@@ -29,6 +29,7 @@ import { SettingsArchitect } from './pages/settings/Architect';
 import { SettingsNotifications } from './pages/SettingsNotifications';
 import { UserProfile } from './pages/UserProfile';
 import { MemoryManager } from './pages/MemoryManager';
+import { Orchestration } from './pages/Orchestration';
 
 export function App() {
   return (
@@ -64,6 +65,7 @@ export function App() {
         <Route path="settings/audit" element={<AuditLog />} />
         <Route path="profile" element={<UserProfile />} />
         <Route path="memories" element={<MemoryManager />} />
+        <Route path="orchestration" element={<Orchestration />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
