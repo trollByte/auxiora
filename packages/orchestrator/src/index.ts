@@ -20,3 +20,6 @@ export type { ResourceAction, BreakerThresholds } from './resource-breakers.js';
 export { ResourceBreakers } from './resource-breakers.js';
 export type { DagWave } from './dag-scheduler.js';
 export { buildWaves, validateDag } from './dag-scheduler.js';
+
+export type { ResourceAwareConfig } from './resource-aware-engine.js';
+export { ResourceAwareEngine } from './resource-aware-engine.js';
