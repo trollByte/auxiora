@@ -33,6 +33,7 @@ const KNOWN_PROVIDERS: Array<{
   { id: 'anthropic', label: 'Anthropic (Claude)', needsKey: true },
   { id: 'claudeOAuth', label: 'Claude (OAuth)', needsKey: false, needsOAuth: true },
   { id: 'openai', label: 'OpenAI', needsKey: true },
+  { id: 'openaiCodex', label: 'OpenAI (ChatGPT Subscription)', needsKey: false, needsOAuth: true },
   { id: 'google', label: 'Google (Gemini)', needsKey: true },
   { id: 'ollama', label: 'Ollama (Local)', needsKey: false, needsEndpoint: true },
   { id: 'groq', label: 'Groq', needsKey: true },
@@ -55,7 +56,15 @@ function friendlyModelName(id: string): string {
   if (id.startsWith('claude-3-5-haiku'))     return 'Claude Haiku 3.5';
   if (id.startsWith('claude-3-5-sonnet'))    return 'Claude Sonnet 3.5';
   if (id.startsWith('claude-3-opus'))        return 'Claude Opus 3';
-  // OpenAI
+  // OpenAI — ChatGPT subscription (Codex) models
+  if (id === 'gpt-5.4')             return 'GPT-5.4';
+  if (id === 'gpt-5.4-mini')        return 'GPT-5.4 Mini';
+  if (id === 'gpt-5.3-codex')       return 'GPT-5.3 Codex';
+  if (id === 'gpt-5.2-codex')       return 'GPT-5.2 Codex';
+  if (id === 'gpt-5.2')             return 'GPT-5.2';
+  if (id === 'gpt-5.1-codex-max')   return 'GPT-5.1 Codex Max';
+  if (id === 'gpt-5.1-codex-mini')  return 'GPT-5.1 Codex Mini';
+  // OpenAI — API models
   if (id === 'gpt-4o')        return 'GPT-4o';
   if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
   if (id === 'gpt-4-turbo')   return 'GPT-4 Turbo';
@@ -80,6 +89,11 @@ export function SettingsProvider() {
   const [oauthWaitingForCode, setOauthWaitingForCode] = useState(false);
   const [oauthConnected, setOauthConnected] = useState(false);
 
+  // OpenAI Codex OAuth flow state
+  const [codexOauthConnecting, setCodexOauthConnecting] = useState(false);
+  const [codexOauthWaitingForCallback, setCodexOauthWaitingForCallback] = useState(false);
+  const [codexOauthConnected, setCodexOauthConnected] = useState(false);
+
   // Routing state
   const [primary, setPrimary] = useState('');
   const [fallback, setFallback] = useState('');
@@ -103,11 +117,14 @@ export function SettingsProvider() {
     if (routing.fallback) setFallback(routing.fallback);
   }, [routing.primary, routing.fallback]);
 
-  // Check Claude OAuth status on load
+  // Check OAuth status on load
   useEffect(() => {
     api.getClaudeOAuthStatus()
       .then(s => setOauthConnected(s.connected))
-      .catch(err => console.error('Failed to check OAuth status:', err));
+      .catch(err => console.error('Failed to check Claude OAuth status:', err));
+    api.getOpenAICodexStatus()
+      .then(s => setCodexOauthConnected(s.connected))
+      .catch(err => console.error('Failed to check OpenAI Codex status:', err));
   }, []);
 
   const configuredNames = new Set(providers.filter(p => p.available).map(p => p.name));
@@ -214,6 +231,60 @@ export function SettingsProvider() {
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disconnect OAuth');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // OpenAI Codex OAuth handlers
+  const handleStartCodexOAuth = async () => {
+    setCodexOauthConnecting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const { authUrl } = await api.startOpenAICodexOAuth();
+      window.open(authUrl, '_blank');
+      setCodexOauthWaitingForCallback(true);
+
+      // Poll for completion — the callback server on port 1455 handles the redirect
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await api.getOpenAICodexStatus();
+          if (status.connected) {
+            clearInterval(pollInterval);
+            setCodexOauthWaitingForCallback(false);
+            setCodexOauthConnected(true);
+            setSuccess('OpenAI Codex connected — using your ChatGPT subscription');
+            await refresh();
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }, 2000);
+
+      // Stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        setCodexOauthWaitingForCallback(false);
+      }, 300_000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start OpenAI Codex OAuth');
+    } finally {
+      setCodexOauthConnecting(false);
+    }
+  };
+
+  const handleDisconnectCodexOAuth = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.disconnectOpenAICodexOAuth();
+      setSuccess('OpenAI Codex disconnected');
+      setCodexOauthConnected(false);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to disconnect OpenAI Codex');
     } finally {
       setSaving(false);
     }
@@ -365,8 +436,10 @@ export function SettingsProvider() {
           {KNOWN_PROVIDERS.map(spec => {
             const providerData = providers.find(p => p.name === spec.id);
             const isConfigured = configuredNames.has(spec.id);
-            const isOAuthCard = spec.id === 'claudeOAuth';
-            const isActive = isOAuthCard ? oauthConnected : isConfigured;
+            const isClaudeOAuth = spec.id === 'claudeOAuth';
+            const isCodexOAuth = spec.id === 'openaiCodex';
+            const isOAuthCard = isClaudeOAuth || isCodexOAuth;
+            const isActive = isClaudeOAuth ? oauthConnected : isCodexOAuth ? codexOauthConnected : isConfigured;
             const isPrimary = routing.primary === spec.id;
             const isFallback = routing.fallback === spec.id;
             const isExpanded = expanded === spec.id;
@@ -405,81 +478,120 @@ export function SettingsProvider() {
                 {isExpanded && (
                   <div className="provider-expand" onClick={e => e.stopPropagation()}>
                     {spec.needsOAuth ? (
-                      // Claude OAuth flow
-                      <>
-                        {oauthConnected ? (
+                      // OAuth flow (Claude or OpenAI Codex)
+                      (() => {
+                        const isConnected = isClaudeOAuth ? oauthConnected : codexOauthConnected;
+                        const connecting = isClaudeOAuth ? oauthConnecting : codexOauthConnecting;
+                        const onStart = isClaudeOAuth ? handleStartOAuth : handleStartCodexOAuth;
+                        const onDisconnect = isClaudeOAuth ? handleDisconnectOAuth : handleDisconnectCodexOAuth;
+
+                        const connectedLabel = isClaudeOAuth
+                          ? 'Connected via Claude OAuth. Your Claude Pro/Max subscription is being used.'
+                          : 'Connected via ChatGPT OAuth. Your ChatGPT Plus/Pro subscription is being used — no per-token costs.';
+                        const connectLabel = isClaudeOAuth
+                          ? 'Connect your Claude Pro or Max subscription. No API key needed.'
+                          : 'Connect your ChatGPT Plus or Pro subscription. No API key needed — uses your existing subscription.';
+                        const connectButton = isClaudeOAuth ? 'Connect with Claude' : 'Connect with ChatGPT';
+
+                        // Claude OAuth uses manual code paste; Codex uses automatic callback
+                        const isWaitingForManualCode = isClaudeOAuth && oauthWaitingForCode;
+                        const isWaitingForCallback = isCodexOAuth && codexOauthWaitingForCallback;
+
+                        return (
                           <>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-                              Connected via Claude OAuth. Your Claude Pro/Max subscription is being used.
-                            </p>
-                            {models.length > 0 && (
+                            {isConnected ? (
                               <>
-                                <label>Default Model</label>
-                                <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
-                                  <option value="">Keep current</option>
-                                  {models.map(m => (
-                                    <option key={m} value={m}>{friendlyModelName(m)}</option>
-                                  ))}
-                                </select>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                  {connectedLabel}
+                                </p>
+                                {models.length > 0 && (
+                                  <>
+                                    <label>Default Model</label>
+                                    <select value={cardModel} onChange={e => setCardModel(e.target.value)}>
+                                      <option value="">Keep current</option>
+                                      {models.map(m => (
+                                        <option key={m} value={m}>{friendlyModelName(m)}</option>
+                                      ))}
+                                    </select>
+                                  </>
+                                )}
+                                <div className="provider-actions">
+                                  <button
+                                    className="btn-save"
+                                    onClick={onDisconnect}
+                                    disabled={saving}
+                                    style={{ background: 'var(--error, #e74c3c)' }}
+                                  >
+                                    {saving ? 'Disconnecting...' : 'Disconnect'}
+                                  </button>
+                                </div>
+                              </>
+                            ) : isWaitingForCallback ? (
+                              <>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                  Waiting for you to log in with OpenAI in the browser tab that opened...
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)' }}>
+                                  <span className="spinner" style={{ width: 16, height: 16, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', display: 'inline-block' }} />
+                                  <span style={{ fontSize: '0.85rem' }}>Listening for callback...</span>
+                                </div>
+                                <div className="provider-actions">
+                                  <button
+                                    onClick={() => setCodexOauthWaitingForCallback(false)}
+                                    style={{ marginTop: '0.5rem' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            ) : isWaitingForManualCode ? (
+                              <>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                  Authorize in the browser tab that opened, then paste the code below.
+                                </p>
+                                <label>Authorization Code</label>
+                                <input
+                                  type="text"
+                                  value={oauthCode}
+                                  onChange={e => setOauthCode(e.target.value)}
+                                  placeholder="Paste the code from claude.ai"
+                                  autoFocus
+                                />
+                                <div className="provider-actions">
+                                  <button
+                                    className="btn-save"
+                                    onClick={handleCompleteOAuth}
+                                    disabled={saving || !oauthCode.trim()}
+                                  >
+                                    {saving ? 'Connecting...' : 'Complete Connection'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setOauthWaitingForCode(false); setOauthCode(''); }}
+                                    style={{ marginLeft: '0.5rem' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                  {connectLabel}
+                                </p>
+                                <div className="provider-actions">
+                                  <button
+                                    className="btn-save"
+                                    onClick={onStart}
+                                    disabled={connecting}
+                                  >
+                                    {connecting ? 'Opening...' : connectButton}
+                                  </button>
+                                </div>
                               </>
                             )}
-                            <div className="provider-actions">
-                              <button
-                                className="btn-save"
-                                onClick={handleDisconnectOAuth}
-                                disabled={saving}
-                                style={{ background: 'var(--error, #e74c3c)' }}
-                              >
-                                {saving ? 'Disconnecting...' : 'Disconnect'}
-                              </button>
-                            </div>
                           </>
-                        ) : oauthWaitingForCode ? (
-                          <>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-                              Authorize in the browser tab that opened, then paste the code below.
-                            </p>
-                            <label>Authorization Code</label>
-                            <input
-                              type="text"
-                              value={oauthCode}
-                              onChange={e => setOauthCode(e.target.value)}
-                              placeholder="Paste the code from claude.ai"
-                              autoFocus
-                            />
-                            <div className="provider-actions">
-                              <button
-                                className="btn-save"
-                                onClick={handleCompleteOAuth}
-                                disabled={saving || !oauthCode.trim()}
-                              >
-                                {saving ? 'Connecting...' : 'Complete Connection'}
-                              </button>
-                              <button
-                                onClick={() => { setOauthWaitingForCode(false); setOauthCode(''); }}
-                                style={{ marginLeft: '0.5rem' }}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-                              Connect your Claude Pro or Max subscription. No API key needed.
-                            </p>
-                            <div className="provider-actions">
-                              <button
-                                className="btn-save"
-                                onClick={handleStartOAuth}
-                                disabled={oauthConnecting}
-                              >
-                                {oauthConnecting ? 'Opening...' : 'Connect with Claude'}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </>
+                        );
+                      })()
                     ) : (
                       // Original API key / endpoint form
                       <>

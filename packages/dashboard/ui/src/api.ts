@@ -172,6 +172,18 @@ export const api = {
     fetchApi<{ success: boolean }>('/provider/claude-oauth/disconnect', { method: 'POST' }),
   getClaudeOAuthStatus: () =>
     fetchApi<{ connected: boolean }>('/provider/claude-oauth/status'),
+  // OpenAI Codex OAuth (ChatGPT subscription)
+  startOpenAICodexOAuth: () =>
+    fetchApi<{ authUrl: string }>('/provider/openai-codex/connect', { method: 'POST' }),
+  completeOpenAICodexOAuth: (code: string, state?: string) =>
+    fetchApi<{ success: boolean; accountId?: string }>('/provider/openai-codex/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code, state }),
+    }),
+  disconnectOpenAICodexOAuth: () =>
+    fetchApi<{ success: boolean }>('/provider/openai-codex/disconnect', { method: 'POST' }),
+  getOpenAICodexStatus: () =>
+    fetchApi<{ connected: boolean; accountId?: string }>('/provider/openai-codex/status'),
   updateRouting: (primary: string, fallback?: string) =>
     fetchApi<{ success: boolean }>('/provider/routing', {
       method: 'POST',

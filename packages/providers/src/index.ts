@@ -1,5 +1,14 @@
 export { AnthropicProvider, type AnthropicProviderOptions } from './anthropic.js';
 export { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
+export { OpenAICodexProvider, type OpenAICodexProviderOptions } from './openai-codex.js';
+export {
+  generateOpenAICodexPKCE,
+  buildOpenAICodexAuthUrl,
+  exchangeOpenAICodexCode,
+  refreshOpenAICodexToken,
+  startCallbackServer as startOpenAICodexCallbackServer,
+  type OpenAICodexTokens,
+} from './openai-codex-oauth.js';
 export { GoogleProvider, type GoogleProviderOptions } from './google.js';
 export { OllamaProvider, type OllamaProviderOptions } from './ollama.js';
 export { OpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from './openai-compatible.js';

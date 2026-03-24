@@ -130,6 +130,14 @@ export interface ProviderConfig {
     model?: string;
     maxTokens?: number;
   };
+  openaiCodex?: {
+    accessToken: string;
+    accountId?: string;
+    model?: string;
+    maxTokens?: number;
+    onTokenRefresh?: () => Promise<string | null>;
+    tokenExpiresAt?: number;
+  };
   google?: {
     apiKey?: string;
     apiKeys?: string[];

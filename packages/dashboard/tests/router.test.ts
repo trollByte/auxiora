@@ -18,6 +18,20 @@ function createMockDeps(): DashboardDeps {
       list: vi.fn().mockResolvedValue([
         { id: 'bh-1', type: 'scheduled', status: 'active', action: 'test', runCount: 5, failCount: 0 },
       ]),
+      get: vi.fn().mockResolvedValue({
+        id: 'bh-1',
+        type: 'one-shot',
+        status: 'active',
+        action: 'test',
+        delay: { fireAt: '2026-12-31T23:59:00.000Z' },
+      }),
+      create: vi.fn().mockImplementation(async (input: Record<string, unknown>) => ({
+        id: 'bh-2',
+        status: 'active',
+        runCount: 0,
+        failCount: 0,
+        ...input,
+      })),
       update: vi.fn().mockResolvedValue({ id: 'bh-1', status: 'paused' }),
       remove: vi.fn().mockResolvedValue(true),
     },
@@ -161,6 +175,60 @@ describe('Dashboard Router', () => {
         .set('Cookie', cookie)
         .send({ status: 'paused' });
       expect(res.status).toBe(200);
+    });
+
+    it('should create a one-shot behavior using delay.fireAt', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const runAt = new Date('2026-06-01T15:30:00.000Z').toISOString();
+
+      const res = await request(app)
+        .post('/api/v1/dashboard/behaviors')
+        .set('Cookie', cookie)
+        .send({
+          type: 'one-shot',
+          action: 'Remind me later',
+          runAt,
+        });
+
+      expect(res.status).toBe(201);
+      expect(deps.behaviors?.create).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'one-shot',
+        action: 'Remind me later',
+        delay: { fireAt: runAt },
+      }));
+    });
+
+    it('should reject a one-shot behavior with a past runAt', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const runAt = new Date('2020-01-01T00:00:00.000Z').toISOString();
+
+      const res = await request(app)
+        .post('/api/v1/dashboard/behaviors')
+        .set('Cookie', cookie)
+        .send({
+          type: 'one-shot',
+          action: 'Expired reminder',
+          runAt,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('runAt must be a valid future timestamp');
+      expect(deps.behaviors?.create).not.toHaveBeenCalled();
+    });
+
+    it('should patch one-shot behavior using delay.fireAt', async () => {
+      const cookie = await loginAndGetCookie(app);
+      const runAt = new Date('2026-07-04T12:00:00.000Z').toISOString();
+
+      const res = await request(app)
+        .patch('/api/v1/dashboard/behaviors/bh-1')
+        .set('Cookie', cookie)
+        .send({ runAt });
+
+      expect(res.status).toBe(200);
+      expect(deps.behaviors?.update).toHaveBeenCalledWith('bh-1', {
+        delay: { fireAt: runAt },
+      });
     });
 
     it('should delete a behavior', async () => {

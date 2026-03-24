@@ -33,5 +33,5 @@ export function getOpenAIReasoningEffort(level: ThinkingLevel): 'low' | 'medium'
  */
 export function isOpenAIReasoningModel(model: string): boolean {
   return model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')
-    || model.startsWith('gpt-5');
+    || model.startsWith('gpt-5') || model.includes('codex');
 }

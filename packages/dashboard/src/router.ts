@@ -3,6 +3,13 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { getLogger } from '@auxiora/logger';
 import { audit } from '@auxiora/audit';
 import { Vault, SealManager } from '@auxiora/vault';
+import {
+  generateOpenAICodexPKCE,
+  buildOpenAICodexAuthUrl,
+  exchangeOpenAICodexCode,
+  startOpenAICodexCallbackServer,
+  type OpenAICodexTokens,
+} from '@auxiora/providers';
 import { DashboardAuth } from './auth.js';
 import type { DashboardConfig, DashboardDeps, SetupDeps } from './types.js';
 import type { CloudDeps, CloudSignupRequest, CloudLoginRequest, CloudPlanChangeRequest, CloudPaymentMethodRequest } from './cloud-types.js';
@@ -215,13 +222,29 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       return;
     }
 
-    await setup.saveConfig({
-      agent: {
-        name,
-        ...(pronouns ? { pronouns } : {}),
-        ...(vibe && typeof vibe === 'string' ? { vibe } : {}),
-      },
-    });
+    const MAX_VIBE_LENGTH = 500;
+    if (vibe && typeof vibe === 'string' && vibe.length > MAX_VIBE_LENGTH) {
+      res.status(400).json({
+        error: `Vibe must be at most ${MAX_VIBE_LENGTH} characters (currently ${vibe.length})`,
+        maxLength: MAX_VIBE_LENGTH,
+      });
+      return;
+    }
+
+    try {
+      await setup.saveConfig({
+        agent: {
+          name,
+          ...(pronouns ? { pronouns } : {}),
+          ...(vibe && typeof vibe === 'string' ? { vibe } : {}),
+        },
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save identity';
+      logger.error(`Failed to save identity config: ${msg}`);
+      res.status(500).json({ error: msg });
+      return;
+    }
 
     // Sync name/pronouns into SOUL.md frontmatter so the personality files
     // don't contradict the config (the AI reads both).
@@ -400,6 +423,13 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       await setup.onSetupComplete();
     }
 
+    // Auto-login the user so they aren't bounced to the login screen
+    // immediately after completing setup.
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const sessionId = auth.createSession(ip);
+    res.setHeader('Set-Cookie', buildCookieHeader(sessionId, req));
+    void audit('dashboard.login', { ip, source: 'setup-complete' });
+
     const agentName = setup?.getAgentName?.() ?? 'Auxiora';
     res.json({
       success: true,
@@ -477,12 +507,12 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
         res.status(400).json({ error: 'runAt is required for one-shot behaviors' });
         return;
       }
-      const ts = new Date(runAt).getTime();
-      if (isNaN(ts) || ts <= Date.now()) {
+      const fireAt = new Date(runAt);
+      if (isNaN(fireAt.getTime()) || fireAt.getTime() <= Date.now()) {
         res.status(400).json({ error: 'runAt must be a valid future timestamp' });
         return;
       }
-      input.delay = { runAt: ts };
+      input.delay = { fireAt: fireAt.toISOString() };
     }
 
     try {
@@ -532,9 +562,9 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
       };
     }
     if (runAt !== undefined) {
-      const ts = new Date(runAt).getTime();
-      if (!isNaN(ts)) {
-        updates.delay = { fireAt: ts };
+      const fireAt = new Date(runAt);
+      if (!isNaN(fireAt.getTime())) {
+        updates.delay = { fireAt: fireAt.toISOString() };
       }
     }
 
@@ -942,7 +972,7 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
   });
 
   // Provider: configure a specific provider's credentials (does NOT change primary/fallback)
-  const VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible', 'claudeOAuth'];
+  const VALID_PROVIDERS = ['anthropic', 'openai', 'openai-codex', 'google', 'ollama', 'groq', 'deepseek', 'cohere', 'xai', 'openaiCompatible', 'claudeOAuth'];
 
   // --- Claude OAuth PKCE flow ---
   const pkceStates = new Map<string, { verifier: string; state: string; createdAt: number }>();
@@ -1056,6 +1086,117 @@ export function createDashboardRouter(options: DashboardRouterOptions): { router
     const hasToken = deps.vault.has('ANTHROPIC_OAUTH_TOKEN') &&
                      deps.vault.get('ANTHROPIC_OAUTH_TOKEN') !== '';
     res.json({ connected: hasToken });
+  });
+
+  // --- OpenAI Codex OAuth (ChatGPT subscription) ---
+  // The OpenAI Codex OAuth flow uses a local callback server on port 1455
+  // (same as Codex CLI). When the user clicks "Connect", we:
+  // 1. Generate PKCE + state
+  // 2. Start a local HTTP server on port 1455 to catch the redirect
+  // 3. Return the auth URL to the frontend (which opens it in a new tab)
+  // 4. When OpenAI redirects back to localhost:1455, exchange the code for tokens
+  // 5. Frontend polls /status to detect when the flow completes
+  let codexOauthPending = false;
+
+  router.post('/provider/openai-codex/connect', (req: Request, res: Response) => {
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies[COOKIE_NAME];
+    if (!sessionId || !auth.validateSession(sessionId)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (codexOauthPending) {
+      res.status(409).json({ error: 'An OpenAI Codex OAuth flow is already in progress' });
+      return;
+    }
+
+    const { verifier, challenge } = generateOpenAICodexPKCE();
+    const oauthState = crypto.randomBytes(32).toString('hex');
+    const authUrl = buildOpenAICodexAuthUrl(challenge, oauthState);
+
+    // Start the local callback server to catch the redirect
+    codexOauthPending = true;
+    let callbackServer: ReturnType<typeof startOpenAICodexCallbackServer>['server'];
+    let codePromise: Promise<string>;
+    try {
+      const result = startOpenAICodexCallbackServer(oauthState);
+      callbackServer = result.server;
+      codePromise = result.promise;
+      logger.info('OpenAI Codex OAuth callback server started on port 1455');
+    } catch (err) {
+      codexOauthPending = false;
+      const msg = err instanceof Error ? err.message : 'Failed to start callback server';
+      logger.error(`Failed to start OAuth callback server: ${msg}`);
+      res.status(500).json({ error: `Failed to start callback server: ${msg}` });
+      return;
+    }
+
+    // Handle the callback asynchronously
+    codePromise
+      .then(async (code) => {
+        logger.info('OpenAI Codex OAuth callback received, exchanging code for tokens...');
+        const tokens: OpenAICodexTokens = await exchangeOpenAICodexCode(code, verifier);
+
+        await deps.vault.add('OPENAI_CODEX_ACCESS_TOKEN', tokens.accessToken);
+        await deps.vault.add('OPENAI_CODEX_REFRESH_TOKEN', tokens.refreshToken);
+        await deps.vault.add('OPENAI_CODEX_EXPIRES_AT', String(tokens.expiresAt));
+        if (tokens.accountId) {
+          await deps.vault.add('OPENAI_CODEX_ACCOUNT_ID', tokens.accountId);
+        }
+
+        if (setup?.onSetupComplete) {
+          await setup.onSetupComplete();
+        }
+
+        void audit('settings.provider', { provider: 'openai-codex', action: 'oauth-complete' });
+        logger.info('OpenAI Codex OAuth completed successfully');
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'OAuth callback failed';
+        logger.error(`OpenAI Codex OAuth failed: ${msg}`);
+      })
+      .finally(() => {
+        codexOauthPending = false;
+        try { callbackServer.close(); } catch { /* already closed */ }
+      });
+
+    void audit('settings.provider', { provider: 'openai-codex', action: 'oauth-start' });
+    res.json({ authUrl });
+  });
+
+  router.post('/provider/openai-codex/disconnect', async (req: Request, res: Response) => {
+    try {
+      await deps.vault.add('OPENAI_CODEX_ACCESS_TOKEN', '');
+      await deps.vault.add('OPENAI_CODEX_REFRESH_TOKEN', '');
+      await deps.vault.add('OPENAI_CODEX_EXPIRES_AT', '');
+      await deps.vault.add('OPENAI_CODEX_ACCOUNT_ID', '');
+
+      if (setup?.onSetupComplete) {
+        await setup.onSetupComplete();
+      }
+
+      void audit('settings.provider', { provider: 'openai-codex', action: 'disconnect' });
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Disconnect failed';
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  router.get('/provider/openai-codex/status', (_req: Request, res: Response) => {
+    let connected = false;
+    let accountId: string | undefined;
+    try {
+      const token = deps.vault.get('OPENAI_CODEX_ACCESS_TOKEN');
+      connected = !!token && token !== '';
+      if (connected) {
+        accountId = deps.vault.get('OPENAI_CODEX_ACCOUNT_ID') || undefined;
+      }
+    } catch {
+      // vault locked
+    }
+    res.json({ connected, accountId });
   });
 
   router.post('/provider/configure', async (req: Request, res: Response) => {

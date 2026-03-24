@@ -66,6 +66,10 @@ const ProviderConfigSchema = z.object({
     model: z.string().default('gpt-5.2'),
     maxTokens: z.number().int().positive().default(16384),
   }).default({}),
+  openaiCodex: z.object({
+    model: z.string().default('gpt-5.2'),
+    maxTokens: z.number().int().positive().default(16384),
+  }).default({}),
   google: z.object({
     model: z.string().default('gemini-2.5-flash'),
     maxTokens: z.number().int().positive().default(16384),
@@ -321,7 +325,7 @@ const AgentIdentitySchema = z.object({
   name: z.string().default('Auxiora'),
   pronouns: z.string().default('they/them'),
   avatar: z.string().optional(),
-  vibe: z.string().max(200).optional(),
+  vibe: z.string().max(500).optional(),
   customInstructions: z.string().max(4000).optional(),
   personality: z.string().default('professional'),
   tone: z.object({

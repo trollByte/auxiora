@@ -1,5 +1,6 @@
 import { AnthropicProvider, type AnthropicProviderOptions } from './anthropic.js';
 import { OpenAIProvider, type OpenAIProviderOptions } from './openai.js';
+import { OpenAICodexProvider, type OpenAICodexProviderOptions } from './openai-codex.js';
 import { GoogleProvider, type GoogleProviderOptions } from './google.js';
 import { OllamaProvider, type OllamaProviderOptions } from './ollama.js';
 import { OpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from './openai-compatible.js';
@@ -66,6 +67,12 @@ export class ProviderFactory {
           : provider,
         );
       }
+    }
+
+    // OpenAI Codex (ChatGPT subscription OAuth)
+    const openaiCodexConfig = options.config.openaiCodex;
+    if (openaiCodexConfig?.accessToken) {
+      this.providers.set('openai-codex', new OpenAICodexProvider(openaiCodexConfig));
     }
 
     // Google

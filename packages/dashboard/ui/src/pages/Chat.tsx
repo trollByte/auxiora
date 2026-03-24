@@ -77,6 +77,15 @@ function friendlyModelName(id: string): string {
   if (id.startsWith('claude-3-5-haiku'))     return 'Claude Haiku 3.5';
   if (id.startsWith('claude-3-5-sonnet'))    return 'Claude Sonnet 3.5';
   if (id.startsWith('claude-3-opus'))        return 'Claude Opus 3';
+  // OpenAI — ChatGPT subscription (Codex) models
+  if (id === 'gpt-5.4')             return 'GPT-5.4';
+  if (id === 'gpt-5.4-mini')        return 'GPT-5.4 Mini';
+  if (id === 'gpt-5.3-codex')       return 'GPT-5.3 Codex';
+  if (id === 'gpt-5.2-codex')       return 'GPT-5.2 Codex';
+  if (id === 'gpt-5.2')             return 'GPT-5.2';
+  if (id === 'gpt-5.1-codex-max')   return 'GPT-5.1 Codex Max';
+  if (id === 'gpt-5.1-codex-mini')  return 'GPT-5.1 Codex Mini';
+  // OpenAI — API models
   if (id === 'gpt-4o')        return 'GPT-4o';
   if (id === 'gpt-4o-mini')   return 'GPT-4o Mini';
   if (id === 'gpt-4-turbo')   return 'GPT-4 Turbo';

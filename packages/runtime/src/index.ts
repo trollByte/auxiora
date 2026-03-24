@@ -1,7 +1,7 @@
 import { Gateway, createModelRegistryRouter, mountOpenAICompatRoutes, mountApprovalRoutes, type ClientConnection, type WsMessage } from '@auxiora/gateway';
 import { SessionManager, sanitizeTranscript, type Message } from '@auxiora/sessions';
 import { MediaProcessor, detectProviders } from '@auxiora/media';
-import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback } from '@auxiora/providers';
+import { ProviderFactory, type Provider, type StreamChunk, type ProviderMetadata, type ThinkingLevel, readClaudeCliCredentials, isSetupToken, refreshOAuthToken, refreshPKCEOAuthToken, streamWithModelFallback, refreshOpenAICodexToken } from '@auxiora/providers';
 import { ModelRouter, TaskClassifier, ModelSelector, CostTracker, type RoutingResult } from '@auxiora/router';
 import { ChannelManager, DraftStreamLoop, type InboundMessage } from '@auxiora/channels';
 import { loadConfig, saveConfig as saveFullConfig, type Config, type AgentIdentity } from '@auxiora/config';
@@ -2282,6 +2282,10 @@ export class Auxiora {
     let replicateToken: string | undefined;
     let openrouterKey: string | undefined;
     let huggingfaceToken: string | undefined;
+    let openaiCodexAccessToken: string | undefined;
+    let openaiCodexRefreshToken: string | undefined;
+    let openaiCodexExpiresAt: number | undefined;
+    let openaiCodexAccountId: string | undefined;
     let vaultLocked = false;
 
     try {
@@ -2296,6 +2300,11 @@ export class Auxiora {
       replicateToken = this.vault.get('REPLICATE_API_TOKEN');
       openrouterKey = this.vault.get('OPENROUTER_API_KEY');
       huggingfaceToken = this.vault.get('HUGGINGFACE_API_TOKEN');
+      openaiCodexAccessToken = this.vault.get('OPENAI_CODEX_ACCESS_TOKEN');
+      openaiCodexRefreshToken = this.vault.get('OPENAI_CODEX_REFRESH_TOKEN');
+      const expiresStr = this.vault.get('OPENAI_CODEX_EXPIRES_AT');
+      if (expiresStr) openaiCodexExpiresAt = Number(expiresStr);
+      openaiCodexAccountId = this.vault.get('OPENAI_CODEX_ACCOUNT_ID');
 
       // Check if ANTHROPIC_API_KEY is actually an OAuth token (sk-ant-oat01-*)
       // This handles users who stored their OAuth token in the wrong vault key
@@ -2321,7 +2330,7 @@ export class Auxiora {
 
     const hasAnthropic = anthropicKey || anthropicOAuthToken || hasCliCredentials;
     const hasOllama = this.config.provider.ollama?.model;
-    const hasAnyKey = hasAnthropic || openaiKey || googleKey || groqKey || deepseekKey || cohereKey || xaiKey || replicateToken || hasOllama || openrouterKey || huggingfaceToken;
+    const hasAnyKey = hasAnthropic || openaiKey || openaiCodexAccessToken || googleKey || groqKey || deepseekKey || cohereKey || xaiKey || replicateToken || hasOllama || openrouterKey || huggingfaceToken;
     if (!hasAnyKey) {
       if (vaultLocked) {
         this.logger.warn('Vault is locked. AI providers not initialized.');
@@ -2414,6 +2423,33 @@ export class Auxiora {
               apiKey: openaiKey,
               model: this.config.provider.openai.model,
               maxTokens: this.config.provider.openai.maxTokens,
+            }
+          : undefined,
+        openaiCodex: openaiCodexAccessToken
+          ? {
+              accessToken: openaiCodexAccessToken,
+              accountId: openaiCodexAccountId,
+              model: this.config.provider.openaiCodex.model,
+              maxTokens: this.config.provider.openaiCodex.maxTokens,
+              tokenExpiresAt: openaiCodexExpiresAt,
+              onTokenRefresh: openaiCodexRefreshToken
+                ? async () => {
+                    try {
+                      const refreshed = await refreshOpenAICodexToken(openaiCodexRefreshToken!);
+                      await this.vault.add('OPENAI_CODEX_ACCESS_TOKEN', refreshed.accessToken);
+                      await this.vault.add('OPENAI_CODEX_REFRESH_TOKEN', refreshed.refreshToken);
+                      await this.vault.add('OPENAI_CODEX_EXPIRES_AT', String(refreshed.expiresAt));
+                      if (refreshed.accountId) {
+                        await this.vault.add('OPENAI_CODEX_ACCOUNT_ID', refreshed.accountId);
+                      }
+                      this.logger.info('OpenAI Codex OAuth token refreshed');
+                      return refreshed.accessToken;
+                    } catch (err) {
+                      this.logger.error(`OpenAI Codex token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+                      return null;
+                    }
+                  }
+                : undefined,
             }
           : undefined,
         google: googleKey
